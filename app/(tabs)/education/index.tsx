@@ -256,23 +256,20 @@ export default function EducationScreen() {
     
     closeWorksheetModal();
     
-    // Navigate to the appropriate worksheet route
-    switch (selectedWorksheet.type) {
-      case 'letter_tracing':
-        router.push('/features/worksheets?type=letter_tracing');
-        break;
-      case 'color_mixing':
-        router.push('/features/worksheets?type=color_mixing');
-        break;
-      case 'animal_habitats':
-        router.push('/features/worksheets?type=animal_habitats');
-        break;
-      case 'community_helpers':
-        router.push('/features/worksheets?type=community_helpers');
-        break;
-      default:
-        Alert.alert('Coming Soon', 'This worksheet type is not yet available.');
-    }
+    // For now, show an alert that the worksheet is starting
+    Alert.alert(
+      'Worksheet Starting',
+      `Starting ${selectedWorksheet.title}...`,
+      [
+        {
+          text: 'OK',
+          onPress: () => {
+            // In a real app, this would navigate to the actual worksheet
+            console.log('Starting worksheet:', selectedWorksheet.title);
+          }
+        }
+      ]
+    );
   };
 
   if (loading) {
@@ -412,7 +409,7 @@ export default function EducationScreen() {
           <View style={styles.quickAccessButtons}>
             <Button
               mode="contained"
-              onPress={() => router.push('/features/worksheets?type=letter_tracing')}
+              onPress={() => Alert.alert('Letter Tracing', 'Letter tracing worksheet coming soon!')}
               style={styles.quickButton}
               icon="pencil"
             >
@@ -421,7 +418,7 @@ export default function EducationScreen() {
             
             <Button
               mode="contained"
-              onPress={() => router.push('/features/worksheets?type=color_mixing')}
+              onPress={() => Alert.alert('Color Mixing', 'Color mixing worksheet coming soon!')}
               style={styles.quickButton}
               icon="palette"
             >
@@ -430,7 +427,7 @@ export default function EducationScreen() {
             
             <Button
               mode="contained"
-              onPress={() => router.push('/features/worksheets?type=animal_habitats')}
+              onPress={() => Alert.alert('Animal Habitats', 'Animal habitats worksheet coming soon!')}
               style={styles.quickButton}
               icon="paw"
             >
@@ -439,7 +436,7 @@ export default function EducationScreen() {
             
             <Button
               mode="contained"
-              onPress={() => router.push('/features/worksheets?type=community_helpers')}
+              onPress={() => Alert.alert('Community Helpers', 'Community helpers worksheet coming soon!')}
               style={styles.quickButton}
               icon="account-group"
             >

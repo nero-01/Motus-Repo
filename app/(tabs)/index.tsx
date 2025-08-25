@@ -248,38 +248,38 @@ export default function DashboardScreen() {
           <View style={styles.actionButtons}>
             <Button
               mode="contained"
-              onPress={() => router.push('/features/routines')}
+              onPress={() => router.push('/(tabs)/activities')}
               style={styles.actionButton}
               icon="plus"
             >
-              New Routine
+              New Activity
             </Button>
             
             <Button
               mode="contained"
-              onPress={() => router.push('/features/chores')}
-              style={styles.actionButton}
-              icon="plus"
-            >
-              Add Chore
-            </Button>
-            
-            <Button
-              mode="contained"
-              onPress={() => router.push('/features/planners/meals')}
-              style={styles.actionButton}
-              icon="food"
-            >
-              Plan Meal
-            </Button>
-            
-            <Button
-              mode="contained"
-              onPress={() => router.push('/features/worksheets')}
+              onPress={() => router.push('/(tabs)/education')}
               style={styles.actionButton}
               icon="book"
             >
-              Worksheets
+              Education
+            </Button>
+            
+            <Button
+              mode="contained"
+              onPress={() => router.push('/(tabs)/reminders')}
+              style={styles.actionButton}
+              icon="bell"
+            >
+              Reminders
+            </Button>
+            
+            <Button
+              mode="contained"
+              onPress={() => router.push('/(tabs)/profile')}
+              style={styles.actionButton}
+              icon="account"
+            >
+              Profile
             </Button>
           </View>
         </View>
