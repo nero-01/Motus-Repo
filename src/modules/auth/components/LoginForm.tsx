@@ -3,8 +3,6 @@ import {
   View,
   StyleSheet,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
 } from 'react-native';
 import { Text, TextInput, Button, HelperText, Divider } from 'react-native-paper';
@@ -12,6 +10,7 @@ import { router } from 'expo-router';
 import { useAuthStore } from '../store/authStore';
 import { SocialAuthService } from '../services/socialAuthService';
 import { SocialLoginProvider } from '../types';
+import SocialLoginButton from './SocialLoginButton';
 
 export default function LoginForm() {
   const { login, isLoading, error, clearError } = useAuthStore();
@@ -85,25 +84,17 @@ export default function LoginForm() {
   };
 
   const renderSocialButton = (provider: SocialLoginProvider) => (
-    <Button
+    <SocialLoginButton
       key={provider.id}
-      mode="outlined"
+      provider={provider.id as 'google' | 'facebook' | 'apple' | 'twitter'}
       onPress={() => handleSocialLogin(provider)}
-      style={[styles.socialButton, { borderColor: provider.color }]}
-      textColor={provider.color}
       loading={socialLoading === provider.id}
       disabled={isLoading || !!socialLoading}
-      icon={() => <Text style={styles.socialIcon}>{provider.icon}</Text>}
-    >
-      Continue with {provider.name}
-    </Button>
+    />
   );
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
           <Text variant="displaySmall" style={styles.title}>
@@ -200,7 +191,7 @@ export default function LoginForm() {
           </View>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -234,10 +225,6 @@ const styles = StyleSheet.create({
   socialButton: {
     borderRadius: 8,
     paddingVertical: 8,
-  },
-  socialIcon: {
-    fontSize: 20,
-    marginRight: 8,
   },
   divider: {
     marginVertical: 24,

@@ -560,18 +560,22 @@ const styles = StyleSheet.create({
   filtersContainer: {
     padding: 16,
     paddingTop: 0,
+    flexShrink: 1,
   },
   searchBar: {
     marginBottom: 16,
+    flexShrink: 1,
   },
   filterButtons: {
     gap: 12,
   },
   categoryFilter: {
     marginBottom: 8,
+    flexShrink: 1,
   },
   difficultyFilter: {
     marginBottom: 8,
+    flexShrink: 1,
   },
   worksheetsContainer: {
     padding: 16,
@@ -602,21 +606,27 @@ const styles = StyleSheet.create({
   },
   worksheetInfo: {
     flex: 1,
+    flexShrink: 1,
   },
   worksheetTitle: {
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 4,
+    flexWrap: 'wrap',
+    flexShrink: 1,
   },
   worksheetDescription: {
     fontSize: 14,
     color: '#666',
     marginBottom: 8,
+    flexWrap: 'wrap',
+    flexShrink: 1,
   },
   worksheetMeta: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 4,
+    marginTop: 4,
   },
   metaChip: {
     marginRight: 4,
