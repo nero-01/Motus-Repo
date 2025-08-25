@@ -3,6 +3,7 @@ import { View, StyleSheet, ScrollView, RefreshControl, ActivityIndicator, Alert 
 import { Text, Card, Button, Surface, Chip, Avatar, List, Divider } from 'react-native-paper';
 import { Link, router } from 'expo-router';
 import { getGreeting } from '../../utils/greeting';
+import { useAuthStore } from '../../src/modules/auth/store/authStore';
 
 interface DashboardStats {
   routinesCompleted: number;
@@ -27,6 +28,7 @@ interface RecentActivity {
 }
 
 export default function DashboardScreen() {
+  const { logout } = useAuthStore();
   const [stats, setStats] = useState<DashboardStats>({
     routinesCompleted: 0,
     routinesRemaining: 0,
@@ -130,8 +132,9 @@ export default function DashboardScreen() {
         {
           text: 'Sign Out',
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
             console.log('Signing out...');
+            await logout();
             router.replace('/(auth)/login');
           },
         },

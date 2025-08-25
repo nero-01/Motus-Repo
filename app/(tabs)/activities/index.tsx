@@ -99,7 +99,17 @@ export default function ActivitiesScreen() {
   };
 
   const handleActivityPress = (activity: Activity) => {
-    router.push(`/features/activities/${activity.id}`);
+    Alert.alert(
+      'Activity Details',
+      `Viewing details for: ${activity.title}`,
+      [
+        { text: 'OK' },
+        { 
+          text: 'Start Activity', 
+          onPress: () => handleStartActivity(activity) 
+        }
+      ]
+    );
   };
 
   const handleToggleFavorite = async (activityId: string) => {
@@ -121,7 +131,20 @@ export default function ActivitiesScreen() {
   const handleStartActivity = async (activity: Activity) => {
     try {
       await ActivityService.startActivitySession(activity.id);
-      router.push(`/features/activities/${activity.id}/session`);
+      Alert.alert(
+        'Activity Started!',
+        `You've started: ${activity.title}`,
+        [
+          { 
+            text: 'Continue', 
+            onPress: () => {
+              // Here you would typically navigate to the activity session
+              // For now, we'll just show a success message
+              Alert.alert('Great!', 'Activity session is now active. Track your progress!');
+            }
+          }
+        ]
+      );
     } catch (error) {
       console.error('Error starting activity:', error);
       Alert.alert('Error', 'Failed to start activity session.');
@@ -312,7 +335,7 @@ export default function ActivitiesScreen() {
       <FAB
         icon="plus"
         style={styles.fab}
-        onPress={() => router.push('/features/activities/create')}
+        onPress={() => Alert.alert('Coming Soon', 'Activity creation feature will be available soon!')}
         label="New Activity"
       />
     </View>
