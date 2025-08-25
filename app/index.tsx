@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
   },
   bottomSection: {
     paddingBottom: 50,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
     borderRadius: 16,
     padding: 20,
     marginHorizontal: 20,
@@ -134,8 +134,8 @@ const styles = StyleSheet.create({
   signInButton: {
     borderRadius: 12,
     borderColor: '#ffffff',
-    borderWidth: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderWidth: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
   },
   buttonContent: {
     paddingVertical: 12,
