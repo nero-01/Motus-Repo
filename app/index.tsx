@@ -114,6 +114,10 @@ const styles = StyleSheet.create({
   },
   bottomSection: {
     paddingBottom: 50,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    borderRadius: 16,
+    padding: 16,
+    marginHorizontal: 16,
   },
   buttonContainer: {
     gap: 16,
@@ -141,10 +145,16 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#ffffff',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   signInButtonLabel: {
     fontSize: 18,
     fontWeight: '600',
     color: '#ffffff',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 }); 
