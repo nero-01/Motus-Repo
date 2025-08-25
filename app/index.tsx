@@ -58,7 +58,7 @@ export default function HomeScreen() {
                   contentStyle={styles.buttonContent}
                   labelStyle={styles.signInButtonLabel}
                 >
-                  I already have an account
+                  I have an account
                 </Button>
               </View>
             </View>
@@ -114,10 +114,10 @@ const styles = StyleSheet.create({
   },
   bottomSection: {
     paddingBottom: 50,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
     borderRadius: 16,
-    padding: 16,
-    marginHorizontal: 16,
+    padding: 20,
+    marginHorizontal: 20,
   },
   buttonContainer: {
     gap: 16,
@@ -135,26 +135,27 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderColor: '#ffffff',
     borderWidth: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   buttonContent: {
     paddingVertical: 12,
     height: 56,
+    paddingHorizontal: 20,
   },
   buttonLabel: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#ffffff',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 3,
   },
   signInButtonLabel: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#ffffff',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 3,
   },
 }); 
