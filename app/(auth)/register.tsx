@@ -5,10 +5,10 @@ import { Text } from 'react-native-paper';
 import { AuthForm, type AuthFormData } from '../../components/forms';
 import { Card } from '../../components/ui';
 import { theme } from '../../styles/theme';
-import { useAuthStore } from '../../stores/authStore';
+import { useAuthStore } from '../../src/modules/auth/store/authStore';
 
 export default function RegisterScreen() {
-  const { signUp, isLoading, error, clearError, isAuthenticated } = useAuthStore();
+  const { register, isLoading, error, clearError, isAuthenticated } = useAuthStore();
 
   // Navigate to main app if already authenticated
   useEffect(() => {
@@ -25,7 +25,12 @@ export default function RegisterScreen() {
         throw new Error('First name and last name are required');
       }
       
-      await signUp(data.email, data.password, data.firstName, data.lastName);
+      const fullName = `${data.firstName} ${data.lastName}`.trim();
+      await register({
+        email: data.email,
+        password: data.password,
+        name: fullName,
+      });
     } catch (err) {
       console.error('Registration error:', err);
     }
