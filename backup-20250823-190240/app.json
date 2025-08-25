@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "MotusTots",
+    "slug": "MotusTots",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "scheme": "motustots",
+    "splash": {
+      "image": "./assets/MotusTots-splash-v2.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff",
+      "imageResizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.nero01.MotusTots"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "assetBundlePatterns": [
+      "**/*"
+    ]
+  }
+}
