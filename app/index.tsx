@@ -86,6 +86,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'space-between',
     paddingHorizontal: 24,
+    paddingBottom: 20,
   },
   headerSection: {
     flex: 1,
@@ -113,7 +114,7 @@ const styles = StyleSheet.create({
     textShadowRadius: 2,
   },
   bottomSection: {
-    paddingBottom: 50,
+    paddingBottom: 60,
     backgroundColor: 'rgba(0, 0, 0, 0.9)',
     borderRadius: 16,
     padding: 20,
@@ -138,8 +139,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.3)',
   },
   buttonContent: {
-    paddingVertical: 12,
-    height: 56,
+    paddingVertical: 16,
+    height: 64,
     paddingHorizontal: 20,
   },
   buttonLabel: {
