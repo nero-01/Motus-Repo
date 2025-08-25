@@ -186,6 +186,7 @@ export default function DashboardScreen() {
               mode="outlined"
               onPress={handleSignOut}
               style={styles.signOutButton}
+              textColor="#ffffff"
             >
               Sign Out
             </Button>
@@ -380,6 +381,7 @@ const styles = StyleSheet.create({
   signOutButton: {
     borderColor: '#ffffff',
     borderWidth: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   statsContainer: {
     flexDirection: 'row',

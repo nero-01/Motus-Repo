@@ -1,21 +1,70 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, ImageBackground, Dimensions, StatusBar } from 'react-native';
+import { Button } from 'react-native-paper';
 import { router } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 
-export default function Index() {
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      console.log('Navigating to login...');
-      router.replace('/(auth)/login');
-    }, 2000);
+const { width, height } = Dimensions.get('window');
 
-    return () => clearTimeout(timer);
-  }, []);
+export default function HomeScreen() {
+  const handleGetStarted = () => {
+    router.push('/(auth)/register');
+  };
+
+  const handleSignIn = () => {
+    router.push('/(auth)/login');
+  };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>MotusTots</Text>
-      <Text style={styles.subtitle}>Loading...</Text>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      
+      {/* Background Image */}
+      <ImageBackground
+        source={require('../assets/MotusTots-splash-v2.png')}
+        style={styles.backgroundImage}
+        resizeMode="cover"
+      >
+        {/* Gradient Overlay for better text readability */}
+        <LinearGradient
+          colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.1)', 'rgba(0,0,0,0.4)']}
+          style={styles.gradientOverlay}
+        >
+          {/* Main Content */}
+          <View style={styles.content}>
+            {/* App Title and Tagline */}
+            <View style={styles.headerSection}>
+              <Text style={styles.appTitle}>MotusTots</Text>
+              <Text style={styles.tagline}>Empowering families through meaningful activities</Text>
+            </View>
+
+            {/* Bottom Section with Buttons */}
+            <View style={styles.bottomSection}>
+              <View style={styles.buttonContainer}>
+                <Button
+                  mode="contained"
+                  onPress={handleGetStarted}
+                  style={styles.getStartedButton}
+                  contentStyle={styles.buttonContent}
+                  labelStyle={styles.buttonLabel}
+                >
+                  Get Started
+                </Button>
+                
+                <Button
+                  mode="outlined"
+                  onPress={handleSignIn}
+                  style={styles.signInButton}
+                  contentStyle={styles.buttonContent}
+                  labelStyle={styles.signInButtonLabel}
+                >
+                  I already have an account
+                </Button>
+              </View>
+            </View>
+          </View>
+        </LinearGradient>
+      </ImageBackground>
     </View>
   );
 }
@@ -23,18 +72,79 @@ export default function Index() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  backgroundImage: {
+    flex: 1,
+    width: width,
+    height: height,
+  },
+  gradientOverlay: {
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  content: {
+    flex: 1,
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+  },
+  headerSection: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+    paddingTop: 100,
   },
-  title: {
-    fontSize: 36,
+  appTitle: {
+    fontSize: 48,
     fontWeight: 'bold',
-    color: '#006A60',
-    marginBottom: 10,
+    color: '#ffffff',
+    textAlign: 'center',
+    marginBottom: 16,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
-  subtitle: {
+  tagline: {
     fontSize: 18,
-    color: '#4A635F',
+    color: '#ffffff',
+    textAlign: 'center',
+    lineHeight: 24,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  bottomSection: {
+    paddingBottom: 50,
+  },
+  buttonContainer: {
+    gap: 16,
+  },
+  getStartedButton: {
+    borderRadius: 12,
+    backgroundColor: '#006A60',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  signInButton: {
+    borderRadius: 12,
+    borderColor: '#ffffff',
+    borderWidth: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  buttonContent: {
+    paddingVertical: 12,
+    height: 56,
+  },
+  buttonLabel: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  signInButtonLabel: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#ffffff',
   },
 }); 
