@@ -1,6 +1,6 @@
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
-import { supabase } from '../../../lib/supabase';
+import { supabase } from '../../../../services/supabase/client';
 import { SocialLoginProvider } from '../types';
 
 // Complete the auth session
@@ -115,7 +115,6 @@ export class SocialAuthService {
         scopes: ['name', 'email'],
         redirectUri,
         responseType: AuthSession.ResponseType.Code,
-        responseMode: AuthSession.ResponseMode.FormPost,
       });
 
       const result = await request.promptAsync({
