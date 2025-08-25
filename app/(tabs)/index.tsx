@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, ActivityIndicator, Alert } from 'react-native';
 import { Text, Card, Button, Surface, Chip, Avatar, List, Divider } from 'react-native-paper';
 import { Link, router } from 'expo-router';
+import { getGreeting } from '../../utils/greeting';
 
 interface DashboardStats {
   routinesCompleted: number;
@@ -175,7 +176,7 @@ export default function DashboardScreen() {
         <View style={styles.header}>
           <View style={styles.headerContent}>
             <View>
-              <Text style={styles.greeting}>Good morning! 👋</Text>
+              <Text style={styles.greeting}>{getGreeting().message} {getGreeting().icon}</Text>
               <Text style={styles.subtitle}>Here's your family's progress today</Text>
             </View>
             <Button

@@ -4,7 +4,7 @@ import { Button } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface SocialLoginButtonProps {
-  provider: 'google' | 'facebook' | 'apple' | 'twitter';
+  provider: 'google' | 'facebook' | 'twitter';
   onPress: () => void;
   loading?: boolean;
   disabled?: boolean;
@@ -34,14 +34,7 @@ export default function SocialLoginButton({
           backgroundColor: '#1877F2',
           textColor: '#ffffff',
         };
-      case 'apple':
-        return {
-          name: 'Apple',
-          color: '#000000',
-          icon: 'apple',
-          backgroundColor: '#000000',
-          textColor: '#ffffff',
-        };
+
       case 'twitter':
         return {
           name: 'Twitter',

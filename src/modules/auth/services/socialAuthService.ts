@@ -25,12 +25,6 @@ export class SocialAuthService {
       color: '#1877F2',
     },
     {
-      id: 'apple',
-      name: 'Apple',
-      icon: '🍎',
-      color: '#000000',
-    },
-    {
       id: 'twitter',
       name: 'Twitter',
       icon: '🐦',
@@ -103,36 +97,7 @@ export class SocialAuthService {
     }
   }
 
-  static async signInWithApple(): Promise<void> {
-    try {
-      const redirectUri = AuthSession.makeRedirectUri({
-        scheme: 'motustots',
-        path: 'auth/callback',
-      });
 
-      const request = new AuthSession.AuthRequest({
-        clientId: this.APPLE_CLIENT_ID!,
-        scopes: ['name', 'email'],
-        redirectUri,
-        responseType: AuthSession.ResponseType.Code,
-      });
-
-      const result = await request.promptAsync({
-        authorizationEndpoint: 'https://appleid.apple.com/auth/authorize',
-      });
-
-      if (result.type === 'success' && result.params.code) {
-        const { data, error } = await supabase.auth.signInWithIdToken({
-          provider: 'apple',
-          token: result.params.code,
-        });
-
-        if (error) throw error;
-      }
-    } catch (error) {
-      throw new Error(error instanceof Error ? error.message : 'Apple sign-in failed');
-    }
-  }
 
   static async signInWithTwitter(): Promise<void> {
     try {
@@ -155,8 +120,6 @@ export class SocialAuthService {
         return this.signInWithGoogle();
       case 'facebook':
         return this.signInWithFacebook();
-      case 'apple':
-        return this.signInWithApple();
       case 'twitter':
         return this.signInWithTwitter();
       default:
