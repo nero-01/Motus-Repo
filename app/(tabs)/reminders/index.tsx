@@ -41,8 +41,21 @@ async function runOcr(base64: string, apiKey: string): Promise<string> {
       }),
     }
   );
-  const data = (await res.json()) as { responses?: { fullTextAnnotation?: { text?: string }; error?: { message?: string } }[] };
+  const data = (await res.json()) as {
+    error?: { code?: number; message?: string; status?: string };
+    responses?: { fullTextAnnotation?: { text?: string }; error?: { message?: string } }[];
+  };
+  const top = data?.error;
   const r0 = data?.responses?.[0];
+  if (top) {
+    const msg = top.message || `Vision API error: ${res.status}`;
+    if (res.status === 403) {
+      throw new Error(
+        `${msg} — Enable Cloud Vision API in Google Cloud Console, set API key application restrictions to “None” for mobile, and ensure billing is enabled.`
+      );
+    }
+    throw new Error(msg);
+  }
   if (r0?.error) throw new Error(r0.error.message || 'Vision API error');
   if (!res.ok) throw new Error(`Vision API error: ${res.status}`);
   const txt = r0?.fullTextAnnotation?.text;
