@@ -12,14 +12,13 @@ export default function RemindersTabScreen() {
 
   // Set up notification handler
   useEffect(() => {
-    // Configure how notifications are handled when app is in foreground
+    // Configure how notifications are handled when app is in foreground.
+    // We avoid noisy in-app alerts and instead rely on the system tray.
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
-        shouldShowAlert: true,
+        shouldShowAlert: false,
         shouldPlaySound: true,
         shouldSetBadge: false,
-        shouldShowBanner: true,
-        shouldShowList: true,
       }),
     });
 
@@ -39,6 +38,41 @@ export default function RemindersTabScreen() {
     };
   }, []);
 
+  const ensureNotificationPermission = async () => {
+    try {
+      const existing = await Notifications.getPermissionsAsync();
+      if (existing.status === 'granted') {
+        return true;
+      }
+
+      if (!existing.canAskAgain) {
+        Alert.alert(
+          'Notifications disabled',
+          'Notifications are turned off for MotusTots. You can enable them in your device Settings if you want to receive reminders.'
+        );
+        return false;
+      }
+
+      console.log('Requesting notification permissions...');
+      const { status } = await Notifications.requestPermissionsAsync();
+      console.log('Permission status:', status);
+
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission required',
+          'Notifications were not enabled. You can update this later from Settings.'
+        );
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error checking notification permissions:', error);
+      Alert.alert('Error', 'Unable to check notification permissions right now.');
+      return false;
+    }
+  };
+
   // Activities for the week (for notifications)
   const weekActivities = [
     { day: 'Monday', activity: null },
@@ -50,14 +84,8 @@ export default function RemindersTabScreen() {
 
   const handleEnableReminders = async () => {
     try {
-      console.log('Requesting notification permissions...');
-      const { status } = await Notifications.requestPermissionsAsync();
-      console.log('Permission status:', status);
-      
-      if (status !== 'granted') {
-        Alert.alert('Permission required', 'Please enable notifications in your settings.');
-        return;
-      }
+      const hasPermission = await ensureNotificationPermission();
+      if (!hasPermission) return;
 
       console.log('Scheduling notifications...');
       const now = new Date();
@@ -110,11 +138,8 @@ export default function RemindersTabScreen() {
 
   const handleTestNotification = async () => {
     try {
-      const { status } = await Notifications.requestPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission required', 'Please enable notifications in your settings.');
-        return;
-      }
+      const hasPermission = await ensureNotificationPermission();
+      if (!hasPermission) return;
 
       // Schedule a test notification for 5 seconds from now
       const testDate = new Date(Date.now() + 5000);
@@ -150,7 +175,17 @@ export default function RemindersTabScreen() {
 
   const resetRemindersState = () => {
     setRemindersEnabled(false);
-    Alert.alert('State Reset', 'Reminders state has been reset. You can now enable reminders again.');
+    Notifications.cancelAllScheduledNotificationsAsync()
+      .then(() => {
+        Alert.alert(
+          'Reminders cleared',
+          'All scheduled reminders have been cancelled. You can enable them again at any time.'
+        );
+      })
+      .catch((error) => {
+        console.error('Error cancelling notifications:', error);
+        Alert.alert('Error', 'Failed to clear scheduled reminders.');
+      });
   };
 
   const handlePickImage = async () => {

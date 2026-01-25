@@ -17,7 +17,6 @@ import {
   Avatar,
   FAB,
   Searchbar,
-  SegmentedButtons,
   ProgressBar,
   Portal,
   Dialog,
@@ -61,6 +60,8 @@ export default function EducationScreen() {
   const [stats, setStats] = useState<EducationStats | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedWorksheet, setSelectedWorksheet] = useState<Worksheet | null>(null);
+  const [isWorksheetPlaying, setIsWorksheetPlaying] = useState(false);
+  const [worksheetScore, setWorksheetScore] = useState<number | null>(null);
 
   const categories = [
     { value: 'all', label: 'All' },
@@ -69,11 +70,11 @@ export default function EducationScreen() {
     { value: 'writing', label: 'Writing' },
     { value: 'science', label: 'Science' },
     { value: 'art', label: 'Art' },
-    { value: 'social_studies', label: 'Social Studies' },
+    { value: 'social_studies', label: 'Social' },
   ];
 
   const difficulties = [
-    { value: 'all', label: 'All Levels' },
+    { value: 'all', label: 'All' },
     { value: '1', label: 'Level 1' },
     { value: '2', label: 'Level 2' },
     { value: '3', label: 'Level 3' },
@@ -244,31 +245,85 @@ export default function EducationScreen() {
   const openWorksheetModal = (worksheet: Worksheet) => {
     setSelectedWorksheet(worksheet);
     setModalVisible(true);
+    setIsWorksheetPlaying(false);
+    setWorksheetScore(null);
   };
 
   const closeWorksheetModal = () => {
     setModalVisible(false);
     setSelectedWorksheet(null);
+    setIsWorksheetPlaying(false);
+    setWorksheetScore(null);
   };
 
-  const startWorksheet = () => {
+  const handleWorksheetStart = () => {
     if (!selectedWorksheet) return;
-    
-    closeWorksheetModal();
-    
-    // For now, show an alert that the worksheet is starting
-    Alert.alert(
-      'Worksheet Starting',
-      `Starting ${selectedWorksheet.title}...`,
-      [
-        {
-          text: 'OK',
-          onPress: () => {
-            // In a real app, this would navigate to the actual worksheet
-            console.log('Starting worksheet:', selectedWorksheet.title);
-          }
-        }
-      ]
+    setIsWorksheetPlaying(true);
+    setWorksheetScore(null);
+  };
+
+  const handleWorksheetComplete = (accuracy: number) => {
+    setWorksheetScore(accuracy);
+    setIsWorksheetPlaying(false);
+  };
+
+  const restartWorksheet = () => {
+    setWorksheetScore(null);
+    setIsWorksheetPlaying(true);
+  };
+
+  const renderActiveWorksheet = () => {
+    if (!selectedWorksheet) return null;
+
+    const type = selectedWorksheet.type;
+
+    if (type === 'letter_tracing') {
+      const letters: string[] = selectedWorksheet.content?.letters || ['A'];
+      const firstLetter = letters[0] || 'A';
+
+      return (
+        <LetterTracing
+          letter={firstLetter}
+          onComplete={handleWorksheetComplete}
+          onNext={() => {}}
+        />
+      );
+    }
+
+    if (type === 'color_mixing') {
+      return (
+        <ColorMixing
+          onComplete={handleWorksheetComplete}
+          onNext={() => {}}
+        />
+      );
+    }
+
+    if (type === 'animal_habitats') {
+      return (
+        <AnimalHabitats
+          onComplete={handleWorksheetComplete}
+          onNext={() => {}}
+        />
+      );
+    }
+
+    if (type === 'community_helpers') {
+      return (
+        <CommunityHelpers
+          onComplete={handleWorksheetComplete}
+          onNext={() => {}}
+        />
+      );
+    }
+
+    // Fallback text if an unknown type is encountered
+    return (
+      <View style={styles.modalFallback}>
+        <Text style={styles.modalFallbackText}>
+          This worksheet type is not supported yet.
+        </Text>
+      </View>
     );
   };
 
@@ -281,6 +336,34 @@ export default function EducationScreen() {
     );
   }
 
+  const renderFilterChips = (
+    items: { value: string; label: string }[],
+    selectedValue: string,
+    onSelect: (value: string) => void
+  ) => (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.filterChipRow}
+    >
+      {items.map((item) => {
+        const isActive = item.value === selectedValue;
+        return (
+          <TouchableOpacity
+            key={item.value}
+            style={[styles.filterChip, isActive && styles.filterChipActive]}
+            onPress={() => onSelect(item.value)}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
+              {item.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </ScrollView>
+  );
+
   return (
     <View style={styles.container}>
       <ScrollView
@@ -288,6 +371,7 @@ export default function EducationScreen() {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
+        showsVerticalScrollIndicator={false}
       >
         {/* Header */}
         <View style={styles.header}>
@@ -299,28 +383,28 @@ export default function EducationScreen() {
         {stats && (
           <View style={styles.statsContainer}>
             <Card style={styles.statCard}>
-              <Card.Content>
+              <Card.Content style={styles.statContent}>
                 <Text style={styles.statNumber}>{stats.totalWorksheets}</Text>
                 <Text style={styles.statLabel}>Worksheets</Text>
               </Card.Content>
             </Card>
             
             <Card style={styles.statCard}>
-              <Card.Content>
+              <Card.Content style={styles.statContent}>
                 <Text style={styles.statNumber}>{stats.averageScore}%</Text>
                 <Text style={styles.statLabel}>Avg Score</Text>
               </Card.Content>
             </Card>
             
             <Card style={styles.statCard}>
-              <Card.Content>
+              <Card.Content style={styles.statContent}>
                 <Text style={styles.statNumber}>{stats.thisWeekWorksheets}</Text>
                 <Text style={styles.statLabel}>This Week</Text>
               </Card.Content>
             </Card>
             
             <Card style={styles.statCard}>
-              <Card.Content>
+              <Card.Content style={styles.statContent}>
                 <Text style={styles.statNumber}>Level {stats.currentLevel}</Text>
                 <Text style={styles.statLabel}>Current Level</Text>
               </Card.Content>
@@ -337,20 +421,14 @@ export default function EducationScreen() {
             style={styles.searchBar}
           />
           
-          <View style={styles.filterButtons}>
-            <SegmentedButtons
-              value={selectedCategory}
-              onValueChange={setSelectedCategory}
-              buttons={categories}
-              style={styles.categoryFilter}
-            />
-            
-            <SegmentedButtons
-              value={selectedDifficulty}
-              onValueChange={setSelectedDifficulty}
-              buttons={difficulties}
-              style={styles.difficultyFilter}
-            />
+          <View style={styles.filterSection}>
+            <Text style={styles.filterLabel}>Category</Text>
+            {renderFilterChips(categories, selectedCategory, setSelectedCategory)}
+          </View>
+          
+          <View style={styles.filterSection}>
+            <Text style={styles.filterLabel}>Difficulty</Text>
+            {renderFilterChips(difficulties, selectedDifficulty, setSelectedDifficulty)}
           </View>
         </View>
 
@@ -376,13 +454,13 @@ export default function EducationScreen() {
                     <Text style={styles.worksheetTitle}>{worksheet.title}</Text>
                     <Text style={styles.worksheetDescription}>{worksheet.description}</Text>
                     <View style={styles.worksheetMeta}>
-                      <Chip mode="outlined" style={styles.metaChip}>
+                      <Chip mode="outlined" style={styles.metaChip} compact>
                         {worksheet.age_range} years
                       </Chip>
-                      <Chip mode="outlined" style={styles.metaChip}>
+                      <Chip mode="outlined" style={styles.metaChip} compact>
                         {getDifficultyStars(worksheet.difficulty)}
                       </Chip>
-                      <Chip mode="outlined" style={styles.metaChip}>
+                      <Chip mode="outlined" style={styles.metaChip} compact>
                         {worksheet.estimated_time} min
                       </Chip>
                     </View>
@@ -394,6 +472,7 @@ export default function EducationScreen() {
                   mode="contained" 
                   onPress={() => openWorksheetModal(worksheet)}
                   style={styles.startButton}
+                  compact
                 >
                   Start Worksheet
                 </Button>
@@ -412,6 +491,7 @@ export default function EducationScreen() {
               onPress={() => Alert.alert('Letter Tracing', 'Letter tracing worksheet coming soon!')}
               style={styles.quickButton}
               icon="pencil"
+              compact
             >
               Letter Tracing
             </Button>
@@ -421,6 +501,7 @@ export default function EducationScreen() {
               onPress={() => Alert.alert('Color Mixing', 'Color mixing worksheet coming soon!')}
               style={styles.quickButton}
               icon="palette"
+              compact
             >
               Color Mixing
             </Button>
@@ -430,6 +511,7 @@ export default function EducationScreen() {
               onPress={() => Alert.alert('Animal Habitats', 'Animal habitats worksheet coming soon!')}
               style={styles.quickButton}
               icon="paw"
+              compact
             >
               Animal Habitats
             </Button>
@@ -439,6 +521,7 @@ export default function EducationScreen() {
               onPress={() => Alert.alert('Community Helpers', 'Community helpers worksheet coming soon!')}
               style={styles.quickButton}
               icon="account-group"
+              compact
             >
               Community Helpers
             </Button>
@@ -451,7 +534,7 @@ export default function EducationScreen() {
         <Modal
           visible={modalVisible}
           animationType="slide"
-          transparent={true}
+          transparent
           onRequestClose={closeWorksheetModal}
         >
           <View style={styles.modalOverlay}>
@@ -459,35 +542,63 @@ export default function EducationScreen() {
               {selectedWorksheet && (
                 <>
                   <View style={styles.modalHeader}>
-                    <Text style={styles.modalTitle}>{selectedWorksheet.title}</Text>
+                    <View>
+                      <Text style={styles.modalTitle}>{selectedWorksheet.title}</Text>
+                      <Text style={styles.modalSubtitle}>{selectedWorksheet.description}</Text>
+                    </View>
                     <TouchableOpacity onPress={closeWorksheetModal}>
                       <Text style={styles.closeButton}>✕</Text>
                     </TouchableOpacity>
                   </View>
-                  
-                  <ScrollView style={styles.modalBody}>
-                    <Text style={styles.modalDescription}>
-                      {selectedWorksheet.description}
-                    </Text>
-                    
-                    <View style={styles.modalMeta}>
-                      <Chip mode="outlined">Age: {selectedWorksheet.age_range}</Chip>
-                      <Chip mode="outlined">Time: {selectedWorksheet.estimated_time} min</Chip>
-                      <Chip mode="outlined">Level: {getDifficultyStars(selectedWorksheet.difficulty)}</Chip>
+
+                  {!isWorksheetPlaying && worksheetScore === null && (
+                    <>
+                      <View style={styles.modalMeta}>
+                        <Chip mode="outlined">Age: {selectedWorksheet.age_range}</Chip>
+                        <Chip mode="outlined">Time: {selectedWorksheet.estimated_time} min</Chip>
+                        <Chip mode="outlined">
+                          Level: {getDifficultyStars(selectedWorksheet.difficulty)}
+                        </Chip>
+                      </View>
+                      <Text style={styles.modalInstructions}>
+                        Tap “Start Worksheet” to begin an interactive activity tailored to this topic.
+                      </Text>
+                    </>
+                  )}
+
+                  {isWorksheetPlaying && (
+                    <View style={styles.modalWorksheetContainer}>
+                      {renderActiveWorksheet()}
                     </View>
-                    
-                    <Text style={styles.modalInstructions}>
-                      This worksheet will help your child develop important skills in a fun and engaging way.
-                    </Text>
-                  </ScrollView>
-                  
+                  )}
+
+                  {!isWorksheetPlaying && worksheetScore !== null && (
+                    <View style={styles.modalResultContainer}>
+                      <Text style={styles.modalResultTitle}>Nice work! 🎉</Text>
+                      <Text style={styles.modalResultScore}>Score: {worksheetScore}%</Text>
+                      <Text style={styles.modalResultSubtitle}>
+                        You can retry this worksheet to improve your score or close to return to the list.
+                      </Text>
+                    </View>
+                  )}
+
                   <View style={styles.modalActions}>
-                    <Button mode="outlined" onPress={closeWorksheetModal} style={styles.modalButton}>
-                      Cancel
+                    <Button
+                      mode="outlined"
+                      onPress={closeWorksheetModal}
+                      style={styles.modalButton}
+                    >
+                      Close
                     </Button>
-                    <Button mode="contained" onPress={startWorksheet} style={styles.modalButton}>
-                      Start Now
-                    </Button>
+                    {!isWorksheetPlaying && (
+                      <Button
+                        mode="contained"
+                        onPress={worksheetScore !== null ? restartWorksheet : handleWorksheetStart}
+                        style={styles.modalButton}
+                      >
+                        {worksheetScore !== null ? 'Try Again' : 'Start Worksheet'}
+                      </Button>
+                    )}
                   </View>
                 </>
               )}
@@ -537,12 +648,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     padding: 16,
-    gap: 8,
+    gap: 12,
   },
   statCard: {
     flex: 1,
     minWidth: '45%',
-    marginBottom: 8,
+    borderRadius: 16,
+    elevation: 2,
+    backgroundColor: '#ffffff',
+  },
+  statContent: {
+    padding: 16,
+    alignItems: 'center',
   },
   statNumber: {
     fontSize: 20,
@@ -557,22 +674,44 @@ const styles = StyleSheet.create({
   filtersContainer: {
     padding: 16,
     paddingTop: 0,
-    flexShrink: 1,
   },
   searchBar: {
     marginBottom: 16,
-    flexShrink: 1,
+    borderRadius: 12,
   },
-  filterButtons: {
-    gap: 12,
+  filterSection: {
+    marginBottom: 16,
   },
-  categoryFilter: {
+  filterLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
     marginBottom: 8,
-    flexShrink: 1,
   },
-  difficultyFilter: {
-    marginBottom: 8,
-    flexShrink: 1,
+  filterChipRow: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingVertical: 4,
+  },
+  filterChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#d0d0d0',
+    backgroundColor: '#ffffff',
+  },
+  filterChipActive: {
+    borderColor: '#006A60',
+    backgroundColor: 'rgba(0, 106, 96, 0.1)',
+  },
+  filterChipText: {
+    fontSize: 14,
+    color: '#555',
+    fontWeight: '500',
+  },
+  filterChipTextActive: {
+    color: '#006A60',
   },
   worksheetsContainer: {
     padding: 16,
@@ -582,9 +721,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 16,
+    color: '#333',
   },
   worksheetCard: {
     marginBottom: 12,
+    borderRadius: 12,
   },
   worksheetHeader: {
     flexDirection: 'row',
@@ -603,27 +744,23 @@ const styles = StyleSheet.create({
   },
   worksheetInfo: {
     flex: 1,
-    flexShrink: 1,
   },
   worksheetTitle: {
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 4,
-    flexWrap: 'wrap',
-    flexShrink: 1,
+    color: '#333',
   },
   worksheetDescription: {
     fontSize: 14,
     color: '#666',
     marginBottom: 8,
-    flexWrap: 'wrap',
-    flexShrink: 1,
+    lineHeight: 20,
   },
   worksheetMeta: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 4,
-    marginTop: 4,
   },
   metaChip: {
     marginRight: 4,
@@ -634,6 +771,7 @@ const styles = StyleSheet.create({
   quickAccessContainer: {
     padding: 16,
     paddingTop: 0,
+    paddingBottom: 32,
   },
   quickAccessButtons: {
     flexDirection: 'row',
@@ -644,6 +782,49 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: '45%',
     marginBottom: 8,
+  },
+  modalWorksheetContainer: {
+    flex: 1,
+    paddingHorizontal: 8,
+    paddingBottom: 12,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+  },
+  modalResultContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  modalResultTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 4,
+    textAlign: 'center',
+    color: '#333',
+  },
+  modalResultScore: {
+    fontSize: 22,
+    fontWeight: '700',
+    textAlign: 'center',
+    color: '#006A60',
+    marginBottom: 4,
+  },
+  modalResultSubtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+    color: '#666',
+  },
+  modalFallback: {
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalFallbackText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
   },
   modalOverlay: {
     flex: 1,

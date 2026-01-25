@@ -1,7 +1,9 @@
 import { Tabs } from 'expo-router';
-import { Text } from 'react-native';
+import { Platform, Text } from 'react-native';
 
 export default function TabLayout() {
+  const isAndroid = Platform.OS === 'android';
+
   return (
     <Tabs
       screenOptions={{
@@ -9,12 +11,18 @@ export default function TabLayout() {
         tabBarInactiveTintColor: '#666',
         headerShown: true,
         tabBarStyle: {
-          height: 65,
-          paddingBottom: 10,
-          paddingTop: 8,
+          height: isAndroid ? 78 : 64,
+          paddingBottom: isAndroid ? 18 : 8,
+          paddingTop: 6,
+          marginBottom: isAndroid ? 18 : 0,
           backgroundColor: '#ffffff',
-          borderTopWidth: 1,
+          borderTopWidth: 0.5,
           borderTopColor: '#e0e0e0',
+          elevation: 12,
+          shadowColor: '#00000040',
+          shadowOpacity: 0.1,
+          shadowOffset: { width: 0, height: -2 },
+          shadowRadius: 6,
         },
         tabBarLabelStyle: {
           fontSize: 11,
@@ -35,15 +43,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="activities"
-        options={{
-          title: 'Activities',
-          tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>⭐</Text>
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="education/index"
         options={{
           title: 'Education',
@@ -58,6 +57,15 @@ export default function TabLayout() {
           title: 'Reminders',
           tabBarIcon: ({ color }) => (
             <Text style={{ color, fontSize: 20 }}>🔔</Text>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="activities/index"
+        options={{
+          title: 'Activities',
+          tabBarIcon: ({ color }) => (
+            <Text style={{ color, fontSize: 20 }}>⭐</Text>
           ),
         }}
       />
