@@ -488,7 +488,10 @@ export default function EducationScreen() {
           <View style={styles.quickAccessButtons}>
             <Button
               mode="contained"
-              onPress={() => Alert.alert('Letter Tracing', 'Letter tracing worksheet coming soon!')}
+              onPress={() => {
+                const w = worksheets.find(ws => ws.type === 'letter_tracing');
+                if (w) openWorksheetModal(w); else Alert.alert('Letter Tracing', 'Worksheet not found.');
+              }}
               style={styles.quickButton}
               icon="pencil"
               compact
@@ -498,7 +501,10 @@ export default function EducationScreen() {
             
             <Button
               mode="contained"
-              onPress={() => Alert.alert('Color Mixing', 'Color mixing worksheet coming soon!')}
+              onPress={() => {
+                const w = worksheets.find(ws => ws.type === 'color_mixing');
+                if (w) openWorksheetModal(w); else Alert.alert('Color Mixing', 'Worksheet not found.');
+              }}
               style={styles.quickButton}
               icon="palette"
               compact
@@ -508,7 +514,10 @@ export default function EducationScreen() {
             
             <Button
               mode="contained"
-              onPress={() => Alert.alert('Animal Habitats', 'Animal habitats worksheet coming soon!')}
+              onPress={() => {
+                const w = worksheets.find(ws => ws.type === 'animal_habitats');
+                if (w) openWorksheetModal(w); else Alert.alert('Animal Habitats', 'Worksheet not found.');
+              }}
               style={styles.quickButton}
               icon="paw"
               compact
@@ -518,7 +527,10 @@ export default function EducationScreen() {
             
             <Button
               mode="contained"
-              onPress={() => Alert.alert('Community Helpers', 'Community helpers worksheet coming soon!')}
+              onPress={() => {
+                const w = worksheets.find(ws => ws.type === 'community_helpers');
+                if (w) openWorksheetModal(w); else Alert.alert('Community Helpers', 'Worksheet not found.');
+              }}
               style={styles.quickButton}
               icon="account-group"
               compact

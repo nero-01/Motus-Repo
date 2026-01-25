@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   ScrollView,
@@ -8,18 +8,17 @@ import {
   Text,
   Card,
   Button,
-  Chip,
   Surface,
   ActivityIndicator,
-  FAB,
 } from 'react-native-paper';
 import { router } from 'expo-router';
-import { useAuthStore } from '../../../stores/authStore';
 import { useFamilyStore } from '../../../stores/familyStore';
+import { supabase } from '../../../services/supabase/client';
 
 export default function CoParentingScreen() {
-  const { user } = useAuthStore();
-  const { currentFamily, familyMembers } = useFamilyStore();
+  const { currentFamily, familyMembers, loadFamilies, isLoading } = useFamilyStore();
+  const [loadAttempted, setLoadAttempted] = useState(false);
+  const [needsAuth, setNeedsAuth] = useState(false);
 
   const coParentingFeatures = [
     {
@@ -56,9 +55,71 @@ export default function CoParentingScreen() {
     },
   ];
 
+  // Ensure family is loaded on mount (auth may use a different store; Supabase session is shared)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (currentFamily) return;
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (cancelled) return;
+        if (!user) {
+          setNeedsAuth(true);
+          setLoadAttempted(true);
+          return;
+        }
+        await loadFamilies(user.id);
+      } catch (e) {
+        if (!cancelled) setLoadAttempted(true);
+      } finally {
+        if (!cancelled) setLoadAttempted(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [currentFamily]);
+
+  const handleRetry = async () => {
+    setLoadAttempted(false);
+    setNeedsAuth(false);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) await loadFamilies(user.id);
+    setLoadAttempted(true);
+  };
+
   const handleNavigateToFeature = (route: string) => {
     router.push(route);
   };
+
+  if (isLoading && !currentFamily) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" />
+        <Text style={styles.loadingText}>Loading co-parenting features...</Text>
+      </View>
+    );
+  }
+
+  if (needsAuth) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Please sign in to use co-parenting.</Text>
+        <Button mode="contained" onPress={() => router.replace('/(auth)/login')} style={{ marginTop: 16 }}>
+          Sign In
+        </Button>
+      </View>
+    );
+  }
+
+  if (loadAttempted && !currentFamily) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Couldn&apos;t load family.</Text>
+        <Button mode="contained" onPress={handleRetry} style={{ marginTop: 16 }}>
+          Retry
+        </Button>
+      </View>
+    );
+  }
 
   if (!currentFamily) {
     return (
@@ -155,7 +216,7 @@ export default function CoParentingScreen() {
             <View style={styles.quickActionsContainer}>
               <Button
                 mode="outlined"
-                onPress={() => router.push('/features/co-parenting/calendar/create')}
+                onPress={() => router.push('/features/co-parenting/calendar')}
                 style={styles.quickActionButton}
                 icon={() => <Text style={{ fontSize: 16 }}>➕</Text>}
               >
@@ -173,7 +234,7 @@ export default function CoParentingScreen() {
               
               <Button
                 mode="outlined"
-                onPress={() => router.push('/features/co-parenting/expenses/create')}
+                onPress={() => router.push('/features/co-parenting/expenses')}
                 style={styles.quickActionButton}
                 icon={() => <Text style={{ fontSize: 16 }}>➕</Text>}
               >
