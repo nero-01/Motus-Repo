@@ -42,8 +42,10 @@ async function runOcr(base64: string, apiKey: string): Promise<string> {
     }
   );
   const data = (await res.json()) as { responses?: { fullTextAnnotation?: { text?: string }; error?: { message?: string } }[] };
-  if (!res.ok) throw new Error(data?.responses?.[0]?.error?.message || `Vision API error: ${res.status}`);
-  const txt = data?.responses?.[0]?.fullTextAnnotation?.text;
+  const r0 = data?.responses?.[0];
+  if (r0?.error) throw new Error(r0.error.message || 'Vision API error');
+  if (!res.ok) throw new Error(`Vision API error: ${res.status}`);
+  const txt = r0?.fullTextAnnotation?.text;
   if (!txt) throw new Error('No text found in image');
   return txt;
 }
@@ -174,15 +176,24 @@ export default function RemindersTabScreen() {
   return (
     <ScrollView style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
       <View style={{ alignItems: 'center', marginTop: 16 }}>
-        <Image
-          source={plannerImage ? { uri: plannerImage } : ParentSheetImage}
-          contentFit="contain"
-          style={{ width: 320, height: 430, borderRadius: 12 }}
-          onError={() => setPlannerImage(null)}
-        />
+        <View style={{ position: 'relative' }}>
+          <Image
+            source={plannerImage ? { uri: plannerImage } : ParentSheetImage}
+            contentFit="contain"
+            style={{ width: 320, height: 430, borderRadius: 12 }}
+            onError={() => setPlannerImage(null)}
+          />
+          {parsing && (
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 12, justifyContent: 'center', alignItems: 'center' }}>
+              <ActivityIndicator size="large" color="#fff" />
+              <Text style={{ color: '#fff', fontWeight: '600', marginTop: 8 }}>Reading planner…</Text>
+            </View>
+          )}
+        </View>
         <TouchableOpacity
           onPress={pickImage}
-          style={{ marginTop: 10, backgroundColor: '#2196F3', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 6 }}
+          disabled={parsing}
+          style={{ marginTop: 10, backgroundColor: parsing ? '#90caf9' : '#2196F3', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 6 }}
         >
           <Text style={{ color: '#fff', fontWeight: 'bold' }}>Upload Weekly Planner</Text>
         </TouchableOpacity>
