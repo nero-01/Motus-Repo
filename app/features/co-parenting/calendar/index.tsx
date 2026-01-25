@@ -12,9 +12,7 @@ import {
   TextInput, 
   SegmentedButtons, 
   ActivityIndicator, 
-  IconButton,
   Avatar,
-  ProgressBar,
 } from 'react-native-paper';
 import { router } from 'expo-router';
 import { useFamilyStore } from '../../../../stores/familyStore';
@@ -570,6 +568,39 @@ export default function CoParentingCalendarScreen() {
         onPress={handleCreateEvent}
         label="Add Event"
       />
+
+      <Portal>
+        <Dialog visible={showAddDialog} onDismiss={() => setShowAddDialog(false)}>
+          <Dialog.Title>Add Event</Dialog.Title>
+          <Dialog.Content>
+            <TextInput
+              label="Title"
+              value={newEvent.title}
+              onChangeText={(t) => setNewEvent((n) => ({ ...n, title: t }))}
+              mode="outlined"
+              style={{ marginBottom: 12 }}
+            />
+            <TextInput
+              label="Start date (YYYY-MM-DD)"
+              value={newEvent.start_date}
+              onChangeText={(t) => setNewEvent((n) => ({ ...n, start_date: t }))}
+              mode="outlined"
+              style={{ marginBottom: 12 }}
+            />
+            <TextInput
+              label="Description"
+              value={newEvent.description}
+              onChangeText={(t) => setNewEvent((n) => ({ ...n, description: t }))}
+              mode="outlined"
+              multiline
+            />
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setShowAddDialog(false)}>Cancel</Button>
+            <Button onPress={handleAddEvent}>Add</Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
     </View>
   );
 }
