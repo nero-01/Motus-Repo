@@ -8,6 +8,7 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "scheme": "motustots",
+    "sdkVersion": "54.0.0",
     "splash": {
       "image": "./assets/MotusTots-splash-v2.png",
       "resizeMode": "contain",
@@ -21,7 +22,8 @@
       "package": "com.nero01.MotusTots"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-web-browser"
     ],
     "assetBundlePatterns": [
       "**/*"

@@ -33,7 +33,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       if (error) throw error
       
       set({ 
-        user: data.user,
+        user: data.user as any,
         session: data.session,
         loading: false 
       })
@@ -60,7 +60,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       if (error) throw error
       
       set({ 
-        user: data.user,
+        user: data.user as any,
         session: data.session,
         loading: false 
       })

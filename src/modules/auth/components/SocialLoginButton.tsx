@@ -74,15 +74,16 @@ export default function SocialLoginButton({
             textColor="#ffffff"
             loading={loading}
             disabled={disabled}
+            compact
             icon={({ size, color }) => (
               <MaterialCommunityIcons 
                 name="google" 
-                size={size} 
+                size={18} 
                 color="#ffffff" 
               />
             )}
           >
-            Continue with Google
+            Google
           </Button>
         </LinearGradient>
       </View>
@@ -103,15 +104,16 @@ export default function SocialLoginButton({
       textColor={config.textColor}
       loading={loading}
       disabled={disabled}
+      compact
       icon={({ size, color }) => (
         <MaterialCommunityIcons 
           name={config.icon as any} 
-          size={size} 
+          size={18} 
           color={color} 
         />
       )}
     >
-      Continue with {config.name}
+      {config.name}
     </Button>
   );
 }
@@ -119,21 +121,23 @@ export default function SocialLoginButton({
 const styles = StyleSheet.create({
   socialButton: {
     borderRadius: 8,
-    paddingVertical: 8,
+    paddingVertical: 4,
     borderWidth: 1,
+    minHeight: 36,
   },
   googleButtonContainer: {
     borderRadius: 8,
     overflow: 'hidden',
-    marginVertical: 4,
+    marginVertical: 2,
   },
   googleGradient: {
     borderRadius: 8,
   },
   googleButton: {
     borderRadius: 8,
-    paddingVertical: 8,
+    paddingVertical: 4,
     backgroundColor: 'transparent',
     elevation: 0,
+    minHeight: 36,
   },
 });

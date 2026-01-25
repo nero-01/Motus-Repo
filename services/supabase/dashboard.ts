@@ -13,40 +13,73 @@ export const dashboardService = {
   // Fetch dashboard statistics for a user
   async getDashboardStats(userId: string): Promise<DashboardStats> {
     try {
-      // TODO: Implement real Supabase queries
-      // For now, return mock data
-      
-      // Example queries when Supabase is set up:
-      /*
-      const { data: routinesData } = await supabase
+      // Get user's family first
+      const { data: familyData } = await supabase
+        .from('family_members')
+        .select('family_id')
+        .eq('user_id', userId)
+        .single();
+
+      if (!familyData) {
+        throw new Error('User is not part of any family');
+      }
+
+      const familyId = familyData.family_id;
+
+      // Get routines completed today
+      const today = new Date().toISOString().split('T')[0];
+      const { data: routinesCompletedData } = await supabase
         .from('task_completions')
-        .select('*')
-        .eq('child_id', userId)
-        .gte('completed_at', new Date().toISOString().split('T')[0]);
+        .select('id')
+        .gte('completed_at', today)
+        .lt('completed_at', today + 'T23:59:59');
 
+      // Get total active routines for family
+      const { data: totalRoutinesData } = await supabase
+        .from('routines')
+        .select('id')
+        .eq('family_id', familyId)
+        .eq('is_active', true);
+
+      // Get meals planned for this week
+      const weekStart = new Date();
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
       const { data: mealsData } = await supabase
-        .from('meals')
-        .select('*')
-        .eq('meal_plan_id', currentWeekPlanId);
+        .from('meal_plans')
+        .select('id')
+        .eq('family_id', familyId)
+        .gte('date', weekStart.toISOString().split('T')[0]);
 
+      // Get available worksheets
+      const { data: worksheetsData } = await supabase
+        .from('worksheets')
+        .select('id')
+        .eq('is_active', true);
+
+      // Get unread messages
       const { data: messagesData } = await supabase
         .from('messages')
-        .select('*')
-        .eq('session_id', coParentingSessionId)
+        .select('id')
+        .eq('family_id', familyId)
         .eq('is_read', false);
-      */
 
-      // Mock data for development
-      const mockStats: DashboardStats = {
-        routinesCompleted: Math.floor(Math.random() * 5) + 1,
-        routinesRemaining: Math.floor(Math.random() * 4) + 1,
-        mealsPlanned: Math.floor(Math.random() * 3) + 1,
-        worksheetsAvailable: Math.floor(Math.random() * 5) + 1,
-        newMessages: Math.floor(Math.random() * 5),
-        expensesToReview: Math.floor(Math.random() * 3),
+      // Get expenses to review
+      const { data: expensesData } = await supabase
+        .from('expenses')
+        .select('id')
+        .eq('family_id', familyId)
+        .eq('status', 'pending');
+
+      const stats: DashboardStats = {
+        routinesCompleted: routinesCompletedData?.length || 0,
+        routinesRemaining: Math.max(0, (totalRoutinesData?.length || 0) - (routinesCompletedData?.length || 0)),
+        mealsPlanned: mealsData?.length || 0,
+        worksheetsAvailable: worksheetsData?.length || 0,
+        newMessages: messagesData?.length || 0,
+        expensesToReview: expensesData?.length || 0,
       };
 
-      return mockStats;
+      return stats;
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
       throw new Error('Failed to load dashboard data');

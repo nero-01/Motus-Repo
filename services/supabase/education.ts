@@ -87,12 +87,42 @@ export async function getWorksheets({
       return cachedData;
     }
 
-    // Force mock data for now to see our updated Animal Habitats
-    console.log('Forcing mock data to show updated Animal Habitats');
-    const mockData = getMockWorksheets();
-    console.log('Mock data Animal Habitats pairs:', mockData.find(w => w.title === 'Animal Habitats')?.content.pairs?.length);
-    setCachedData(cacheKey, mockData);
-    return mockData;
+    // Try to fetch from Supabase first
+    console.log('Fetching worksheets from Supabase...');
+    let query = supabase.from('worksheets').select('*').eq('is_active', true);
+    
+    // Apply filters
+    if (category) {
+      query = query.eq('category', category);
+    }
+    if (difficulty) {
+      query = query.eq('difficulty', difficulty);
+    }
+    if (ageMin && ageMax) {
+      // Parse age ranges like "3-5" and filter
+      query = query.gte('age_min', ageMin).lte('age_max', ageMax);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Error fetching worksheets from Supabase:', error);
+      // Fall back to mock data if Supabase fails
+      const mockData = getMockWorksheets();
+      setCachedData(cacheKey, mockData);
+      return mockData;
+    }
+
+    if (data && data.length > 0) {
+      console.log(`Fetched ${data.length} worksheets from Supabase`);
+      setCachedData(cacheKey, data);
+      return data;
+    } else {
+      console.log('No worksheets found in Supabase, using mock data');
+      const mockData = getMockWorksheets();
+      setCachedData(cacheKey, mockData);
+      return mockData;
+    }
 
   } catch (error) {
     console.error('Error fetching worksheets, using mock data:', error);

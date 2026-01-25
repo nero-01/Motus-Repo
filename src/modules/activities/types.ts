@@ -52,7 +52,12 @@ export type AgeRange =
   | '7-8'
   | '8-9'
   | '9-10'
-  | '10+';
+  | '10+'
+  | '3-5'
+  | '4-7'
+  | '5-8'
+  | '2-6'
+  | '3-7';
 
 export interface ActivityFilter {
   type?: ActivityType[];

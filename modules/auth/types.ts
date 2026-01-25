@@ -1,6 +1,6 @@
 export interface User {
   id: string
-  email: string
+  email: string | undefined
   name?: string
   avatar_url?: string
   created_at: string

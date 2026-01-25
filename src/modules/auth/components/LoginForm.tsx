@@ -3,9 +3,9 @@ import {
   View,
   StyleSheet,
   Alert,
-  ScrollView,
 } from 'react-native';
 import { Text, TextInput, Button, HelperText, Divider } from 'react-native-paper';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useAuthStore } from '../store/authStore';
 import { SocialAuthService } from '../services/socialAuthService';
@@ -19,6 +19,7 @@ export default function LoginForm() {
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [socialLoading, setSocialLoading] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const validateForm = () => {
     let isValid = true;
@@ -94,104 +95,113 @@ export default function LoginForm() {
   );
 
   return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.content}>
-          <Text variant="displaySmall" style={styles.title}>
-            Welcome Back
-          </Text>
-          <Text variant="bodyLarge" style={styles.subtitle}>
-            Sign in to continue
-          </Text>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <View style={styles.content}>
+        <Text variant="displaySmall" style={styles.title}>
+          Welcome Back
+        </Text>
+        <Text variant="bodyMedium" style={styles.subtitle}>
+          Sign in to continue
+        </Text>
 
-          {/* Social Login Buttons */}
-          <View style={styles.socialContainer}>
-            {SocialAuthService.socialProviders.map(renderSocialButton)}
-          </View>
+        <View style={styles.form}>
+          <TextInput
+            label="Email"
+            value={email}
+            onChangeText={handleEmailChange}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            style={styles.input}
+            error={!!emailError}
+            disabled={isLoading || !!socialLoading}
+          />
+          {emailError ? (
+            <HelperText type="error" visible={!!emailError}>
+              {emailError}
+            </HelperText>
+          ) : null}
 
-          <Divider style={styles.divider}>
-            <Text variant="bodyMedium" style={styles.dividerText}>
-              or continue with email
-            </Text>
-          </Divider>
-
-          {/* Email/Password Form */}
-          <View style={styles.form}>
-            <TextInput
-              label="Email"
-              value={email}
-              onChangeText={handleEmailChange}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              style={styles.input}
-              error={!!emailError}
-              disabled={isLoading || !!socialLoading}
-            />
-            {emailError ? (
-              <HelperText type="error" visible={!!emailError}>
-                {emailError}
-              </HelperText>
-            ) : null}
-
+          <View style={styles.passwordContainer}>
             <TextInput
               label="Password"
               value={password}
               onChangeText={handlePasswordChange}
-              secureTextEntry
+              secureTextEntry={!showPassword}
               style={styles.input}
               error={!!passwordError}
               disabled={isLoading || !!socialLoading}
+              right={
+                <TextInput.Icon
+                  icon={showPassword ? "eye-off" : "eye"}
+                  onPress={() => setShowPassword(!showPassword)}
+                  disabled={isLoading || !!socialLoading}
+                />
+              }
             />
-            {passwordError ? (
-              <HelperText type="error" visible={!!passwordError}>
-                {passwordError}
-              </HelperText>
-            ) : null}
+          </View>
+          {passwordError ? (
+            <HelperText type="error" visible={!!passwordError}>
+              {passwordError}
+            </HelperText>
+          ) : null}
 
-            {error && (
-              <HelperText type="error" visible={!!error}>
-                {error}
-              </HelperText>
-            )}
+          {error && (
+            <HelperText type="error" visible={!!error}>
+              {error}
+            </HelperText>
+          )}
 
+          <Button
+            mode="contained"
+            onPress={handleLogin}
+            style={styles.loginButton}
+            disabled={isLoading || !!socialLoading}
+            loading={isLoading}
+          >
+            Sign In
+          </Button>
+
+          <View style={styles.links}>
             <Button
-              mode="contained"
-              onPress={handleLogin}
-              style={styles.loginButton}
+              mode="text"
+              compact
+              onPress={() => router.push('/(auth)/forgot-password')}
               disabled={isLoading || !!socialLoading}
-              loading={isLoading}
+              style={styles.linkButton}
             >
-              Sign In
+              Forgot Password?
             </Button>
-
-            <View style={styles.links}>
+            
+            <View style={styles.signupSection}>
+              <Text variant="bodySmall" style={styles.signupText}>
+                Don't have an account?{' '}
+              </Text>
               <Button
                 mode="text"
                 compact
-                onPress={() => router.push('/(auth)/forgot-password')}
+                onPress={() => router.push('/(auth)/register')}
                 disabled={isLoading || !!socialLoading}
+                style={styles.linkButton}
               >
-                Forgot Password?
+                Sign Up
               </Button>
-              
-              <View style={styles.signupSection}>
-                <Text variant="bodyMedium" style={styles.signupText}>
-                  Don't have an account?{' '}
-                </Text>
-                <Button
-                  mode="text"
-                  compact
-                  onPress={() => router.push('/(auth)/register')}
-                  disabled={isLoading || !!socialLoading}
-                >
-                  Sign Up
-                </Button>
-              </View>
             </View>
           </View>
         </View>
-      </ScrollView>
-    </View>
+
+        <View style={styles.dividerContainer}>
+          <Divider style={styles.divider} />
+          <Text variant="bodySmall" style={styles.dividerText}>
+            or continue with
+          </Text>
+          <Divider style={styles.divider} />
+        </View>
+
+        <View style={styles.socialContainer}>
+          {SocialAuthService.socialProviders.map(renderSocialButton)}
+        </View>
+      </View>
+    </SafeAreaView>
   );
 }
 
@@ -200,63 +210,71 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-  },
   content: {
-    padding: 24,
+    flex: 1,
+    padding: 20,
+    paddingTop: 20,
+    justifyContent: 'center',
   },
   title: {
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
     color: '#006A60',
     fontWeight: 'bold',
   },
   subtitle: {
     textAlign: 'center',
-    marginBottom: 32,
+    marginBottom: 20,
     color: '#666',
-  },
-  socialContainer: {
-    gap: 12,
-    marginBottom: 24,
-  },
-  socialButton: {
-    borderRadius: 8,
-    paddingVertical: 8,
-  },
-  divider: {
-    marginVertical: 24,
-  },
-  dividerText: {
-    color: '#666',
-    backgroundColor: '#f5f5f5',
-    paddingHorizontal: 16,
   },
   form: {
-    gap: 16,
+    gap: 12,
+    marginBottom: 16,
+  },
+  passwordContainer: {
+    position: 'relative',
   },
   input: {
     backgroundColor: '#ffffff',
     borderRadius: 8,
   },
   loginButton: {
-    marginTop: 8,
-    paddingVertical: 8,
+    marginTop: 4,
+    paddingVertical: 6,
     borderRadius: 8,
     backgroundColor: '#006A60',
   },
   links: {
     alignItems: 'center',
-    marginTop: 16,
+    marginTop: 8,
+  },
+  linkButton: {
+    minHeight: 32,
   },
   signupSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 4,
   },
   signupText: {
     color: '#666',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 12,
+  },
+  divider: {
+    flex: 1,
+  },
+  dividerText: {
+    color: '#666',
+    backgroundColor: '#f5f5f5',
+    paddingHorizontal: 12,
+    textAlign: 'center',
+  },
+  socialContainer: {
+    gap: 8,
+    marginBottom: 32,
   },
 });
