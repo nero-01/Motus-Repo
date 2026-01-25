@@ -30,7 +30,7 @@ EXPO_PUBLIC_DEEPSEEK_API_KEY=your_deepseek_api_key
 EXPO_PUBLIC_DEEPSEEK_API_URL=https://api.deepseek.com
 EXPO_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id
 EXPO_PUBLIC_GOOGLE_CLIENT_SECRET=your_google_client_secret
-EXPO_PUBLIC_GOOGLE_VISION_API_KEY=your_google_vision_api_key
+EXPO_PUBLIC_GOOGLE_VISION_API_KEY=your_google_vision_api_key  # Create in Google Cloud Console, enable Vision API
 EXPO_PUBLIC_APP_ENV=development
 EXPO_PUBLIC_APP_VERSION=1.0.0
 */ 

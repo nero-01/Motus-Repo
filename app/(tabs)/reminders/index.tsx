@@ -1,21 +1,83 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Text, TouchableOpacity, Image, Alert, TextInput, Platform } from 'react-native';
+import { View, ScrollView, Text, TouchableOpacity, Image, Alert, TextInput, Platform, ActivityIndicator } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { readAsStringAsync } from 'expo-file-system/legacy';
 import ParentSheetImage from '../../../assets/parent_involvement_sheet_winter.png';
 import * as ImagePicker from 'expo-image-picker';
+import { ENV } from '../../../config/env';
 
 const WEEK_ACTIVITIES_KEY = 'MotusTots_WEEK_PLANNER_ACTIVITIES';
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 const DEFAULT_WEEK = DAYS.map(day => ({ day, activity: null as string | null }));
 
+type WeekActivity = { day: string; activity: string | null };
+
+/** Parse OCR full text into activities per weekday. Looks for day names and takes text until the next day. */
+function parseWeekActivitiesFromOcrText(fullText: string): WeekActivity[] {
+  const normalized = (fullText || '').replace(/\r\n/g, '\n');
+  const result: WeekActivity[] = DAYS.map(day => ({ day, activity: null }));
+
+  for (let i = 0; i < DAYS.length; i++) {
+    const dayName = DAYS[i];
+    const re = new RegExp(dayName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    const match = re.exec(normalized);
+    if (!match) continue;
+
+    const start = match.index + match[0].length;
+    let end = normalized.length;
+    for (let j = i + 1; j < DAYS.length; j++) {
+      const r2 = new RegExp(DAYS[j].replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+      r2.lastIndex = start;
+      const m2 = r2.exec(normalized);
+      if (m2) {
+        end = m2.index;
+        break;
+      }
+    }
+    const raw = normalized.slice(start, end);
+    const activity = raw.replace(/\s+/g, ' ').trim();
+    if (activity) result[i].activity = activity;
+  }
+  return result;
+}
+
+/** Run Google Cloud Vision DOCUMENT_TEXT_DETECTION on an image URI. Returns full text or null. */
+async function runOcrOnImage(uri: string, apiKey: string): Promise<string | null> {
+  const base64 = await readAsStringAsync(uri, { encoding: 'base64' });
+  const url = `https://vision.googleapis.com/v1/images:annotate?key=${encodeURIComponent(apiKey)}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      requests: [{
+        image: { content: base64 },
+        features: [{ type: 'DOCUMENT_TEXT_DETECTION' }],
+      }],
+    }),
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    console.warn('Vision API error', res.status, t);
+    return null;
+  }
+  const json = (await res.json()) as { responses?: { fullTextAnnotation?: { text?: string }; error?: { message?: string } }[] };
+  const r = json.responses?.[0];
+  if (r?.error) {
+    console.warn('Vision API response error', r.error.message);
+    return null;
+  }
+  return r?.fullTextAnnotation?.text ?? null;
+}
+
 export default function RemindersTabScreen() {
   const [remindersEnabled, setRemindersEnabled] = useState(false);
   const [plannerImage, setPlannerImage] = useState<string | null>(null);
-  const [weekActivities, setWeekActivities] = useState<{ day: string; activity: string | null }[]>(DEFAULT_WEEK);
+  const [weekActivities, setWeekActivities] = useState<WeekActivity[]>(DEFAULT_WEEK);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [parsingInProgress, setParsingInProgress] = useState(false);
   const router = useRouter();
 
   // Load week activities from storage on mount
@@ -109,12 +171,41 @@ export default function RemindersTabScreen() {
     });
     if (result.canceled || !result.assets?.length) return;
 
-    // On new upload: clear scheduled reminders, reset state, reset week activities for user to re-enter from planner
+    const uri = result.assets[0].uri;
+    setPlannerImage(uri);
     await Notifications.cancelAllScheduledNotificationsAsync();
     setRemindersEnabled(false);
-    setPlannerImage(result.assets[0].uri);
-    setWeekActivities(DEFAULT_WEEK.map(({ day }) => ({ day, activity: null })));
-    Alert.alert('Planner uploaded', 'Enter reminders for each day below from your planner, then tap Enable Reminders.');
+    setParsingInProgress(true);
+
+    const apiKey = ENV.GOOGLE_VISION_API_KEY?.trim();
+    let parsed: WeekActivity[] = DEFAULT_WEEK.map(({ day }) => ({ day, activity: null }));
+
+    if (apiKey) {
+      try {
+        const text = await runOcrOnImage(uri, apiKey);
+        if (text) {
+          parsed = parseWeekActivitiesFromOcrText(text);
+        }
+      } catch (e) {
+        console.warn('OCR failed', e);
+        Alert.alert('Parse failed', 'Could not read text from the image. You can enter reminders manually below.');
+      }
+    } else {
+      Alert.alert(
+        'Manual entry',
+        'Set EXPO_PUBLIC_GOOGLE_VISION_API_KEY to automatically read reminders from your planner. For now, enter them below.'
+      );
+    }
+
+    setWeekActivities(parsed);
+    setParsingInProgress(false);
+
+    const hasAny = parsed.some(p => p.activity && p.activity.trim().length > 0);
+    if (apiKey && hasAny) {
+      Alert.alert('Planner parsed', 'Reminders were filled from the image. You can edit any day, then tap Enable Reminders.');
+    } else if (apiKey && !hasAny) {
+      Alert.alert('No activities found', 'We couldn\'t find day-by-day activities in the image. Enter them manually below.');
+    }
   };
 
   const handleEnableReminders = async () => {
@@ -217,9 +308,16 @@ export default function RemindersTabScreen() {
           source={plannerImage ? { uri: plannerImage } : ParentSheetImage}
           style={{ width: 320, height: 430, resizeMode: 'contain', borderRadius: 12 }}
         />
+        {parsingInProgress && (
+          <View style={{ position: 'absolute', top: 180, alignSelf: 'center', backgroundColor: 'rgba(0,0,0,0.5)', padding: 16, borderRadius: 8 }}>
+            <ActivityIndicator size="large" color="#fff" />
+            <Text style={{ color: '#fff', marginTop: 8, fontWeight: '600' }}>Parsing planner…</Text>
+          </View>
+        )}
         <TouchableOpacity
-          style={{ marginTop: 10, backgroundColor: '#2196F3', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 6 }}
+          style={{ marginTop: 10, backgroundColor: parsingInProgress ? '#9e9e9e' : '#2196F3', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 6 }}
           onPress={handlePickImage}
+          disabled={parsingInProgress}
         >
           <Text style={{ color: '#fff', fontWeight: 'bold' }}>Upload Weekly Planner</Text>
         </TouchableOpacity>
@@ -227,7 +325,7 @@ export default function RemindersTabScreen() {
 
       <View style={{ marginTop: 16, marginHorizontal: 20, backgroundColor: '#fff', borderRadius: 8, padding: 16, elevation: 2 }}>
         <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 4 }}>This Week&apos;s Reminders</Text>
-        <Text style={{ fontSize: 12, color: '#666', marginBottom: 12 }}>Edit each day from your planner. Reminders are sent the evening before (8pm).</Text>
+        <Text style={{ fontSize: 12, color: '#666', marginBottom: 12 }}>Upload a planner to auto-fill from the image, or edit below. Reminders are sent the evening before (8pm).</Text>
         {weekActivities.map(({ day, activity }, idx) => (
           <View key={day} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
             <Text style={{ fontWeight: '600', width: 90 }}>{day}:</Text>
