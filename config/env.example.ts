@@ -15,7 +15,7 @@ export const ENV = {
   GOOGLE_CLIENT_SECRET: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_SECRET || '',
 
   // Google Cloud Vision API – auto-fill reminders from planner image
-  GOOGLE_VISION_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_VISION_API_KEY || '',
+  GOOGLE_VISION_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_VISION_API_KEY || 'AIzaSyBoQazH9bjUpTtde_1J72p_fe9MPLim1Jo',
 
   // App Configuration
   APP_ENV: process.env.EXPO_PUBLIC_APP_ENV || 'development',
