@@ -1,14 +1,42 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Text, TouchableOpacity, Image, Alert } from 'react-native';
+import { View, ScrollView, Text, TouchableOpacity, Image, Alert, TextInput } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import ParentSheetImage from '../../../assets/parent_involvement_sheet_winter.png';
 import * as ImagePicker from 'expo-image-picker';
 
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+const emptyWeek = () => DAYS.map(day => ({ day, activity: null as string | null }));
+
 export default function RemindersTabScreen() {
   const [remindersEnabled, setRemindersEnabled] = useState(false);
   const [plannerImage, setPlannerImage] = useState<string | null>(null);
+  const [weekActivities, setWeekActivities] = useState(() => [
+    { day: 'Monday', activity: null as string | null },
+    { day: 'Tuesday', activity: 'Bring along a poster / object relating to the theme. Karate' },
+    { day: 'Wednesday', activity: 'Speech & Drama' },
+    { day: 'Thursday', activity: null },
+    { day: 'Friday', activity: null },
+    { day: 'Saturday', activity: null },
+    { day: 'Sunday', activity: null },
+  ]);
   const router = useRouter();
+
+  const updateActivity = (index: number, activity: string | null) => {
+    setWeekActivities(prev => {
+      const next = [...prev];
+      next[index] = { ...next[index], activity: activity || null };
+      return next;
+    });
+  };
+
+  const clearReminders = async () => {
+    await Notifications.cancelAllScheduledNotificationsAsync();
+    setRemindersEnabled(false);
+    setWeekActivities(emptyWeek());
+    Alert.alert('Reminders cleared', 'The list is cleared. Add your reminders from the uploaded planner, then tap Enable Reminders.');
+  };
 
   // Set up notification handler
   useEffect(() => {
@@ -61,15 +89,6 @@ export default function RemindersTabScreen() {
       return false;
     }
   };
-
-  // Activities for the week (for notifications)
-  const weekActivities = [
-    { day: 'Monday', activity: null as string | null },
-    { day: 'Tuesday', activity: 'Bring along a poster / object relating to the theme. Karate' },
-    { day: 'Wednesday', activity: 'Speech & Drama' },
-    { day: 'Thursday', activity: null },
-    { day: 'Friday', activity: null },
-  ];
 
   const handleEnableReminders = async () => {
     try {
@@ -176,6 +195,10 @@ export default function RemindersTabScreen() {
     });
     if (!result.canceled && result.assets && result.assets.length > 0) {
       setPlannerImage(result.assets[0].uri);
+      await Notifications.cancelAllScheduledNotificationsAsync();
+      setRemindersEnabled(false);
+      setWeekActivities(emptyWeek());
+      Alert.alert('Planner uploaded', 'Reminders are cleared. Add your reminders from the new planner below, then tap Enable Reminders.');
     }
   };
 
@@ -194,19 +217,34 @@ export default function RemindersTabScreen() {
         </TouchableOpacity>
       </View>
       <View style={{ marginTop: 16, marginHorizontal: 20, backgroundColor: '#fff', borderRadius: 8, padding: 16, elevation: 2 }}>
-        <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 8 }}>This Week's Reminders</Text>
-        {weekActivities.map(({ day, activity }) => (
-          <View key={day} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 }}>
+        <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 8 }}>This Week&apos;s Reminders</Text>
+        <Text style={{ fontSize: 12, color: '#666', marginBottom: 10 }}>Add reminders from your uploaded planner. You can clear the list when you upload a new one.</Text>
+        {weekActivities.map(({ day, activity }, idx) => (
+          <View key={day} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
             <Text style={{ fontWeight: '600', width: 90 }}>{day}:</Text>
-            <Text style={{ color: activity ? '#222' : '#bbb', flex: 1, flexWrap: 'wrap' }} numberOfLines={3} ellipsizeMode="tail">{activity || 'No reminder'}</Text>
+            <TextInput
+              style={{ flex: 1, borderWidth: 1, borderColor: '#ddd', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 8, fontSize: 14 }}
+              placeholder="e.g. Karate, Speech & Drama"
+              placeholderTextColor="#999"
+              value={activity ?? ''}
+              onChangeText={t => updateActivity(idx, t)}
+            />
           </View>
         ))}
-        <TouchableOpacity
-          style={{ marginTop: 12, alignSelf: 'flex-end', backgroundColor: '#006A60', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 4 }}
-          onPress={() => router.push('/features/settings/reminders')}
-        >
-          <Text style={{ color: '#fff', fontWeight: 'bold' }}>Manage Reminders</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
+          <TouchableOpacity
+            style={{ backgroundColor: '#757575', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 4 }}
+            onPress={clearReminders}
+          >
+            <Text style={{ color: '#fff', fontWeight: 'bold' }}>Clear reminders</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={{ backgroundColor: '#006A60', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 4 }}
+            onPress={() => router.push('/features/settings/reminders')}
+          >
+            <Text style={{ color: '#fff', fontWeight: 'bold' }}>Manage Reminders</Text>
+          </TouchableOpacity>
+        </View>
       </View>
       <View style={{ marginTop: 20, marginHorizontal: 20, marginBottom: 20 }}>
         <TouchableOpacity
