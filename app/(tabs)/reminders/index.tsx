@@ -1,20 +1,58 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Text, TouchableOpacity, Alert, TextInput } from 'react-native';
+import { View, ScrollView, Text, TouchableOpacity, Alert, TextInput, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import ParentSheetImage from '../../../assets/parent_involvement_sheet_winter.png';
+import { ENV } from '../../../config/env';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 const emptyWeek = (): { day: string; activity: string | null }[] =>
   DAYS.map(day => ({ day, activity: null }));
 
+function parseWeekFromOcrText(text: string): (string | null)[] {
+  if (!text?.trim()) return [null, null, null, null, null, null, null];
+  const t = `\n${text.replace(/\r\n/g, '\n').toLowerCase()}\n`;
+  const names = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  const out: (string | null)[] = [];
+  for (let i = 0; i < names.length; i++) {
+    const start = t.indexOf(`\n${names[i]}`);
+    if (start === -1) { out.push(null); continue; }
+    const from = start + names[i].length + 1;
+    const endIdx = i < names.length - 1 ? t.indexOf(`\n${names[i + 1]}`, from) : t.length;
+    const block = (endIdx === -1 ? t.slice(from) : t.slice(from, endIdx))
+      .replace(/^[\s:\-]+/, '')
+      .trim();
+    out.push(block || null);
+  }
+  return out;
+}
+
+async function runOcr(base64: string, apiKey: string): Promise<string> {
+  const res = await fetch(
+    `https://vision.googleapis.com/v1/images:annotate?key=${encodeURIComponent(apiKey)}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        requests: [{ image: { content: base64 }, features: [{ type: 'DOCUMENT_TEXT_DETECTION', maxResults: 1 }] }],
+      }),
+    }
+  );
+  const data = (await res.json()) as { responses?: { fullTextAnnotation?: { text?: string }; error?: { message?: string } }[] };
+  if (!res.ok) throw new Error(data?.responses?.[0]?.error?.message || `Vision API error: ${res.status}`);
+  const txt = data?.responses?.[0]?.fullTextAnnotation?.text;
+  if (!txt) throw new Error('No text found in image');
+  return txt;
+}
+
 export default function RemindersTabScreen() {
   const [remindersEnabled, setRemindersEnabled] = useState(false);
   const [plannerImage, setPlannerImage] = useState<string | null>(null);
   const [week, setWeek] = useState(emptyWeek());
+  const [parsing, setParsing] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -56,9 +94,26 @@ export default function RemindersTabScreen() {
       allowsEditing: true,
       aspect: [4, 5],
       quality: 1,
+      base64: true,
     });
-    if (!res.canceled && res.assets?.[0]) {
-      setPlannerImage(res.assets[0].uri);
+    if (res.canceled || !res.assets?.[0]) return;
+    const { uri, base64 } = res.assets[0];
+    setPlannerImage(uri);
+    const key = ENV.GOOGLE_VISION_API_KEY?.trim();
+    if (!key || !base64) {
+      if (!key) return;
+      Alert.alert('Image too large', 'Try a smaller or cropped image to auto-fill from the planner.');
+      return;
+    }
+    setParsing(true);
+    try {
+      const text = await runOcr(base64, key);
+      const activities = parseWeekFromOcrText(text);
+      setWeek(prev => prev.map((s, i) => ({ ...s, activity: activities[i] ?? s.activity })));
+    } catch (e) {
+      Alert.alert('Couldn\'t read image', (e instanceof Error ? e.message : 'Please check the image and try again.'));
+    } finally {
+      setParsing(false);
     }
   };
 
