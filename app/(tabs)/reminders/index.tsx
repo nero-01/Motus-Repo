@@ -174,8 +174,11 @@ export default function RemindersTabScreen() {
       const hasPermission = await ensureNotificationPermission();
       if (!hasPermission) return;
 
-      const trigger: Notifications.NotificationTriggerInput = { seconds: 5 };
-      if (Platform.OS === 'android') (trigger as any).channelId = 'reminders';
+      const trigger: Notifications.NotificationTriggerInput = {
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+        seconds: 5,
+        ...(Platform.OS === 'android' ? { channelId: 'reminders' } : {}),
+      };
 
       await Notifications.scheduleNotificationAsync({
         content: {
