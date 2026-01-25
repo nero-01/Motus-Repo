@@ -208,19 +208,19 @@ export default function CoParentingCalendarScreen() {
   };
 
   const handleCreateEvent = () => {
-    router.push('/co-parenting/calendar/create');
+    setShowAddDialog(true);
   };
 
   const handleCreateCustodySchedule = () => {
-    router.push('/co-parenting/calendar/custody');
+    Alert.alert('Coming soon', 'Custody schedule creation will be available in a future update.');
   };
 
   const handleViewMessages = () => {
-    router.push('/co-parenting/messages');
+    router.push('/features/co-parenting/messages');
   };
 
   const handleViewExpenses = () => {
-    router.push('/co-parenting/expenses');
+    router.push('/features/co-parenting/expenses');
   };
 
   if (isLoading) {
