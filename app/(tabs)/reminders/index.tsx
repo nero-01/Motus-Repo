@@ -31,36 +31,54 @@ function parseWeekFromOcrText(text: string): (string | null)[] {
 }
 
 async function runOcr(base64: string, apiKey: string): Promise<string> {
-  const res = await fetch(
-    `https://vision.googleapis.com/v1/images:annotate?key=${encodeURIComponent(apiKey)}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        requests: [{ image: { content: base64 }, features: [{ type: 'DOCUMENT_TEXT_DETECTION', maxResults: 1 }] }],
-      }),
+  if (!apiKey?.trim()) throw new Error('Google Vision API key is missing. Check your .env file.');
+  
+  try {
+    const res = await fetch(
+      `https://vision.googleapis.com/v1/images:annotate?key=${encodeURIComponent(apiKey)}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requests: [{ image: { content: base64 }, features: [{ type: 'DOCUMENT_TEXT_DETECTION', maxResults: 1 }] }],
+        }),
+      }
+    );
+    let data: {
+      error?: { code?: number; message?: string; status?: string };
+      responses?: { fullTextAnnotation?: { text?: string }; error?: { message?: string } }[];
+    };
+    
+    try {
+      data = await res.json();
+    } catch (e) {
+      throw new Error(`Failed to parse Vision API response: ${res.status} ${res.statusText}`);
     }
-  );
-  const data = (await res.json()) as {
-    error?: { code?: number; message?: string; status?: string };
-    responses?: { fullTextAnnotation?: { text?: string }; error?: { message?: string } }[];
-  };
-  const top = data?.error;
-  const r0 = data?.responses?.[0];
-  if (top) {
+    
+    const top = data?.error;
+    const r0 = data?.responses?.[0];
+    
+    if (top) {
     const msg = top.message || `Vision API error: ${res.status}`;
     if (res.status === 403) {
       throw new Error(
         `${msg} — Enable Cloud Vision API in Google Cloud Console, set API key application restrictions to “None” for mobile, and ensure billing is enabled.`
       );
     }
-    throw new Error(msg);
+      throw new Error(msg);
+    }
+    
+    if (r0?.error) throw new Error(r0.error.message || 'Vision API error');
+    if (!res.ok) throw new Error(`Vision API error: ${res.status}`);
+    
+    const txt = r0?.fullTextAnnotation?.text;
+    if (!txt) throw new Error('No text found in image');
+    
+    return txt;
+  } catch (e) {
+    if (e instanceof Error) throw e;
+    throw new Error('Network error: Could not reach Vision API');
   }
-  if (r0?.error) throw new Error(r0.error.message || 'Vision API error');
-  if (!res.ok) throw new Error(`Vision API error: ${res.status}`);
-  const txt = r0?.fullTextAnnotation?.text;
-  if (!txt) throw new Error('No text found in image');
-  return txt;
 }
 
 export default function RemindersTabScreen() {
@@ -124,7 +142,13 @@ export default function RemindersTabScreen() {
     try {
       const text = await runOcr(base64, key);
       const activities = parseWeekFromOcrText(text);
+      const filled = activities.filter(a => a).length;
       setWeek(prev => prev.map((s, i) => ({ ...s, activity: activities[i] ?? s.activity })));
+      if (filled > 0) {
+        Alert.alert('Success', `Found ${filled} reminder(s) from the planner. Review and edit as needed.`);
+      } else {
+        Alert.alert('No reminders found', 'Could not detect day names in the image. Please type them manually.');
+      }
     } catch (e) {
       Alert.alert('Couldn\'t read image', (e instanceof Error ? e.message : 'Please check the image and try again.'));
     } finally {
