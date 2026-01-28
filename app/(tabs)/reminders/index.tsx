@@ -1,91 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Text, TouchableOpacity, Alert, TextInput, ActivityIndicator } from 'react-native';
+import { View, ScrollView, Text, TouchableOpacity, Alert, TextInput } from 'react-native';
 import { Image } from 'expo-image';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import ParentSheetImage from '../../../assets/parent_involvement_sheet_winter.png';
-import { ENV } from '../../../config/env';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 const emptyWeek = (): { day: string; activity: string | null }[] =>
   DAYS.map(day => ({ day, activity: null }));
 
-function parseWeekFromOcrText(text: string): (string | null)[] {
-  if (!text?.trim()) return [null, null, null, null, null, null, null];
-  const t = `\n${text.replace(/\r\n/g, '\n').toLowerCase()}\n`;
-  const names = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-  const out: (string | null)[] = [];
-  for (let i = 0; i < names.length; i++) {
-    const start = t.indexOf(`\n${names[i]}`);
-    if (start === -1) { out.push(null); continue; }
-    const from = start + names[i].length + 1;
-    const endIdx = i < names.length - 1 ? t.indexOf(`\n${names[i + 1]}`, from) : t.length;
-    const block = (endIdx === -1 ? t.slice(from) : t.slice(from, endIdx))
-      .replace(/^[\s:\-]+/, '')
-      .trim();
-    out.push(block || null);
-  }
-  return out;
-}
-
-async function runOcr(base64: string, apiKey: string): Promise<string> {
-  if (!apiKey?.trim()) throw new Error('Google Vision API key is missing. Check your .env file.');
-  
-  try {
-    const res = await fetch(
-      `https://vision.googleapis.com/v1/images:annotate?key=${encodeURIComponent(apiKey)}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          requests: [{ image: { content: base64 }, features: [{ type: 'DOCUMENT_TEXT_DETECTION', maxResults: 1 }] }],
-        }),
-      }
-    );
-    let data: {
-      error?: { code?: number; message?: string; status?: string };
-      responses?: { fullTextAnnotation?: { text?: string }; error?: { message?: string } }[];
-    };
-    
-    try {
-      data = await res.json();
-    } catch (e) {
-      throw new Error(`Failed to parse Vision API response: ${res.status} ${res.statusText}`);
-    }
-    
-    const top = data?.error;
-    const r0 = data?.responses?.[0];
-    
-    if (top) {
-    const msg = top.message || `Vision API error: ${res.status}`;
-    if (res.status === 403) {
-      throw new Error(
-        `${msg} — Enable Cloud Vision API in Google Cloud Console, set API key application restrictions to “None” for mobile, and ensure billing is enabled.`
-      );
-    }
-      throw new Error(msg);
-    }
-    
-    if (r0?.error) throw new Error(r0.error.message || 'Vision API error');
-    if (!res.ok) throw new Error(`Vision API error: ${res.status}`);
-    
-    const txt = r0?.fullTextAnnotation?.text;
-    if (!txt) throw new Error('No text found in image');
-    
-    return txt;
-  } catch (e) {
-    if (e instanceof Error) throw e;
-    throw new Error('Network error: Could not reach Vision API');
-  }
-}
-
 export default function RemindersTabScreen() {
   const [remindersEnabled, setRemindersEnabled] = useState(false);
   const [plannerImage, setPlannerImage] = useState<string | null>(null);
   const [week, setWeek] = useState(emptyWeek());
-  const [parsing, setParsing] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -127,32 +56,9 @@ export default function RemindersTabScreen() {
       allowsEditing: true,
       aspect: [4, 5],
       quality: 1,
-      base64: true,
     });
-    if (res.canceled || !res.assets?.[0]) return;
-    const { uri, base64 } = res.assets[0];
-    setPlannerImage(uri);
-    const key = ENV.GOOGLE_VISION_API_KEY?.trim();
-    if (!key || !base64) {
-      if (!key) return;
-      Alert.alert('Image too large', 'Try a smaller or cropped image to auto-fill from the planner.');
-      return;
-    }
-    setParsing(true);
-    try {
-      const text = await runOcr(base64, key);
-      const activities = parseWeekFromOcrText(text);
-      const filled = activities.filter(a => a).length;
-      setWeek(prev => prev.map((s, i) => ({ ...s, activity: activities[i] ?? s.activity })));
-      if (filled > 0) {
-        Alert.alert('Success', `Found ${filled} reminder(s) from the planner. Review and edit as needed.`);
-      } else {
-        Alert.alert('No reminders found', 'Could not detect day names in the image. Please type them manually.');
-      }
-    } catch (e) {
-      Alert.alert('Couldn\'t read image', (e instanceof Error ? e.message : 'Please check the image and try again.'));
-    } finally {
-      setParsing(false);
+    if (!res.canceled && res.assets?.[0]) {
+      setPlannerImage(res.assets[0].uri);
     }
   };
 
@@ -213,24 +119,15 @@ export default function RemindersTabScreen() {
   return (
     <ScrollView style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
       <View style={{ alignItems: 'center', marginTop: 16 }}>
-        <View style={{ position: 'relative' }}>
-          <Image
-            source={plannerImage ? { uri: plannerImage } : ParentSheetImage}
-            contentFit="contain"
-            style={{ width: 320, height: 430, borderRadius: 12 }}
-            onError={() => setPlannerImage(null)}
-          />
-          {parsing && (
-            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 12, justifyContent: 'center', alignItems: 'center' }}>
-              <ActivityIndicator size="large" color="#fff" />
-              <Text style={{ color: '#fff', fontWeight: '600', marginTop: 8 }}>Reading planner…</Text>
-            </View>
-          )}
-        </View>
+        <Image
+          source={plannerImage ? { uri: plannerImage } : ParentSheetImage}
+          contentFit="contain"
+          style={{ width: 320, height: 430, borderRadius: 12 }}
+          onError={() => setPlannerImage(null)}
+        />
         <TouchableOpacity
           onPress={pickImage}
-          disabled={parsing}
-          style={{ marginTop: 10, backgroundColor: parsing ? '#90caf9' : '#2196F3', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 6 }}
+          style={{ marginTop: 10, backgroundColor: '#2196F3', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 6 }}
         >
           <Text style={{ color: '#fff', fontWeight: 'bold' }}>Upload Weekly Planner</Text>
         </TouchableOpacity>

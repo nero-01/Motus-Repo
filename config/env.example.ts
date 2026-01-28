@@ -14,8 +14,6 @@ export const ENV = {
   GOOGLE_CLIENT_ID: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '',
   GOOGLE_CLIENT_SECRET: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_SECRET || '',
 
-  // Google Cloud Vision API – auto-fill reminders from planner image
-  GOOGLE_VISION_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_VISION_API_KEY || 'AIzaSyBoQazH9bjUpTtde_1J72p_fe9MPLim1Jo',
 
   // App Configuration
   APP_ENV: process.env.EXPO_PUBLIC_APP_ENV || 'development',
@@ -30,7 +28,6 @@ EXPO_PUBLIC_DEEPSEEK_API_KEY=your_deepseek_api_key
 EXPO_PUBLIC_DEEPSEEK_API_URL=https://api.deepseek.com
 EXPO_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id
 EXPO_PUBLIC_GOOGLE_CLIENT_SECRET=your_google_client_secret
-EXPO_PUBLIC_GOOGLE_VISION_API_KEY=your_google_vision_api_key
 EXPO_PUBLIC_APP_ENV=development
 EXPO_PUBLIC_APP_VERSION=1.0.0
 */ 
