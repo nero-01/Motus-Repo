@@ -15,34 +15,64 @@ const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
 const emptyWeek = (): { day: string; activity: string | null }[] =>
   DAYS.map(day => ({ day, activity: null }));
 
-const DAY_PATTERNS: { full: string; short: string }[] = [
-  { full: 'monday', short: 'mon' },
-  { full: 'tuesday', short: 'tue' },
-  { full: 'wednesday', short: 'wed' },
-  { full: 'thursday', short: 'thu' },
-  { full: 'friday', short: 'fri' },
-  { full: 'saturday', short: 'sat' },
-  { full: 'sunday', short: 'sun' },
+const DAY_PATTERNS: { full: string; shorts: string[] }[] = [
+  { full: 'monday', shorts: ['mon'] },
+  { full: 'tuesday', shorts: ['tue', 'tues'] },
+  { full: 'wednesday', shorts: ['wed'] },
+  { full: 'thursday', shorts: ['thu', 'thur', 'thurs'] },
+  { full: 'friday', shorts: ['fri'] },
+  { full: 'saturday', shorts: ['sat'] },
+  { full: 'sunday', shorts: ['sun'] },
 ];
 
 function findDayStart(lower: string, dayIndex: number): { index: number; length: number } | null {
-  const { full, short } = DAY_PATTERNS[dayIndex];
+  const { full, shorts } = DAY_PATTERNS[dayIndex];
   let best: { index: number; length: number } | null = null;
   const fullIdx = lower.indexOf(full);
   if (fullIdx !== -1) best = { index: fullIdx, length: full.length };
-  const shortIdx = lower.indexOf(short);
-  if (shortIdx !== -1) {
-    if (!best || shortIdx < best.index) best = { index: shortIdx, length: short.length };
+  for (const short of shorts) {
+    const shortIdx = lower.indexOf(short);
+    if (shortIdx !== -1) {
+      if (!best || shortIdx < best.index) best = { index: shortIdx, length: short.length };
+    }
   }
   return best;
+}
+
+function matchDayAtStart(lineLower: string): { dayIndex: number; prefixLen: number } | null {
+  for (let i = 0; i < DAY_PATTERNS.length; i++) {
+    const { full, shorts } = DAY_PATTERNS[i];
+    if (lineLower.startsWith(full)) return { dayIndex: i, prefixLen: full.length };
+    for (const short of shorts) {
+      if (lineLower.startsWith(short)) return { dayIndex: i, prefixLen: short.length };
+    }
+  }
+  return null;
 }
 
 function parseWeekFromOcrText(fullText: string): { day: string; activity: string | null }[] {
   const week = emptyWeek();
   const normalized = fullText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
   const lower = normalized.toLowerCase();
-  const dayStarts: { dayIndex: number; start: number; end: number }[] = [];
+
+  const lineResults: { dayIndex: number; activity: string }[] = [];
+  const lines = normalized.split(/\n/);
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const lineLower = trimmed.toLowerCase();
+    const match = matchDayAtStart(lineLower);
+    if (match) {
+      const rest = trimmed.slice(match.prefixLen).replace(/^[\s:\-–—]+/, '').trim();
+      if (rest) lineResults.push({ dayIndex: match.dayIndex, activity: rest });
+    }
+  }
+  for (const { dayIndex, activity } of lineResults) {
+    week[dayIndex] = { day: DAYS[dayIndex], activity };
+  }
+
   for (let i = 0; i < DAYS.length; i++) {
+    if (week[i].activity) continue;
     const found = findDayStart(lower, i);
     if (!found) continue;
     const afterMarker = found.index + found.length;
@@ -241,11 +271,11 @@ export default function RemindersTabScreen() {
       const a = week[i].activity?.trim();
       if (!a) continue;
 
-      let dayBefore = i; // i=0 Mon -> notify Sun (getDay 0), i=1 Tue -> Mon (1), ...
-      let daysUntil = (dayBefore - now.getDay() + 7) % 7;
+      const prevDayGetDay = i;
+      let daysUntil = (prevDayGetDay - now.getDay() + 7) % 7;
       const at = new Date(now);
       at.setDate(now.getDate() + daysUntil);
-      at.setHours(20, 0, 0, 0);
+      at.setHours(9, 0, 0, 0);
       if (at.getTime() <= Date.now()) at.setDate(at.getDate() + 7);
 
       const sec = Math.max(1, Math.floor((at.getTime() - Date.now()) / 1000));
