@@ -277,7 +277,7 @@ export default function ColorMixing({ onComplete, onNext }: ColorMixingProps) {
       <View style={styles.header}>
         <Text style={styles.title}>🎨 Color Mixing Magic!</Text>
         <Text style={styles.progress}>Mix {currentMixIndex + 1} of {colorMixes.length}</Text>
-        <Text style={styles.score}>Score: {score}/{colorMixes.length}</Text>
+        <Text style={styles.score}>Stars: {score} ⭐</Text>
       </View>
 
       {/* Question */}
@@ -290,7 +290,7 @@ export default function ColorMixing({ onComplete, onNext }: ColorMixingProps) {
       <View style={styles.gameArea}>
         {/* Draggable Colors */}
         <View style={styles.colorsContainer}>
-          <Text style={styles.instruction}>Drag colors to the mixing bowl!</Text>
+          <Text style={styles.instruction}>👆 Drag the colors into the bowl!</Text>
           <View style={styles.draggableColors}>
             {draggableColors.map((color) => (
               <Animated.View
@@ -318,7 +318,7 @@ export default function ColorMixing({ onComplete, onNext }: ColorMixingProps) {
 
         {/* Mixing Area */}
         <View style={styles.mixingAreaContainer}>
-          <Text style={styles.mixingTitle}>Mixing Bowl</Text>
+          <Text style={styles.mixingTitle}>🥣 Mixing Bowl</Text>
           <View 
             ref={mixingAreaRef}
             style={[
@@ -335,7 +335,7 @@ export default function ColorMixing({ onComplete, onNext }: ColorMixingProps) {
             }}
           >
             {!mixedColor && (
-              <Text style={styles.mixingPlaceholder}>Drop colors here!</Text>
+              <Text style={styles.mixingPlaceholder}>Drop colors here! 👇</Text>
             )}
             {isMixing && !mixedColor && (
               <View style={styles.mixingAnimation}>
@@ -465,20 +465,20 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   title: {
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   progress: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 18,
+    color: '#555',
     marginBottom: 4,
   },
   score: {
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: '#2E7D32',
   },
   questionContainer: {
     alignItems: 'center',
@@ -493,14 +493,14 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   question: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: 'bold',
     textAlign: 'center',
     color: '#333',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   emoji: {
-    fontSize: 32,
+    fontSize: 48,
   },
   gameArea: {
     flex: 1,
@@ -510,10 +510,11 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   instruction: {
-    fontSize: 14,
+    fontSize: 20,
     textAlign: 'center',
-    marginBottom: 12,
-    color: '#666',
+    marginBottom: 16,
+    color: '#333',
+    fontWeight: '600',
   },
   draggableColors: {
     flexDirection: 'row',
@@ -524,12 +525,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   colorCircle: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
+    borderWidth: 4,
     borderColor: '#333',
     elevation: 4,
     shadowColor: '#000',
@@ -540,25 +541,25 @@ const styles = StyleSheet.create({
   colorName: {
     color: 'white',
     fontWeight: 'bold',
-    fontSize: 12,
+    fontSize: 16,
     textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
   },
   mixingAreaContainer: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   mixingTitle: {
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 12,
+    marginBottom: 14,
     color: '#333',
   },
   mixingArea: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
     borderWidth: 4,
     borderColor: '#333',
     borderStyle: 'dashed',
@@ -576,9 +577,10 @@ const styles = StyleSheet.create({
     borderStyle: 'solid',
   },
   mixingPlaceholder: {
-    fontSize: 12,
-    color: '#999',
+    fontSize: 18,
+    color: '#666',
     textAlign: 'center',
+    fontWeight: '600',
   },
   mixingAnimation: {
     alignItems: 'center',
@@ -637,27 +639,31 @@ const styles = StyleSheet.create({
   },
   resetButton: {
     backgroundColor: '#FF6B6B',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderRadius: 24,
     elevation: 2,
+    minHeight: 48,
+    justifyContent: 'center',
   },
   resetButtonText: {
     color: 'white',
     fontWeight: 'bold',
-    fontSize: 14,
+    fontSize: 18,
   },
   hintButton: {
     backgroundColor: '#FFD700',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderRadius: 24,
     elevation: 2,
+    minHeight: 48,
+    justifyContent: 'center',
   },
   hintButtonText: {
     color: '#333',
     fontWeight: 'bold',
-    fontSize: 14,
+    fontSize: 18,
   },
   hintContainer: {
     backgroundColor: '#FFF3CD',

@@ -61,7 +61,7 @@ export default function AnimalHabitats({ onComplete, onNext }: AnimalHabitatsPro
   if (isLoading || selectedAnimals.length === 0) {
     return (
       <View style={styles.container}>
-        <Text>Loading...</Text>
+        <Text style={styles.loadingText}>Getting ready... 🐾</Text>
       </View>
     );
   }
@@ -136,7 +136,7 @@ export default function AnimalHabitats({ onComplete, onNext }: AnimalHabitatsPro
       </Text>
 
       <Text style={styles.question}>
-        Where does a {currentPair.animal} live?
+        Where does the {currentPair.animal.toLowerCase()} live? {currentPair.animalEmoji}
       </Text>
 
       {/* Animal Display */}
@@ -219,27 +219,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
   },
+  loadingText: {
+    fontSize: 22,
+    color: '#555',
+    marginTop: 40,
+    fontWeight: '600',
+  },
   progress: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 20,
+    fontSize: 18,
+    color: '#555',
+    marginBottom: 16,
+    fontWeight: '600',
   },
   question: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 24,
     textAlign: 'center',
+    color: '#333',
   },
   animalContainer: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 32,
   },
   animalEmoji: {
-    fontSize: 80,
-    marginBottom: 10,
+    fontSize: 96,
+    marginBottom: 12,
   },
   animalName: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#333',
   },
@@ -248,17 +256,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    gap: 15,
+    gap: 16,
   },
   habitatButton: {
     width: '45%',
     backgroundColor: '#f8f9fa',
-    padding: 20,
-    borderRadius: 15,
+    padding: 24,
+    borderRadius: 20,
     alignItems: 'center',
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: '#e9ecef',
-    minHeight: 100,
+    minHeight: 120,
     justifyContent: 'center',
   },
   habitatButtonSelected: {
@@ -274,11 +282,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8d7da',
   },
   habitatEmoji: {
-    fontSize: 40,
-    marginBottom: 8,
+    fontSize: 48,
+    marginBottom: 10,
   },
   habitatText: {
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: '600',
     color: '#333',
     textAlign: 'center',
@@ -316,13 +324,13 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   feedbackText: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 5,
+    marginBottom: 8,
   },
   feedbackSubtext: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 18,
+    color: '#555',
     textAlign: 'center',
   },
   correctAnswerContainer: {

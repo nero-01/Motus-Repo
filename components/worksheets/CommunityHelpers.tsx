@@ -74,7 +74,7 @@ export default function CommunityHelpers({ onComplete, onNext }: CommunityHelper
   if (isLoading || selectedPairs.length === 0 || questionTools.length === 0) {
     return (
       <View style={styles.container}>
-        <Text>Loading...</Text>
+        <Text style={styles.loadingText}>Getting ready... 👷</Text>
       </View>
     );
   }
@@ -150,7 +150,7 @@ export default function CommunityHelpers({ onComplete, onNext }: CommunityHelper
       </Text>
 
       <Text style={styles.question}>
-        What does a {currentPair.helper} use?
+        What does a {currentPair.helper} use? {currentPair.helperEmoji}
       </Text>
 
       {/* Helper Display */}
@@ -240,34 +240,43 @@ export default function CommunityHelpers({ onComplete, onNext }: CommunityHelper
 
 const styles = StyleSheet.create({
   container: {
-    flex: 0.9,
+    flex: 1,
     alignItems: 'center',
-    padding: 12,
-    paddingBottom: 16,
+    padding: 20,
+    paddingBottom: 24,
+  },
+  loadingText: {
+    fontSize: 22,
+    color: '#555',
+    marginTop: 40,
+    fontWeight: '600',
   },
   progress: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 12,
+    fontSize: 18,
+    color: '#555',
+    marginBottom: 16,
+    fontWeight: '600',
   },
   question: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 24,
+    color: '#333',
   },
   helperContainer: {
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 24,
   },
   helperEmoji: {
-    fontSize: 60,
-    marginBottom: 8,
+    fontSize: 80,
+    marginBottom: 12,
   },
   helperName: {
-    fontSize: 20,
+    fontSize: 26,
     fontWeight: 'bold',
     textAlign: 'center',
+    color: '#333',
   },
   toolsContainer: {
     width: '100%',
@@ -276,12 +285,13 @@ const styles = StyleSheet.create({
   toolButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f0f0f0',
-    padding: 14,
-    marginBottom: 8,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: 'transparent',
+    backgroundColor: '#f8f9fa',
+    padding: 22,
+    marginBottom: 14,
+    borderRadius: 20,
+    borderWidth: 3,
+    borderColor: '#e9ecef',
+    minHeight: 64,
   },
   toolButtonSelected: {
     borderColor: '#007AFF',
@@ -296,12 +306,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFEBEE',
   },
   toolEmoji: {
-    fontSize: 24,
-    marginRight: 12,
+    fontSize: 36,
+    marginRight: 16,
   },
   toolText: {
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#333',
   },
   toolTextSelected: {
     color: '#007AFF',
@@ -358,18 +369,16 @@ const styles = StyleSheet.create({
   feedbackText: {
     fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: 12,
     textAlign: 'center',
-    color: '#000',
-    backgroundColor: 'yellow',
-    padding: 5,
+    color: '#333',
   },
   feedbackSubtext: {
-    fontSize: 16,
-    color: '#000',
-    marginTop: 8,
+    fontSize: 18,
+    color: '#555',
+    marginTop: 10,
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 24,
   },
   correctPairDisplay: {
     flexDirection: 'row',

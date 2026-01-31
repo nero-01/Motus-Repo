@@ -5,36 +5,13 @@ import {
   StyleSheet,
   RefreshControl,
   Alert,
-  Modal,
   Text,
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import {
-  Card,
-  Button,
-  Chip,
-  Searchbar,
-  Portal,
-} from 'react-native-paper';
+import { Card, Button, Chip, Searchbar } from 'react-native-paper';
 import { router } from 'expo-router';
-import LetterTracing from '../../../components/worksheets/LetterTracing';
-import ColorMixing from '../../../components/worksheets/ColorMixing';
-import AnimalHabitats from '../../../components/worksheets/AnimalHabitats';
-import CommunityHelpers from '../../../components/worksheets/CommunityHelpers';
-
-interface Worksheet {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  difficulty: number;
-  age_range: string;
-  estimated_time: number;
-  type: string;
-  content?: any;
-  image_url?: string;
-}
+import { WORKSHEETS, type Worksheet } from './worksheetsData';
 
 interface EducationStats {
   totalWorksheets: number;
@@ -54,10 +31,6 @@ export default function EducationScreen() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
   const [stats, setStats] = useState<EducationStats | null>(null);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedWorksheet, setSelectedWorksheet] = useState<Worksheet | null>(null);
-  const [isWorksheetPlaying, setIsWorksheetPlaying] = useState(false);
-  const [worksheetScore, setWorksheetScore] = useState<number | null>(null);
 
   const categories = [
     { value: 'all', label: 'All' },
@@ -81,95 +54,7 @@ export default function EducationScreen() {
       setLoading(true);
       console.log('Education: Loading data...');
       
-      // Simulate loading
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const mockWorksheets: Worksheet[] = [
-        {
-          id: '1',
-          title: 'Letter Tracing - ABC',
-          description: 'Practice tracing uppercase and lowercase letters',
-          category: 'writing',
-          difficulty: 1,
-          age_range: '3-5',
-          estimated_time: 10,
-          type: 'letter_tracing',
-          content: {
-            letters: ['A', 'B', 'C', 'D', 'E'],
-            instructions: 'Trace each letter carefully'
-          }
-        },
-        {
-          id: '2',
-          title: 'Color Mixing Fun',
-          description: 'Learn about primary and secondary colors',
-          category: 'art',
-          difficulty: 1,
-          age_range: '4-6',
-          estimated_time: 15,
-          type: 'color_mixing',
-          content: {
-            colors: ['red', 'blue', 'yellow'],
-            instructions: 'Mix colors to create new ones'
-          }
-        },
-        {
-          id: '3',
-          title: 'Animal Habitats',
-          description: 'Learn where different animals live',
-          category: 'science',
-          difficulty: 2,
-          age_range: '5-7',
-          estimated_time: 12,
-          type: 'animal_habitats',
-          content: {
-            animals: ['lion', 'fish', 'bird', 'bear'],
-            instructions: 'Match animals to their habitats'
-          }
-        },
-        {
-          id: '4',
-          title: 'Community Helpers',
-          description: 'Learn about people who help our community',
-          category: 'social_studies',
-          difficulty: 2,
-          age_range: '4-6',
-          estimated_time: 10,
-          type: 'community_helpers',
-          content: {
-            helpers: ['doctor', 'teacher', 'firefighter', 'police'],
-            instructions: 'Match helpers to their tools'
-          }
-        },
-        {
-          id: '5',
-          title: 'Simple Addition',
-          description: 'Practice adding numbers 1-10',
-          category: 'math',
-          difficulty: 1,
-          age_range: '5-7',
-          estimated_time: 8,
-          type: 'math',
-          content: {
-            problems: ['1+2', '3+4', '5+1', '2+3'],
-            instructions: 'Solve the addition problems'
-          }
-        },
-        {
-          id: '6',
-          title: 'Sight Words',
-          description: 'Learn common sight words',
-          category: 'reading',
-          difficulty: 1,
-          age_range: '4-6',
-          estimated_time: 10,
-          type: 'reading',
-          content: {
-            words: ['the', 'and', 'is', 'in', 'it'],
-            instructions: 'Read and recognize these words'
-          }
-        }
-      ];
+      await new Promise(resolve => setTimeout(resolve, 800));
 
       const mockStats: EducationStats = {
         totalWorksheets: 6,
@@ -181,7 +66,7 @@ export default function EducationScreen() {
         currentLevel: 2,
       };
 
-      setWorksheets(mockWorksheets);
+      setWorksheets(WORKSHEETS);
       setStats(mockStats);
       console.log('Education: Data loaded successfully');
     } catch (error) {
@@ -238,116 +123,8 @@ export default function EducationScreen() {
     return '⭐'.repeat(difficulty);
   };
 
-  const openWorksheetModal = (worksheet: Worksheet) => {
-    setSelectedWorksheet(worksheet);
-    setModalVisible(true);
-    setIsWorksheetPlaying(false);
-    setWorksheetScore(null);
-  };
-
-  const closeWorksheetModal = () => {
-    setModalVisible(false);
-    setSelectedWorksheet(null);
-    setIsWorksheetPlaying(false);
-    setWorksheetScore(null);
-  };
-
-  const handleWorksheetStart = () => {
-    if (!selectedWorksheet) return;
-    setIsWorksheetPlaying(true);
-    setWorksheetScore(null);
-  };
-
-  const handleWorksheetComplete = (accuracy: number) => {
-    setWorksheetScore(accuracy);
-    setIsWorksheetPlaying(false);
-  };
-
-  const restartWorksheet = () => {
-    setWorksheetScore(null);
-    setIsWorksheetPlaying(true);
-  };
-
-  const renderActiveWorksheet = () => {
-    if (!selectedWorksheet) return null;
-
-    const type = selectedWorksheet.type;
-
-    if (type === 'letter_tracing') {
-      const letters: string[] = selectedWorksheet.content?.letters || ['A'];
-      const firstLetter = letters[0] || 'A';
-
-      return (
-        <LetterTracing
-          letter={firstLetter}
-          onComplete={handleWorksheetComplete}
-          onNext={() => {}}
-        />
-      );
-    }
-
-    if (type === 'color_mixing') {
-      return (
-        <ColorMixing
-          onComplete={handleWorksheetComplete}
-          onNext={() => {}}
-        />
-      );
-    }
-
-    if (type === 'animal_habitats') {
-      return (
-        <AnimalHabitats
-          onComplete={handleWorksheetComplete}
-          onNext={() => {}}
-        />
-      );
-    }
-
-    if (type === 'community_helpers') {
-      return (
-        <CommunityHelpers
-          onComplete={handleWorksheetComplete}
-          onNext={() => {}}
-        />
-      );
-    }
-
-    if (type === 'math' || type === 'reading') {
-      const instructions = selectedWorksheet.content?.instructions ?? 'Complete the activity.';
-      const items = type === 'math'
-        ? (selectedWorksheet.content?.problems as string[] | undefined) ?? []
-        : (selectedWorksheet.content?.words as string[] | undefined) ?? [];
-      return (
-        <View style={styles.simpleWorksheet}>
-          <Text style={styles.simpleWorksheetInstructions}>{instructions}</Text>
-          {items.length > 0 && (
-            <View style={styles.simpleWorksheetList}>
-              {items.map((item, i) => (
-                <Text key={i} style={styles.simpleWorksheetItem}>
-                  {type === 'math' ? `${item} = ?` : item}
-                </Text>
-              ))}
-            </View>
-          )}
-          <Button
-            mode="contained"
-            onPress={() => handleWorksheetComplete(85)}
-            style={styles.simpleWorksheetButton}
-          >
-            I&apos;ve finished
-          </Button>
-        </View>
-      );
-    }
-
-    return (
-      <View style={styles.modalFallback}>
-        <Text style={styles.modalFallbackText}>
-          This worksheet type is not supported yet.
-        </Text>
-      </View>
-    );
+  const openWorksheet = (worksheet: Worksheet) => {
+    router.push({ pathname: '/education/worksheet', params: { id: worksheet.id } });
   };
 
   if (loading) {
@@ -493,11 +270,11 @@ export default function EducationScreen() {
               <Card.Actions>
                 <Button 
                   mode="contained" 
-                  onPress={() => openWorksheetModal(worksheet)}
+                  onPress={() => openWorksheet(worksheet)}
                   style={styles.startButton}
                   compact
                 >
-                  Start Worksheet
+                  Start
                 </Button>
               </Card.Actions>
             </Card>
@@ -513,7 +290,7 @@ export default function EducationScreen() {
               mode="contained"
               onPress={() => {
                 const w = worksheets.find(ws => ws.type === 'letter_tracing');
-                if (w) openWorksheetModal(w); else Alert.alert('Letter Tracing', 'Worksheet not found.');
+                if (w) openWorksheet(w); else Alert.alert('Letter Tracing', 'Worksheet not found.');
               }}
               style={styles.quickButton}
               icon="pencil"
@@ -526,7 +303,7 @@ export default function EducationScreen() {
               mode="contained"
               onPress={() => {
                 const w = worksheets.find(ws => ws.type === 'color_mixing');
-                if (w) openWorksheetModal(w); else Alert.alert('Color Mixing', 'Worksheet not found.');
+                if (w) openWorksheet(w); else Alert.alert('Color Mixing', 'Worksheet not found.');
               }}
               style={styles.quickButton}
               icon="palette"
@@ -539,7 +316,7 @@ export default function EducationScreen() {
               mode="contained"
               onPress={() => {
                 const w = worksheets.find(ws => ws.type === 'animal_habitats');
-                if (w) openWorksheetModal(w); else Alert.alert('Animal Habitats', 'Worksheet not found.');
+                if (w) openWorksheet(w); else Alert.alert('Animal Habitats', 'Worksheet not found.');
               }}
               style={styles.quickButton}
               icon="paw"
@@ -552,7 +329,7 @@ export default function EducationScreen() {
               mode="contained"
               onPress={() => {
                 const w = worksheets.find(ws => ws.type === 'community_helpers');
-                if (w) openWorksheetModal(w); else Alert.alert('Community Helpers', 'Worksheet not found.');
+                if (w) openWorksheet(w); else Alert.alert('Community Helpers', 'Worksheet not found.');
               }}
               style={styles.quickButton}
               icon="account-group"
@@ -563,88 +340,6 @@ export default function EducationScreen() {
           </View>
         </View>
       </ScrollView>
-
-      {/* Worksheet Modal */}
-      <Portal>
-        <Modal
-          visible={modalVisible}
-          animationType="slide"
-          transparent
-          onRequestClose={closeWorksheetModal}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              {selectedWorksheet && (
-                <>
-                  <View style={styles.modalHeader}>
-                    <View>
-                      <Text style={styles.modalTitle}>{selectedWorksheet.title}</Text>
-                      <Text style={styles.modalSubtitle}>{selectedWorksheet.description}</Text>
-                    </View>
-                    <TouchableOpacity onPress={closeWorksheetModal}>
-                      <Text style={styles.closeButton}>✕</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {!isWorksheetPlaying && worksheetScore === null && (
-                    <ScrollView
-                      style={styles.modalIntroScroll}
-                      contentContainerStyle={styles.modalIntroScrollContent}
-                      showsVerticalScrollIndicator={false}
-                    >
-                      <View style={styles.modalMeta}>
-                        <Chip mode="outlined">Age: {selectedWorksheet.age_range}</Chip>
-                        <Chip mode="outlined">Time: {selectedWorksheet.estimated_time} min</Chip>
-                        <Chip mode="outlined">
-                          Level: {getDifficultyStars(selectedWorksheet.difficulty)}
-                        </Chip>
-                      </View>
-                      <Text style={styles.modalInstructions}>
-                        Tap “Start Worksheet” to begin an interactive activity tailored to this topic.
-                      </Text>
-                    </ScrollView>
-                  )}
-
-                  {isWorksheetPlaying && (
-                    <View style={styles.modalWorksheetContainer}>
-                      {renderActiveWorksheet()}
-                    </View>
-                  )}
-
-                  {!isWorksheetPlaying && worksheetScore !== null && (
-                    <View style={styles.modalResultContainer}>
-                      <Text style={styles.modalResultTitle}>Nice work! 🎉</Text>
-                      <Text style={styles.modalResultScore}>Score: {worksheetScore}%</Text>
-                      <Text style={styles.modalResultSubtitle}>
-                        You can retry this worksheet to improve your score or close to return to the list.
-                      </Text>
-                    </View>
-                  )}
-
-                  <View style={styles.modalActions}>
-                    <Button
-                      mode="outlined"
-                      onPress={closeWorksheetModal}
-                      style={styles.modalButton}
-                    >
-                      Close
-                    </Button>
-                    {!isWorksheetPlaying && (
-                      <Button
-                        mode="contained"
-                        onPress={worksheetScore !== null ? restartWorksheet : handleWorksheetStart}
-                        style={styles.modalButton}
-                      >
-                        {worksheetScore !== null ? 'Try Again' : 'Start Worksheet'}
-                      </Button>
-                    )}
-                  </View>
-                </>
-              )}
-            </View>
-          </View>
-        </Modal>
-      </Portal>
     </View>
   );
 }
@@ -821,141 +516,5 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: '45%',
     marginBottom: 8,
-  },
-  modalIntroScroll: {
-    maxHeight: 180,
-  },
-  modalIntroScrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 4,
-    paddingBottom: 12,
-  },
-  modalWorksheetContainer: {
-    flex: 1,
-    minHeight: 200,
-    paddingHorizontal: 8,
-    paddingBottom: 12,
-  },
-  simpleWorksheet: {
-    padding: 16,
-  },
-  simpleWorksheetInstructions: {
-    fontSize: 15,
-    color: '#333',
-    marginBottom: 16,
-    lineHeight: 22,
-  },
-  simpleWorksheetList: {
-    marginBottom: 20,
-  },
-  simpleWorksheetItem: {
-    fontSize: 16,
-    color: '#333',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 8,
-    marginBottom: 6,
-  },
-  simpleWorksheetButton: {
-    alignSelf: 'flex-start',
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 4,
-  },
-  modalResultContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  modalResultTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 4,
-    textAlign: 'center',
-    color: '#333',
-  },
-  modalResultScore: {
-    fontSize: 22,
-    fontWeight: '700',
-    textAlign: 'center',
-    color: '#006A60',
-    marginBottom: 4,
-  },
-  modalResultSubtitle: {
-    fontSize: 14,
-    textAlign: 'center',
-    color: '#666',
-  },
-  modalFallback: {
-    padding: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalFallbackText: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    margin: 20,
-    maxHeight: '80%',
-    width: '90%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    flex: 1,
-  },
-  closeButton: {
-    fontSize: 24,
-    color: '#666',
-    padding: 4,
-  },
-  modalBody: {
-    padding: 20,
-  },
-  modalDescription: {
-    fontSize: 16,
-    marginBottom: 16,
-    lineHeight: 24,
-  },
-  modalMeta: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 16,
-  },
-  modalInstructions: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-    gap: 12,
-  },
-  modalButton: {
-    flex: 1,
   },
 }); 
