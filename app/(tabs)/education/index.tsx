@@ -14,12 +14,8 @@ import {
   Card,
   Button,
   Chip,
-  Avatar,
-  FAB,
   Searchbar,
-  ProgressBar,
   Portal,
-  Dialog,
 } from 'react-native-paper';
 import { router } from 'expo-router';
 import LetterTracing from '../../../components/worksheets/LetterTracing';
@@ -317,7 +313,34 @@ export default function EducationScreen() {
       );
     }
 
-    // Fallback text if an unknown type is encountered
+    if (type === 'math' || type === 'reading') {
+      const instructions = selectedWorksheet.content?.instructions ?? 'Complete the activity.';
+      const items = type === 'math'
+        ? (selectedWorksheet.content?.problems as string[] | undefined) ?? []
+        : (selectedWorksheet.content?.words as string[] | undefined) ?? [];
+      return (
+        <View style={styles.simpleWorksheet}>
+          <Text style={styles.simpleWorksheetInstructions}>{instructions}</Text>
+          {items.length > 0 && (
+            <View style={styles.simpleWorksheetList}>
+              {items.map((item, i) => (
+                <Text key={i} style={styles.simpleWorksheetItem}>
+                  {type === 'math' ? `${item} = ?` : item}
+                </Text>
+              ))}
+            </View>
+          )}
+          <Button
+            mode="contained"
+            onPress={() => handleWorksheetComplete(85)}
+            style={styles.simpleWorksheetButton}
+          >
+            I&apos;ve finished
+          </Button>
+        </View>
+      );
+    }
+
     return (
       <View style={styles.modalFallback}>
         <Text style={styles.modalFallbackText}>
@@ -564,7 +587,11 @@ export default function EducationScreen() {
                   </View>
 
                   {!isWorksheetPlaying && worksheetScore === null && (
-                    <>
+                    <ScrollView
+                      style={styles.modalIntroScroll}
+                      contentContainerStyle={styles.modalIntroScrollContent}
+                      showsVerticalScrollIndicator={false}
+                    >
                       <View style={styles.modalMeta}>
                         <Chip mode="outlined">Age: {selectedWorksheet.age_range}</Chip>
                         <Chip mode="outlined">Time: {selectedWorksheet.estimated_time} min</Chip>
@@ -575,7 +602,7 @@ export default function EducationScreen() {
                       <Text style={styles.modalInstructions}>
                         Tap “Start Worksheet” to begin an interactive activity tailored to this topic.
                       </Text>
-                    </>
+                    </ScrollView>
                   )}
 
                   {isWorksheetPlaying && (
@@ -795,10 +822,43 @@ const styles = StyleSheet.create({
     minWidth: '45%',
     marginBottom: 8,
   },
+  modalIntroScroll: {
+    maxHeight: 180,
+  },
+  modalIntroScrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 4,
+    paddingBottom: 12,
+  },
   modalWorksheetContainer: {
     flex: 1,
+    minHeight: 200,
     paddingHorizontal: 8,
     paddingBottom: 12,
+  },
+  simpleWorksheet: {
+    padding: 16,
+  },
+  simpleWorksheetInstructions: {
+    fontSize: 15,
+    color: '#333',
+    marginBottom: 16,
+    lineHeight: 22,
+  },
+  simpleWorksheetList: {
+    marginBottom: 20,
+  },
+  simpleWorksheetItem: {
+    fontSize: 16,
+    color: '#333',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+    marginBottom: 6,
+  },
+  simpleWorksheetButton: {
+    alignSelf: 'flex-start',
   },
   modalSubtitle: {
     fontSize: 14,
