@@ -1,6 +1,5 @@
 import { Tabs } from 'expo-router';
 import { Platform, Text } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function TabLayout() {
   const isAndroid = Platform.OS === 'android';
@@ -44,6 +43,15 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="education/index"
+        options={{
+          title: 'Education',
+          tabBarIcon: ({ color }) => (
+            <Text style={{ color, fontSize: 20 }}>📚</Text>
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="reminders/index"
         options={{
           title: 'Reminders',
@@ -62,15 +70,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="education/index"
-        options={{
-          title: 'Education',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="book" size={size ?? 24} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="profile/index"
         options={{
           title: 'More',
@@ -81,4 +80,4 @@ export default function TabLayout() {
       />
     </Tabs>
   );
-} 
+}
