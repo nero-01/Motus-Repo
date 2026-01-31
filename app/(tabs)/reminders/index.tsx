@@ -15,23 +15,45 @@ const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
 const emptyWeek = (): { day: string; activity: string | null }[] =>
   DAYS.map(day => ({ day, activity: null }));
 
+const DAY_PATTERNS: { full: string; short: string }[] = [
+  { full: 'monday', short: 'mon' },
+  { full: 'tuesday', short: 'tue' },
+  { full: 'wednesday', short: 'wed' },
+  { full: 'thursday', short: 'thu' },
+  { full: 'friday', short: 'fri' },
+  { full: 'saturday', short: 'sat' },
+  { full: 'sunday', short: 'sun' },
+];
+
+function findDayStart(lower: string, dayIndex: number): { index: number; length: number } | null {
+  const { full, short } = DAY_PATTERNS[dayIndex];
+  let best: { index: number; length: number } | null = null;
+  const fullIdx = lower.indexOf(full);
+  if (fullIdx !== -1) best = { index: fullIdx, length: full.length };
+  const shortIdx = lower.indexOf(short);
+  if (shortIdx !== -1) {
+    if (!best || shortIdx < best.index) best = { index: shortIdx, length: short.length };
+  }
+  return best;
+}
+
 function parseWeekFromOcrText(fullText: string): { day: string; activity: string | null }[] {
   const week = emptyWeek();
   const normalized = fullText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const lower = normalized.toLowerCase();
+  const dayStarts: { dayIndex: number; start: number; end: number }[] = [];
   for (let i = 0; i < DAYS.length; i++) {
-    const dayName = DAYS[i];
-    const nextDayName = DAYS[i + 1];
-    const dayIndex = normalized.indexOf(dayName);
-    if (dayIndex === -1) continue;
-    const afterDay = normalized.slice(dayIndex + dayName.length);
-    const endOfBlock = nextDayName
-      ? (() => {
-          const next = afterDay.indexOf(nextDayName);
-          return next === -1 ? afterDay.length : next;
-        })()
-      : afterDay.length;
-    const activity = afterDay.slice(0, endOfBlock).replace(/\n+/g, ' ').trim();
-    if (activity) week[i] = { day: dayName, activity };
+    const found = findDayStart(lower, i);
+    if (!found) continue;
+    const afterMarker = found.index + found.length;
+    let end = normalized.length;
+    for (let j = 0; j < DAYS.length; j++) {
+      if (j === i) continue;
+      const next = findDayStart(lower, j);
+      if (next && next.index > found.index && next.index < end) end = next.index;
+    }
+    const activity = normalized.slice(afterMarker, end).replace(/\n+/g, ' ').trim();
+    if (activity) week[i] = { day: DAYS[i], activity };
   }
   return week;
 }
