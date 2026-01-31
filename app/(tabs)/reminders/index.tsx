@@ -53,18 +53,47 @@ function fixOcrDayTypos(text: string): string {
   return out;
 }
 
-/** True if char is a word character (letter/digit). */
-function isWordChar(c: string): boolean {
-  return /[\w]/.test(c);
-}
+/** All day name patterns (longest first) for regex. */
+const DAY_REGEX_SOURCES = DAY_PATTERNS.flatMap(({ full, shorts }) =>
+  [full, ...shorts].sort((a, b) => b.length - a.length)
+);
+const DAY_REGEX = new RegExp(
+  '\\b(' + DAY_REGEX_SOURCES.join('|') + ')\\b',
+  'gi'
+);
 
-/** Accept day name when followed by space, punctuation, digit, or end (reject only when followed by a letter). */
-function isAcceptableAfter(s: string): boolean {
-  if (!s) return true;
-  return !/[a-zA-Z]/.test(s);
-}
-
+/**
+ * Find all day names in text using a single regex pass (whole words only).
+ * Returns one match per day (earliest occurrence), sorted by position.
+ */
 function findAllDayMatches(text: string): DayMatch[] {
+  const lower = text.toLowerCase();
+  const byDay = new Map<number, DayMatch>();
+  let match: RegExpExecArray | null;
+  const re = new RegExp(DAY_REGEX.source, 'gi');
+  while ((match = re.exec(lower)) !== null) {
+    const pat = match[1].toLowerCase();
+    const dayIndex = DAY_PATTERNS.findIndex(
+      ({ full, shorts }) => full === pat || shorts.includes(pat)
+    );
+    if (dayIndex === -1) continue;
+    const start = match.index;
+    const end = start + pat.length;
+    const existing = byDay.get(dayIndex);
+    const keep =
+      !existing ||
+      start < existing.start ||
+      (start === existing.start && end - start > existing.end - existing.start);
+    if (keep) byDay.set(dayIndex, { dayIndex, start, end });
+  }
+  return Array.from(byDay.values()).sort((a, b) => a.start - b.start);
+}
+
+/**
+ * Also find day names without requiring word boundary after (OCR often concatenates "MondayKarate").
+ * Merge with regex results so we catch days that appear right before another word.
+ */
+function findAllDayMatchesNoBoundaryAfter(text: string): DayMatch[] {
   const lower = text.toLowerCase();
   const matches: DayMatch[] = [];
   for (let i = 0; i < DAY_PATTERNS.length; i++) {
@@ -76,10 +105,8 @@ function findAllDayMatches(text: string): DayMatch[] {
         const idx = lower.indexOf(pat, pos);
         if (idx === -1) break;
         const before = idx === 0 ? '' : lower[idx - 1];
-        const after = idx + pat.length >= lower.length ? '' : lower[idx + pat.length];
-        const atStart = idx === 0 || /[\s\n]/.test(before);
-        const boundaryOk = (atStart || !isWordChar(before)) && isAcceptableAfter(after);
-        if (boundaryOk) {
+        const beforeOk = idx === 0 || !/[a-zA-Z]/.test(before);
+        if (beforeOk) {
           const overlap = matches.find(
             (m) => m.dayIndex === i && m.start <= idx && idx < m.end
           );
@@ -126,13 +153,29 @@ function matchDayAtLineStart(line: string): { dayIndex: number; len: number } | 
   return best;
 }
 
+/** Merge two sorted day-match arrays: union by day index, keep earliest position per day. */
+function mergeDayMatches(a: DayMatch[], b: DayMatch[]): DayMatch[] {
+  const byDay = new Map<number, DayMatch>();
+  for (const m of [...a, ...b]) {
+    const existing = byDay.get(m.dayIndex);
+    const keep =
+      !existing ||
+      m.start < existing.start ||
+      (m.start === existing.start && m.end - m.start > existing.end - existing.start);
+    if (keep) byDay.set(m.dayIndex, m);
+  }
+  return Array.from(byDay.values()).sort((x, y) => x.start - y.start);
+}
+
 function extractWeekFromBlockText(
   text: string,
   isDayNameOnly: (s: string) => boolean
 ): { week: { day: string; activity: string | null }[]; matchedIndices: Set<number> } {
   const week = emptyWeek();
   const matchedIndices = new Set<number>();
-  const matches = findAllDayMatches(text);
+  const regexMatches = findAllDayMatches(text);
+  const noBoundaryMatches = findAllDayMatchesNoBoundaryAfter(text);
+  const matches = mergeDayMatches(regexMatches, noBoundaryMatches);
   for (let i = 0; i < matches.length; i++) {
     const m = matches[i];
     matchedIndices.add(m.dayIndex);
