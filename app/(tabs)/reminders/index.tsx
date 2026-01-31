@@ -27,24 +27,23 @@ const DAY_PATTERNS: { full: string; shorts: string[] }[] = [
 
 type DayMatch = { dayIndex: number; start: number; end: number };
 
-/** Find which day (if any) the line starts with; return dayIndex and length of match. */
-function matchDayAtLineStart(line: string): { dayIndex: number; len: number } | null {
-  const trimmed = line.trimStart();
-  const lower = trimmed.toLowerCase();
-  let best: { dayIndex: number; len: number } | null = null;
-  for (let i = 0; i < DAY_PATTERNS.length; i++) {
-    const { full, shorts } = DAY_PATTERNS[i];
-    const patterns = [full, ...shorts].sort((a, b) => b.length - a.length);
-    for (const pat of patterns) {
-      if (lower === pat || lower.startsWith(pat + ' ') || lower.startsWith(pat + '\t') ||
-          lower.startsWith(pat + ':') || lower.startsWith(pat + '-') || lower.startsWith(pat + '–') || lower.startsWith(pat + '—')) {
-        const len = trimmed.substring(0, pat.length).length;
-        if (!best || len > best.len) best = { dayIndex: i, len };
-        break;
-      }
-    }
-  }
-  return best;
+/** Normalize OCR output so parsing is consistent regardless of line breaks/spaces. */
+function normalizeOcrText(text: string): string {
+  return text
+    .replace(/\r\n|\r|\n/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** True if char is a word character (letter/digit). */
+function isWordChar(c: string): boolean {
+  return /[\w]/.test(c);
+}
+
+/** Accept day name when followed by space, newline, colon, hyphen, or end. */
+function isAcceptableAfter(s: string): boolean {
+  if (!s) return true;
+  return /[\s:\-–—.]/.test(s) || !isWordChar(s);
 }
 
 function findAllDayMatches(text: string): DayMatch[] {
@@ -60,10 +59,9 @@ function findAllDayMatches(text: string): DayMatch[] {
         if (idx === -1) break;
         const before = idx === 0 ? '' : lower[idx - 1];
         const after = idx + pat.length >= lower.length ? '' : lower[idx + pat.length];
-        const atLineStart = before === '' || before === '\n';
-        const isWordBoundary =
-          (atLineStart || !/[\w]/.test(before)) && !/[\w]/.test(after);
-        if (isWordBoundary) {
+        const atStart = idx === 0 || /[\s\n]/.test(before);
+        const boundaryOk = (atStart || !isWordChar(before)) && isAcceptableAfter(after);
+        if (boundaryOk) {
           const overlap = matches.find(
             (m) => m.dayIndex === i && m.start <= idx && idx < m.end
           );
@@ -90,11 +88,32 @@ function findAllDayMatches(text: string): DayMatch[] {
   return Array.from(byDay.values()).sort((a, b) => a.start - b.start);
 }
 
+/** Find which day (if any) the line starts with; return dayIndex and length of match. */
+function matchDayAtLineStart(line: string): { dayIndex: number; len: number } | null {
+  const trimmed = line.trimStart();
+  const lower = trimmed.toLowerCase();
+  let best: { dayIndex: number; len: number } | null = null;
+  for (let i = 0; i < DAY_PATTERNS.length; i++) {
+    const { full, shorts } = DAY_PATTERNS[i];
+    const patterns = [full, ...shorts].sort((a, b) => b.length - a.length);
+    for (const pat of patterns) {
+      if (lower === pat || lower.startsWith(pat + ' ') || lower.startsWith(pat + '\t') ||
+          lower.startsWith(pat + ':') || lower.startsWith(pat + '-') || lower.startsWith(pat + '–') || lower.startsWith(pat + '—')) {
+        const len = trimmed.substring(0, pat.length).length;
+        if (!best || len > best.len) best = { dayIndex: i, len };
+        break;
+      }
+    }
+  }
+  return best;
+}
+
 function parseWeekFromOcrText(fullText: string): { day: string; activity: string | null }[] {
   const week = emptyWeek();
-  const normalized = fullText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const withNewlines = fullText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  // Single-line form so day detection is consistent regardless of where OCR put line breaks
+  const normalized = normalizeOcrText(fullText);
 
-  // Helper: true if s is exactly a day name (full or short)
   const isDayNameOnly = (s: string) => {
     const low = s.toLowerCase().trim();
     if (!low) return false;
@@ -104,23 +123,22 @@ function parseWeekFromOcrText(fullText: string): { day: string; activity: string
     return false;
   };
 
-  // Pass 1: block-based — find all day names in text and use text between them as activity
+  // Pass 1: block-based on normalized text (consistent single-line parsing)
   const matches = findAllDayMatches(normalized);
   for (let i = 0; i < matches.length; i++) {
     const m = matches[i];
     const nextStart = i + 1 < matches.length ? matches[i + 1].start : normalized.length;
     const raw = normalized
       .slice(m.end, nextStart)
-      .replace(/\n+/g, ' ')
-      .replace(/^\s*[:\-–—]\s*/, '')
+      .replace(/^\s*[:\-–—.]\s*/, '')
       .trim();
     if (raw && !isDayNameOnly(raw)) {
       week[m.dayIndex] = { day: DAYS[m.dayIndex], activity: raw };
     }
   }
 
-  // Pass 2: line-based — fill any still-empty days from lines like "Tuesday: Karate"
-  const lines = normalized.split('\n');
+  // Pass 2: line-based on original lines (fill gaps when OCR preserved line structure)
+  const lines = withNewlines.split('\n');
   for (const line of lines) {
     const hit = matchDayAtLineStart(line);
     if (!hit || week[hit.dayIndex].activity) continue;
@@ -142,8 +160,9 @@ const OCR_HTML = `
 (function(){
   function go(){
     window.runOCR=function(dataUrl){
-      Tesseract.recognize(dataUrl).then(function(r){
-        if(window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify({text:(r&&r.data&&r.data.text)||''}));
+      Tesseract.recognize(dataUrl,'eng',{logger:function(){}}).then(function(r){
+        var text=(r&&r.data&&r.data.text)||'';
+        if(window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify({text:text}));
       }).catch(function(e){
         if(window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify({error:(e&&e.message)||'Failed'}));
       });
