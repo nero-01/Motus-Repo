@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Text, TouchableOpacity, Alert, TextInput, Platform } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, ScrollView, Text, TouchableOpacity, Alert, TextInput, Platform, Modal } from 'react-native';
 import { Image } from 'expo-image';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import { WebView } from 'react-native-webview';
 import ParentSheetImage from '../../../assets/parent_involvement_sheet_winter.png';
 
 const REMINDERS_CHANNEL_ID = 'motustots-reminders';
@@ -47,11 +49,37 @@ function parseWeekFromOcrText(fullText: string): { day: string; activity: string
   return week;
 }
 
+/** HTML page for WebView: loads Tesseract.js and exposes runOCR(dataUrl). Posts READY when loaded, then posts { text } or { error } from runOCR. */
+const OCR_WEBVIEW_HTML = `
+<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"/></head><body>
+<p style="padding:20px;text-align:center;">Loading text recognition…</p>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"><\/script>
+<script>
+(function() {
+  function ready() {
+    window.runOCR = function(dataUrl) {
+      Tesseract.recognize(dataUrl).then(function(r) {
+        if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify({ text: (r && r.data && r.data.text) || '' }));
+      }).catch(function(e) {
+        if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify({ error: (e && e.message) || 'OCR failed' }));
+      });
+    };
+    if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage('READY');
+  }
+  if (typeof Tesseract !== 'undefined') ready(); else window.addEventListener('load', ready);
+})();
+<\/script>
+</body></html>
+`;
+
 export default function RemindersTabScreen() {
   const [remindersEnabled, setRemindersEnabled] = useState(false);
   const [plannerImage, setPlannerImage] = useState<string | null>(null);
   const [week, setWeek] = useState(emptyWeek());
   const [readingImage, setReadingImage] = useState(false);
+  const [ocrModalVisible, setOcrModalVisible] = useState(false);
+  const ocrWebViewRef = useRef<WebView>(null);
+  const ocrImageBase64Ref = useRef<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -153,35 +181,58 @@ export default function RemindersTabScreen() {
       try {
         MlkitOcr = require('react-native-mlkit-ocr').default;
       } catch (_) {
-        // Module not installed or not linked
+        // Module not installed or not linked (Expo Go)
       }
-      if (!MlkitOcr?.detectFromUri) {
-        Alert.alert(
-          'Text reading not available',
-          'Image text reading needs a development build (run: npx expo run:ios or npx expo run:android). You can still type reminders in the fields below.'
-        );
+      if (MlkitOcr?.detectFromUri) {
+        const result = await MlkitOcr.detectFromUri(plannerImage);
+        const text = ocrResultToText(result);
+        const parsed = parseWeekFromOcrText(text);
+        setWeek(parsed);
+        const filled = parsed.filter((e) => e.activity?.trim()).length;
+        setReadingImage(false);
+        Alert.alert('Done', filled > 0 ? `Found reminders for ${filled} day(s). Review and tap Enable.` : 'No day names found. Type reminders manually or use a clearer image.');
         return;
       }
-      const result = await MlkitOcr.detectFromUri(plannerImage);
-      const text = ocrResultToText(result);
-      const parsed = parseWeekFromOcrText(text);
-      setWeek(parsed);
-      const filled = parsed.filter((e) => e.activity?.trim()).length;
-      Alert.alert('Done', filled > 0 ? `Found reminders for ${filled} day(s). Review and tap Enable.` : 'No day names found. Type reminders manually or use a clearer image.');
+      const base64 = await FileSystem.readAsStringAsync(plannerImage, { encoding: FileSystem.EncodingType.Base64 });
+      ocrImageBase64Ref.current = base64;
+      setOcrModalVisible(true);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      const isUnavailable = /undefined|null|native|module|link|cannot find|required|detectFromUri/i.test(msg);
-      if (isUnavailable) {
-        Alert.alert(
-          'Text reading not available',
-          'Image text reading needs a development build (run: npx expo run:ios or npx expo run:android). You can still type reminders in the fields below.'
-        );
+      if (/cannot read|enoent|file.*not found/i.test(msg)) {
+        Alert.alert('Could not read image', 'The image file could not be read. Try choosing the image again.');
       } else {
         Alert.alert('Could not read image', msg);
       }
-    } finally {
       setReadingImage(false);
     }
+  };
+
+  const handleOcrMessage = (event: { nativeEvent: { data: string } }) => {
+    const data = event.nativeEvent.data;
+    if (data === 'READY') {
+      const b64 = ocrImageBase64Ref.current;
+      if (b64 && ocrWebViewRef.current) {
+        const dataUrl = 'data:image/jpeg;base64,' + b64;
+        ocrWebViewRef.current.injectJavaScript("window.runOCR(" + JSON.stringify(dataUrl) + ");");
+      }
+      return;
+    }
+    try {
+      const payload = JSON.parse(data) as { text?: string; error?: string };
+      if (payload.error) {
+        Alert.alert('OCR failed', payload.error);
+      } else if (payload.text != null) {
+        const parsed = parseWeekFromOcrText(payload.text);
+        setWeek(parsed);
+        const filled = parsed.filter((e) => e.activity?.trim()).length;
+        Alert.alert('Done', filled > 0 ? `Found reminders for ${filled} day(s). Review and tap Enable.` : 'No day names found. Type reminders manually or use a clearer image.');
+      }
+    } catch (_) {
+      // ignore parse errors
+    }
+    ocrImageBase64Ref.current = null;
+    setOcrModalVisible(false);
+    setReadingImage(false);
   };
 
   const clearReminders = async () => {
@@ -328,6 +379,33 @@ export default function RemindersTabScreen() {
           <Text style={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}>Test Notification (5s)</Text>
         </TouchableOpacity>
       </View>
+
+      <Modal visible={ocrModalVisible} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 12, overflow: 'hidden', height: 280 }}>
+            <View style={{ padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={{ fontSize: 18, fontWeight: 'bold' }}>Reading image…</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  ocrImageBase64Ref.current = null;
+                  setOcrModalVisible(false);
+                  setReadingImage(false);
+                }}
+              >
+                <Text style={{ color: '#006A60', fontWeight: 'bold' }}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+            <WebView
+              ref={ocrWebViewRef}
+              source={{ html: OCR_WEBVIEW_HTML }}
+              onMessage={handleOcrMessage}
+              style={{ flex: 1, backgroundColor: '#fff' }}
+              originWhitelist={['*']}
+              mixedContentMode="compatibility"
+            />
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
