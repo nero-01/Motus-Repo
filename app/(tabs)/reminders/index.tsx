@@ -1,40 +1,120 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Text, TouchableOpacity, Alert, TextInput } from 'react-native';
+import { View, ScrollView, Text, TouchableOpacity, Alert, TextInput, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import ParentSheetImage from '../../../assets/parent_involvement_sheet_winter.png';
 
+const REMINDERS_CHANNEL_ID = 'motustots-reminders';
+
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 const emptyWeek = (): { day: string; activity: string | null }[] =>
   DAYS.map(day => ({ day, activity: null }));
 
+/** Turn OCR result (array of blocks/lines or single string) into one string. */
+function ocrResultToText(result: unknown): string {
+  if (typeof result === 'string') return result;
+  if (Array.isArray(result)) {
+    return result
+      .map((item: unknown) => (item && typeof (item as { text?: string }).text === 'string' ? (item as { text: string }).text : String(item ?? '')))
+      .join('\n');
+  }
+  if (result && typeof (result as { text?: string }).text === 'string') return (result as { text: string }).text;
+  return String(result ?? '');
+}
+
+/** Parse OCR text into week entries: find "Monday", "Tuesday", etc. and text after each until next day. */
+function parseWeekFromOcrText(fullText: string): { day: string; activity: string | null }[] {
+  const week = emptyWeek();
+  const normalized = fullText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  for (let i = 0; i < DAYS.length; i++) {
+    const dayName = DAYS[i];
+    const nextDayName = DAYS[i + 1];
+    const dayIndex = normalized.indexOf(dayName);
+    if (dayIndex === -1) continue;
+    const afterDay = normalized.slice(dayIndex + dayName.length);
+    const endOfBlock = nextDayName
+      ? (() => {
+          const next = afterDay.indexOf(nextDayName);
+          return next === -1 ? afterDay.length : next;
+        })()
+      : afterDay.length;
+    const activity = afterDay.slice(0, endOfBlock).replace(/\n+/g, ' ').trim();
+    if (activity) week[i] = { day: dayName, activity };
+  }
+  return week;
+}
+
 export default function RemindersTabScreen() {
   const [remindersEnabled, setRemindersEnabled] = useState(false);
   const [plannerImage, setPlannerImage] = useState<string | null>(null);
   const [week, setWeek] = useState(emptyWeek());
+  const [readingImage, setReadingImage] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowBanner: false,
-        shouldShowList: false,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-      }),
-    });
-    const sub1 = Notifications.addNotificationReceivedListener(() => {});
-    const sub2 = Notifications.addNotificationResponseReceivedListener(() => {});
-    return () => {
-      sub1.remove();
-      sub2.remove();
-    };
+    try {
+      Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldShowBanner: true,
+          shouldShowList: true,
+          shouldPlaySound: true,
+          shouldSetBadge: false,
+        }),
+      });
+      const sub1 = Notifications.addNotificationReceivedListener(() => {});
+      const sub2 = Notifications.addNotificationResponseReceivedListener(() => {});
+      return () => {
+        sub1.remove();
+        sub2.remove();
+      };
+    } catch (_) {
+      return undefined;
+    }
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+        if (!mounted) return;
+        const prefix = 'Reminder: ';
+        const nextWeek = emptyWeek();
+        let found = 0;
+        for (const n of scheduled) {
+          const title = n.content.title ?? '';
+          if (!title.startsWith(prefix)) continue;
+          const dayName = title.slice(prefix.length).trim();
+          const body = n.content.body ?? '';
+          const idx = DAYS.indexOf(dayName);
+          if (idx !== -1) {
+            nextWeek[idx] = { day: dayName, activity: body || null };
+            found++;
+          }
+        }
+        if (found > 0) {
+          setWeek(nextWeek);
+          setRemindersEnabled(true);
+        }
+      } catch (_) {
+        // Notifications may be unavailable (e.g. web)
+      }
+    })();
+    return () => { mounted = false; };
   }, []);
 
   const ensurePermission = async () => {
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync(REMINDERS_CHANNEL_ID, {
+        name: 'MotusTots Reminders',
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 250, 250],
+        sound: 'default',
+      });
+    }
     const { status } = await Notifications.getPermissionsAsync();
     if (status === 'granted') return true;
     const { canAskAgain } = await Notifications.getPermissionsAsync();
@@ -59,6 +139,36 @@ export default function RemindersTabScreen() {
     });
     if (!res.canceled && res.assets?.[0]) {
       setPlannerImage(res.assets[0].uri);
+    }
+  };
+
+  const readFromImage = async () => {
+    if (!plannerImage) {
+      Alert.alert('No image', 'Upload a weekly planner image first, then tap Read from image.');
+      return;
+    }
+    setReadingImage(true);
+    try {
+      const MlkitOcr = require('react-native-mlkit-ocr').default;
+      const result = await MlkitOcr.detectFromUri(plannerImage);
+      const text = ocrResultToText(result);
+      const parsed = parseWeekFromOcrText(text);
+      setWeek(parsed);
+      const filled = parsed.filter((e) => e.activity?.trim()).length;
+      Alert.alert('Done', filled > 0 ? `Found reminders for ${filled} day(s). Review and tap Enable.` : 'No day names found. Type reminders manually or use a clearer image.');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      const isUnavailable = /undefined|native|module|link|cannot find|required/i.test(msg);
+      if (isUnavailable) {
+        Alert.alert(
+          'Text reading not available',
+          'Image text reading needs a development build (run: npx expo run:ios or npx expo run:android). You can still type reminders in the fields below.'
+        );
+      } else {
+        Alert.alert('Could not read image', msg);
+      }
+    } finally {
+      setReadingImage(false);
     }
   };
 
@@ -89,8 +199,17 @@ export default function RemindersTabScreen() {
 
       const sec = Math.max(1, Math.floor((at.getTime() - Date.now()) / 1000));
       await Notifications.scheduleNotificationAsync({
-        content: { title: `Reminder: ${week[i].day}`, body: a, sound: true },
-        trigger: { seconds: sec } as any,
+        content: {
+          title: `Reminder: ${week[i].day}`,
+          body: a,
+          sound: true,
+          ...(Platform.OS === 'android' && { channelId: REMINDERS_CHANNEL_ID }),
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: sec,
+          ...(Platform.OS === 'android' && { channelId: REMINDERS_CHANNEL_ID }),
+        },
       });
       count++;
     }
@@ -102,8 +221,17 @@ export default function RemindersTabScreen() {
   const testNotification = async () => {
     if (!(await ensurePermission())) return;
     await Notifications.scheduleNotificationAsync({
-      content: { title: 'Test', body: 'Test from MotusTots', sound: true },
-      trigger: { seconds: 5 } as any,
+      content: {
+        title: 'Test',
+        body: 'Test from MotusTots',
+        sound: true,
+        ...(Platform.OS === 'android' && { channelId: REMINDERS_CHANNEL_ID }),
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+        seconds: 5,
+        ...(Platform.OS === 'android' && { channelId: REMINDERS_CHANNEL_ID }),
+      },
     });
     Alert.alert('Test', 'Notification in 5 seconds.');
   };
@@ -131,6 +259,23 @@ export default function RemindersTabScreen() {
         >
           <Text style={{ color: '#fff', fontWeight: 'bold' }}>Upload Weekly Planner</Text>
         </TouchableOpacity>
+        {plannerImage && (
+          <TouchableOpacity
+            onPress={readFromImage}
+            disabled={readingImage}
+            style={{
+              marginTop: 10,
+              backgroundColor: readingImage ? '#9e9e9e' : '#006A60',
+              paddingHorizontal: 20,
+              paddingVertical: 10,
+              borderRadius: 6,
+            }}
+          >
+            <Text style={{ color: '#fff', fontWeight: 'bold' }}>
+              {readingImage ? 'Reading…' : 'Read from image'}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={{ marginTop: 16, marginHorizontal: 20, backgroundColor: '#fff', borderRadius: 8, padding: 16, elevation: 2 }}>
