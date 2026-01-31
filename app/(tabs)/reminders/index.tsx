@@ -16,13 +16,13 @@ const emptyWeek = (): { day: string; activity: string | null }[] =>
   DAYS.map(day => ({ day, activity: null }));
 
 const DAY_PATTERNS: { full: string; shorts: string[] }[] = [
-  { full: 'monday', shorts: ['mon'] },
-  { full: 'tuesday', shorts: ['tue', 'tues'] },
-  { full: 'wednesday', shorts: ['wed'] },
-  { full: 'thursday', shorts: ['thu', 'thur', 'thurs'] },
-  { full: 'friday', shorts: ['fri'] },
-  { full: 'saturday', shorts: ['sat'] },
-  { full: 'sunday', shorts: ['sun'] },
+  { full: 'monday', shorts: ['mon', 'mondav'] },
+  { full: 'tuesday', shorts: ['tue', 'tues', 'tuesdav'] },
+  { full: 'wednesday', shorts: ['wed', 'weds', 'wednesdav', 'wensday'] },
+  { full: 'thursday', shorts: ['thu', 'thur', 'thurs', 'thursdav'] },
+  { full: 'friday', shorts: ['fri', 'frisay'] },
+  { full: 'saturday', shorts: ['sat', 'saturdav'] },
+  { full: 'sunday', shorts: ['sun', 'sundav'] },
 ];
 
 type DayMatch = { dayIndex: number; start: number; end: number };
@@ -35,15 +35,33 @@ function normalizeOcrText(text: string): string {
     .trim();
 }
 
+/** Fix common OCR misreads of day names (whole-word, case-insensitive). */
+function fixOcrDayTypos(text: string): string {
+  const lower = text.toLowerCase();
+  const replacements: [string, string][] = [
+    ['tuesdav', 'tuesday'], ['wednesdav', 'wednesday'], ['wensday', 'wednesday'],
+    ['thursdav', 'thursday'], ['mondav', 'monday'], ['frisay', 'friday'],
+    ['saturdav', 'saturday'], ['sundav', 'sunday'],
+    ['tuesda y', 'tuesday'], ['wednesda y', 'wednesday'], ['thursda y', 'thursday'],
+    ['monda y', 'monday'], ['frida y', 'friday'], ['saturda y', 'saturday'], ['sunda y', 'sunday'],
+  ];
+  let out = lower;
+  for (const [wrong, right] of replacements) {
+    const re = new RegExp('\\b' + wrong.replace(/\s/g, '\\s*') + '\\b', 'gi');
+    out = out.replace(re, right);
+  }
+  return out;
+}
+
 /** True if char is a word character (letter/digit). */
 function isWordChar(c: string): boolean {
   return /[\w]/.test(c);
 }
 
-/** Accept day name when followed by space, newline, colon, hyphen, or end. */
+/** Accept day name when followed by space, newline, colon, hyphen, comma, or end. */
 function isAcceptableAfter(s: string): boolean {
   if (!s) return true;
-  return /[\s:\-–—.]/.test(s) || !isWordChar(s);
+  return /[\s:\-–—.,]/.test(s) || !isWordChar(s);
 }
 
 function findAllDayMatches(text: string): DayMatch[] {
@@ -108,11 +126,31 @@ function matchDayAtLineStart(line: string): { dayIndex: number; len: number } | 
   return best;
 }
 
+function extractWeekFromBlockText(
+  text: string,
+  isDayNameOnly: (s: string) => boolean
+): { day: string; activity: string | null }[] {
+  const week = emptyWeek();
+  const matches = findAllDayMatches(text);
+  for (let i = 0; i < matches.length; i++) {
+    const m = matches[i];
+    const nextStart = i + 1 < matches.length ? matches[i + 1].start : text.length;
+    const raw = text
+      .slice(m.end, nextStart)
+      .replace(/^\s*[:\-–—.]\s*/, '')
+      .trim();
+    if (raw && !isDayNameOnly(raw)) {
+      week[m.dayIndex] = { day: DAYS[m.dayIndex], activity: raw };
+    }
+  }
+  return week;
+}
+
 function parseWeekFromOcrText(fullText: string): { day: string; activity: string | null }[] {
   const week = emptyWeek();
   const withNewlines = fullText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  // Single-line form so day detection is consistent regardless of where OCR put line breaks
   const normalized = normalizeOcrText(fullText);
+  const corrected = fixOcrDayTypos(normalized);
 
   const isDayNameOnly = (s: string) => {
     const low = s.toLowerCase().trim();
@@ -123,21 +161,24 @@ function parseWeekFromOcrText(fullText: string): { day: string; activity: string
     return false;
   };
 
-  // Pass 1: block-based on normalized text (consistent single-line parsing)
-  const matches = findAllDayMatches(normalized);
-  for (let i = 0; i < matches.length; i++) {
-    const m = matches[i];
-    const nextStart = i + 1 < matches.length ? matches[i + 1].start : normalized.length;
-    const raw = normalized
-      .slice(m.end, nextStart)
-      .replace(/^\s*[:\-–—.]\s*/, '')
-      .trim();
-    if (raw && !isDayNameOnly(raw)) {
-      week[m.dayIndex] = { day: DAYS[m.dayIndex], activity: raw };
+  // Pass 1a: block-based on normalized text
+  const week1 = extractWeekFromBlockText(normalized, isDayNameOnly);
+  // Pass 1b: block-based on typo-corrected text (catches "Tuesdav", "Wensday", etc.)
+  const week2 = extractWeekFromBlockText(corrected, isDayNameOnly);
+  // Merge: keep best activity per day (prefer longer when both found)
+  for (let i = 0; i < DAYS.length; i++) {
+    const a1 = week1[i].activity?.trim();
+    const a2 = week2[i].activity?.trim();
+    if (a1 && a2) {
+      week[i] = { day: DAYS[i], activity: a1.length >= a2.length ? a1 : a2 };
+    } else if (a1) {
+      week[i] = { day: DAYS[i], activity: a1 };
+    } else if (a2) {
+      week[i] = { day: DAYS[i], activity: a2 };
     }
   }
 
-  // Pass 2: line-based on original lines (fill gaps when OCR preserved line structure)
+  // Pass 2: line-based on original lines (fill gaps)
   const lines = withNewlines.split('\n');
   for (const line of lines) {
     const hit = matchDayAtLineStart(line);
