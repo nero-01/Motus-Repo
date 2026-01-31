@@ -149,7 +149,19 @@ export default function RemindersTabScreen() {
     }
     setReadingImage(true);
     try {
-      const MlkitOcr = require('react-native-mlkit-ocr').default;
+      let MlkitOcr: { detectFromUri?: (uri: string) => Promise<unknown> } | null = null;
+      try {
+        MlkitOcr = require('react-native-mlkit-ocr').default;
+      } catch (_) {
+        // Module not installed or not linked
+      }
+      if (!MlkitOcr?.detectFromUri) {
+        Alert.alert(
+          'Text reading not available',
+          'Image text reading needs a development build (run: npx expo run:ios or npx expo run:android). You can still type reminders in the fields below.'
+        );
+        return;
+      }
       const result = await MlkitOcr.detectFromUri(plannerImage);
       const text = ocrResultToText(result);
       const parsed = parseWeekFromOcrText(text);
@@ -158,7 +170,7 @@ export default function RemindersTabScreen() {
       Alert.alert('Done', filled > 0 ? `Found reminders for ${filled} day(s). Review and tap Enable.` : 'No day names found. Type reminders manually or use a clearer image.');
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      const isUnavailable = /undefined|native|module|link|cannot find|required/i.test(msg);
+      const isUnavailable = /undefined|null|native|module|link|cannot find|required|detectFromUri/i.test(msg);
       if (isUnavailable) {
         Alert.alert(
           'Text reading not available',
