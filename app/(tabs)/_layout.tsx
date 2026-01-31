@@ -66,7 +66,7 @@ export default function TabLayout() {
         options={{
           title: 'Education',
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="book-education" size={size ?? 24} color={color} />
+            <MaterialCommunityIcons name="book" size={size ?? 24} color={color} />
           ),
         }}
       />
