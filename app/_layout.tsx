@@ -7,18 +7,28 @@ import ErrorBoundary from '../components/ui/ErrorBoundary';
 
 export default function RootLayout() {
   useEffect(() => {
-    try {
-      Notifications.setNotificationHandler({
-        handleNotification: async () => ({
-          shouldShowBanner: true,
-          shouldShowList: true,
-          shouldPlaySound: true,
-          shouldSetBadge: false,
-        }),
-      });
-    } catch (_) {
-      // Notifications native module may not be ready (e.g. web)
-    }
+    let cancelled = false;
+    const run = async () => {
+      for (let attempt = 0; attempt < 3 && !cancelled; attempt++) {
+        try {
+          await new Promise(r => setTimeout(r, attempt === 0 ? 300 : 500));
+          if (cancelled) return;
+          Notifications.setNotificationHandler({
+            handleNotification: async () => ({
+              shouldShowBanner: true,
+              shouldShowList: true,
+              shouldPlaySound: true,
+              shouldSetBadge: false,
+            }),
+          });
+          return;
+        } catch (_) {
+          // Native module may not be ready yet (Expo Go on first load)
+        }
+      }
+    };
+    run();
+    return () => { cancelled = true; };
   }, []);
   return (
     <ErrorBoundary

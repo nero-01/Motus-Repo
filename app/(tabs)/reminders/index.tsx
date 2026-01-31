@@ -25,65 +25,102 @@ const DAY_PATTERNS: { full: string; shorts: string[] }[] = [
   { full: 'sunday', shorts: ['sun'] },
 ];
 
-function findDayStart(lower: string, dayIndex: number): { index: number; length: number } | null {
-  const { full, shorts } = DAY_PATTERNS[dayIndex];
-  let best: { index: number; length: number } | null = null;
-  const fullIdx = lower.indexOf(full);
-  if (fullIdx !== -1) best = { index: fullIdx, length: full.length };
-  for (const short of shorts) {
-    const shortIdx = lower.indexOf(short);
-    if (shortIdx !== -1) {
-      if (!best || shortIdx < best.index) best = { index: shortIdx, length: short.length };
+type DayMatch = { dayIndex: number; start: number; end: number };
+
+/** Find which day (if any) the line starts with; return dayIndex and length of match. */
+function matchDayAtLineStart(line: string): { dayIndex: number; len: number } | null {
+  const trimmed = line.trimStart();
+  const lower = trimmed.toLowerCase();
+  let best: { dayIndex: number; len: number } | null = null;
+  for (let i = 0; i < DAY_PATTERNS.length; i++) {
+    const { full, shorts } = DAY_PATTERNS[i];
+    const patterns = [full, ...shorts].sort((a, b) => b.length - a.length);
+    for (const pat of patterns) {
+      if (lower === pat || lower.startsWith(pat + ' ') || lower.startsWith(pat + '\t') ||
+          lower.startsWith(pat + ':') || lower.startsWith(pat + '-') || lower.startsWith(pat + '–') || lower.startsWith(pat + '—')) {
+        const len = trimmed.substring(0, pat.length).length;
+        if (!best || len > best.len) best = { dayIndex: i, len };
+        break;
+      }
     }
   }
   return best;
 }
 
-function matchDayAtStart(lineLower: string): { dayIndex: number; prefixLen: number } | null {
+function findAllDayMatches(text: string): DayMatch[] {
+  const lower = text.toLowerCase();
+  const matches: DayMatch[] = [];
   for (let i = 0; i < DAY_PATTERNS.length; i++) {
     const { full, shorts } = DAY_PATTERNS[i];
-    if (lineLower.startsWith(full)) return { dayIndex: i, prefixLen: full.length };
-    for (const short of shorts) {
-      if (lineLower.startsWith(short)) return { dayIndex: i, prefixLen: short.length };
+    const patterns = [full, ...shorts].sort((a, b) => b.length - a.length);
+    for (const pat of patterns) {
+      let pos = 0;
+      while (pos < lower.length) {
+        const idx = lower.indexOf(pat, pos);
+        if (idx === -1) break;
+        const before = idx === 0 ? '' : lower[idx - 1];
+        const after = idx + pat.length >= lower.length ? '' : lower[idx + pat.length];
+        const atLineStart = before === '' || before === '\n';
+        const isWordBoundary =
+          (atLineStart || !/[\w]/.test(before)) && !/[\w]/.test(after);
+        if (isWordBoundary) {
+          const overlap = matches.find(
+            (m) => m.dayIndex === i && m.start <= idx && idx < m.end
+          );
+          if (!overlap) {
+            matches.push({ dayIndex: i, start: idx, end: idx + pat.length });
+          }
+          pos = idx + pat.length;
+        } else {
+          pos = idx + 1;
+        }
+      }
     }
   }
-  return null;
+  matches.sort((a, b) => a.start - b.start);
+  const byDay = new Map<number, DayMatch>();
+  for (const m of matches) {
+    const existing = byDay.get(m.dayIndex);
+    const keep =
+      !existing ||
+      m.start < existing.start ||
+      (m.start === existing.start && m.end - m.start > existing.end - existing.start);
+    if (keep) byDay.set(m.dayIndex, m);
+  }
+  return Array.from(byDay.values()).sort((a, b) => a.start - b.start);
 }
 
 function parseWeekFromOcrText(fullText: string): { day: string; activity: string | null }[] {
   const week = emptyWeek();
   const normalized = fullText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  const lower = normalized.toLowerCase();
 
-  const lineResults: { dayIndex: number; activity: string }[] = [];
-  const lines = normalized.split(/\n/);
+  // Pass 1: line-based — "Tuesday: Karate" or "Tue  Swimming" on one line
+  const lines = normalized.split('\n');
   for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-    const lineLower = trimmed.toLowerCase();
-    const match = matchDayAtStart(lineLower);
-    if (match) {
-      const rest = trimmed.slice(match.prefixLen).replace(/^[\s:\-–—]+/, '').trim();
-      if (rest) lineResults.push({ dayIndex: match.dayIndex, activity: rest });
+    const hit = matchDayAtLineStart(line);
+    if (!hit) continue;
+    const trimmed = line.trimStart();
+    const rest = trimmed.slice(hit.len).replace(/^\s*[:\-–—]\s*/, '').trim();
+    const activity = rest.replace(/\s+/g, ' ').trim() || null;
+    if (activity && !week[hit.dayIndex].activity) {
+      week[hit.dayIndex] = { day: DAYS[hit.dayIndex], activity };
     }
-  }
-  for (const { dayIndex, activity } of lineResults) {
-    week[dayIndex] = { day: DAYS[dayIndex], activity };
   }
 
-  for (let i = 0; i < DAYS.length; i++) {
-    if (week[i].activity) continue;
-    const found = findDayStart(lower, i);
-    if (!found) continue;
-    const afterMarker = found.index + found.length;
-    let end = normalized.length;
-    for (let j = 0; j < DAYS.length; j++) {
-      if (j === i) continue;
-      const next = findDayStart(lower, j);
-      if (next && next.index > found.index && next.index < end) end = next.index;
+  // Pass 2: block-based — text between day names (e.g. Monday ... Wednesday ...)
+  const matches = findAllDayMatches(normalized);
+  for (let i = 0; i < matches.length; i++) {
+    const m = matches[i];
+    if (week[m.dayIndex].activity) continue;
+    const nextStart = i + 1 < matches.length ? matches[i + 1].start : normalized.length;
+    const activity = normalized
+      .slice(m.end, nextStart)
+      .replace(/\n+/g, ' ')
+      .replace(/^\s*[:\-–—]\s*/, '')
+      .trim();
+    if (activity) {
+      week[m.dayIndex] = { day: DAYS[m.dayIndex], activity };
     }
-    const activity = normalized.slice(afterMarker, end).replace(/\n+/g, ' ').trim();
-    if (activity) week[i] = { day: DAYS[i], activity };
   }
   return week;
 }
@@ -121,24 +158,33 @@ export default function RemindersTabScreen() {
   const router = useRouter();
 
   useEffect(() => {
-    try {
-      Notifications.setNotificationHandler({
-        handleNotification: async () => ({
-          shouldShowBanner: true,
-          shouldShowList: true,
-          shouldPlaySound: true,
-          shouldSetBadge: false,
-        }),
-      });
-      const sub1 = Notifications.addNotificationReceivedListener(() => {});
-      const sub2 = Notifications.addNotificationResponseReceivedListener(() => {});
-      return () => {
-        sub1.remove();
-        sub2.remove();
-      };
-    } catch (_) {
-      return undefined;
-    }
+    let cleanup: (() => void) | undefined;
+    const id = setTimeout(() => {
+      try {
+        Notifications.setNotificationHandler({
+          handleNotification: async () => ({
+            shouldShowBanner: true,
+            shouldShowList: true,
+            shouldPlaySound: true,
+            shouldSetBadge: false,
+          }),
+        });
+        const sub1 = Notifications.addNotificationReceivedListener(() => {});
+        const sub2 = Notifications.addNotificationResponseReceivedListener(() => {});
+        cleanup = () => {
+          try {
+            sub1.remove();
+            sub2.remove();
+          } catch (_) {}
+        };
+      } catch (_) {
+        // Native module may not be ready (Expo Go first load)
+      }
+    }, 400);
+    return () => {
+      clearTimeout(id);
+      cleanup?.();
+    };
   }, []);
 
   useEffect(() => {
