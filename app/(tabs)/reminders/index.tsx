@@ -58,10 +58,10 @@ function isWordChar(c: string): boolean {
   return /[\w]/.test(c);
 }
 
-/** Accept day name when followed by space, newline, colon, hyphen, comma, or end. */
+/** Accept day name when followed by space, punctuation, digit, or end (reject only when followed by a letter). */
 function isAcceptableAfter(s: string): boolean {
   if (!s) return true;
-  return /[\s:\-–—.,]/.test(s) || !isWordChar(s);
+  return !/[a-zA-Z]/.test(s);
 }
 
 function findAllDayMatches(text: string): DayMatch[] {
@@ -129,21 +129,22 @@ function matchDayAtLineStart(line: string): { dayIndex: number; len: number } | 
 function extractWeekFromBlockText(
   text: string,
   isDayNameOnly: (s: string) => boolean
-): { day: string; activity: string | null }[] {
+): { week: { day: string; activity: string | null }[]; matchedIndices: Set<number> } {
   const week = emptyWeek();
+  const matchedIndices = new Set<number>();
   const matches = findAllDayMatches(text);
   for (let i = 0; i < matches.length; i++) {
     const m = matches[i];
+    matchedIndices.add(m.dayIndex);
     const nextStart = i + 1 < matches.length ? matches[i + 1].start : text.length;
     const raw = text
       .slice(m.end, nextStart)
       .replace(/^\s*[:\-–—.]\s*/, '')
       .trim();
-    if (raw && !isDayNameOnly(raw)) {
-      week[m.dayIndex] = { day: DAYS[m.dayIndex], activity: raw };
-    }
+    const activity = raw && !isDayNameOnly(raw) ? raw : null;
+    week[m.dayIndex] = { day: DAYS[m.dayIndex], activity };
   }
-  return week;
+  return { week, matchedIndices };
 }
 
 function parseWeekFromOcrText(fullText: string): { day: string; activity: string | null }[] {
@@ -162,11 +163,12 @@ function parseWeekFromOcrText(fullText: string): { day: string; activity: string
   };
 
   // Pass 1a: block-based on normalized text
-  const week1 = extractWeekFromBlockText(normalized, isDayNameOnly);
+  const { week: week1, matchedIndices: idx1 } = extractWeekFromBlockText(normalized, isDayNameOnly);
   // Pass 1b: block-based on typo-corrected text (catches "Tuesdav", "Wensday", etc.)
-  const week2 = extractWeekFromBlockText(corrected, isDayNameOnly);
-  // Merge: keep best activity per day (prefer longer when both found)
-  for (let i = 0; i < DAYS.length; i++) {
+  const { week: week2, matchedIndices: idx2 } = extractWeekFromBlockText(corrected, isDayNameOnly);
+  // Merge: keep every day found in either pass, prefer non-empty activity and longer when both have one
+  const allMatched = new Set([...idx1, ...idx2]);
+  for (const i of allMatched) {
     const a1 = week1[i].activity?.trim();
     const a2 = week2[i].activity?.trim();
     if (a1 && a2) {
@@ -175,6 +177,8 @@ function parseWeekFromOcrText(fullText: string): { day: string; activity: string
       week[i] = { day: DAYS[i], activity: a1 };
     } else if (a2) {
       week[i] = { day: DAYS[i], activity: a2 };
+    } else {
+      week[i] = { day: DAYS[i], activity: null };
     }
   }
 
