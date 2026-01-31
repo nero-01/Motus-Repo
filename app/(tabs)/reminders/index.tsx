@@ -94,32 +94,41 @@ function parseWeekFromOcrText(fullText: string): { day: string; activity: string
   const week = emptyWeek();
   const normalized = fullText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
-  // Pass 1: line-based — "Tuesday: Karate" or "Tue  Swimming" on one line
-  const lines = normalized.split('\n');
-  for (const line of lines) {
-    const hit = matchDayAtLineStart(line);
-    if (!hit) continue;
-    const trimmed = line.trimStart();
-    const rest = trimmed.slice(hit.len).replace(/^\s*[:\-–—]\s*/, '').trim();
-    const activity = rest.replace(/\s+/g, ' ').trim() || null;
-    if (activity && !week[hit.dayIndex].activity) {
-      week[hit.dayIndex] = { day: DAYS[hit.dayIndex], activity };
+  // Helper: true if s is exactly a day name (full or short)
+  const isDayNameOnly = (s: string) => {
+    const low = s.toLowerCase().trim();
+    if (!low) return false;
+    for (const { full, shorts } of DAY_PATTERNS) {
+      if (low === full || shorts.some(sh => low === sh)) return true;
     }
-  }
+    return false;
+  };
 
-  // Pass 2: block-based — text between day names (e.g. Monday ... Wednesday ...)
+  // Pass 1: block-based — find all day names in text and use text between them as activity
   const matches = findAllDayMatches(normalized);
   for (let i = 0; i < matches.length; i++) {
     const m = matches[i];
-    if (week[m.dayIndex].activity) continue;
     const nextStart = i + 1 < matches.length ? matches[i + 1].start : normalized.length;
-    const activity = normalized
+    const raw = normalized
       .slice(m.end, nextStart)
       .replace(/\n+/g, ' ')
       .replace(/^\s*[:\-–—]\s*/, '')
       .trim();
-    if (activity) {
-      week[m.dayIndex] = { day: DAYS[m.dayIndex], activity };
+    if (raw && !isDayNameOnly(raw)) {
+      week[m.dayIndex] = { day: DAYS[m.dayIndex], activity: raw };
+    }
+  }
+
+  // Pass 2: line-based — fill any still-empty days from lines like "Tuesday: Karate"
+  const lines = normalized.split('\n');
+  for (const line of lines) {
+    const hit = matchDayAtLineStart(line);
+    if (!hit || week[hit.dayIndex].activity) continue;
+    const trimmed = line.trimStart();
+    const rest = trimmed.slice(hit.len).replace(/^\s*[:\-–—]\s*/, '').trim();
+    const activity = rest.replace(/\s+/g, ' ').trim() || null;
+    if (activity && !isDayNameOnly(activity)) {
+      week[hit.dayIndex] = { day: DAYS[hit.dayIndex], activity };
     }
   }
   return week;
