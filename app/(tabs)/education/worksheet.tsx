@@ -205,7 +205,12 @@ function SimpleAdditionWorksheet({ worksheet, level, onComplete }: SimpleAdditio
 
   return (
     <View style={styles.container}>
-      <View style={styles.addScrollContent}>
+      <ScrollView
+        style={styles.addScrollView}
+        contentContainerStyle={styles.addScrollContent}
+        showsVerticalScrollIndicator={true}
+        keyboardShouldPersistTaps="handled"
+      >
         <Text style={styles.addTitle}>{worksheet.title}</Text>
         <Text style={styles.addInstructions}>Tap the correct answer for each.</Text>
         <View style={styles.addList}>
@@ -255,7 +260,7 @@ function SimpleAdditionWorksheet({ worksheet, level, onComplete }: SimpleAdditio
         >
           <Text style={styles.finishButtonText}>I'm done! ✓</Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -268,6 +273,20 @@ function getSightWordsCount(level: number): number {
   return 10;
 }
 
+/** Completely different word lists per level band: higher level = different (harder) words. */
+const SIGHT_WORDS_BY_LEVEL: string[][] = [
+  ['the', 'and', 'is', 'in', 'it', 'to', 'of', 'was', 'for', 'on', 'are', 'as', 'with', 'his', 'they', 'at', 'be', 'this', 'have', 'from'], // 1–2
+  ['said', 'each', 'she', 'how', 'when', 'some', 'come', 'would', 'could', 'should', 'there', 'their', 'what', 'about', 'out', 'many', 'then', 'them', 'these', 'so'], // 3–4
+  ['other', 'into', 'more', 'make', 'than', 'first', 'been', 'its', 'who', 'now', 'people', 'my', 'made', 'over', 'did', 'down', 'only', 'way', 'find', 'use'], // 5–6
+  ['water', 'long', 'little', 'very', 'after', 'words', 'called', 'just', 'where', 'most', 'know', 'get', 'through', 'back', 'much', 'before', 'right', 'means', 'old', 'any'], // 7–8
+  ['same', 'tell', 'boy', 'follow', 'came', 'want', 'show', 'also', 'around', 'form', 'three', 'small', 'set', 'put', 'end', 'does', 'another', 'well', 'large', 'must'], // 9–10
+];
+
+function getSightWordsListForLevel(level: number): string[] {
+  const band = level <= 2 ? 0 : level <= 4 ? 1 : level <= 6 ? 2 : level <= 8 ? 3 : 4;
+  return SIGHT_WORDS_BY_LEVEL[band] ?? SIGHT_WORDS_BY_LEVEL[0];
+}
+
 interface SightWordsWorksheetProps {
   worksheet: Worksheet;
   level: number;
@@ -277,10 +296,10 @@ interface SightWordsWorksheetProps {
 function SightWordsWorksheet({ worksheet, level, onComplete }: SightWordsWorksheetProps) {
   const wordCount = getSightWordsCount(level);
   const words = useMemo(() => {
-    const list = (worksheet.content?.words as string[] | undefined) ?? [];
+    const list = getSightWordsListForLevel(level);
     const take = Math.max(1, Math.min(wordCount, list.length));
     return shuffle([...list]).slice(0, take);
-  }, [level, worksheet.id]);
+  }, [level]);
   const [selectedByIndex, setSelectedByIndex] = useState<Record<number, string>>({});
   const [showReview, setShowReview] = useState(false);
 
@@ -703,13 +722,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
   },
-  // Simple Addition – compact, no scroll
-  addScrollContent: {
+  // Simple Addition – scrollable so all sums are visible
+  addScrollView: {
     flex: 1,
+  },
+  addScrollContent: {
     padding: 12,
     paddingTop: 16,
-    paddingBottom: 24,
-    justifyContent: 'flex-start',
+    paddingBottom: 32,
   },
   addTitle: {
     fontSize: 17,
