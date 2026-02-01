@@ -23,8 +23,8 @@ async function ensureAudioMode(): Promise<void> {
       playThroughEarpieceAndroid: false,
     });
     audioModeReady = true;
-  } catch {
-    // ignore
+  } catch (e) {
+    if (__DEV__) console.warn('worksheetSounds: setAudioModeAsync failed', e);
   }
 }
 
@@ -34,13 +34,13 @@ async function playLocalSound(source: number): Promise<void> {
     const { sound } = await Audio.Sound.createAsync(source);
     await sound.setVolumeAsync(VOLUME);
     sound.setOnPlaybackStatusUpdate((status) => {
-      if (status.isLoaded && status.didJustFinishAndNotReset) {
+      if (status.isLoaded && 'didJustFinish' in status && status.didJustFinish) {
         sound.unloadAsync().catch(() => {});
       }
     });
     await sound.playAsync();
-  } catch {
-    // fail silently
+  } catch (e) {
+    if (__DEV__) console.warn('worksheetSounds: play failed', e);
   }
 }
 
