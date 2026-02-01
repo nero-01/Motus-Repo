@@ -82,9 +82,13 @@ interface SimpleAdditionWorksheetProps {
 }
 
 function SimpleAdditionWorksheet({ worksheet, onComplete }: SimpleAdditionWorksheetProps) {
-  const problems = (worksheet.content?.problems as string[] | undefined) ?? [];
   const [selectedByIndex, setSelectedByIndex] = useState<Record<number, number>>({});
   const [showReview, setShowReview] = useState(false);
+
+  const problems = useMemo(
+    () => shuffle([...ADDITION_PROBLEM_POOL]).slice(0, 4),
+    []
+  );
 
   const problemsWithAnswers = useMemo(() => {
     return problems.map((prob) => {
