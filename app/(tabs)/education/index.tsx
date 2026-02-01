@@ -72,7 +72,7 @@ export default function EducationScreen() {
       setWorksheets(WORKSHEETS);
       setStats({ totalWorksheets: WORKSHEETS.length, currentLevel: level });
     } catch (e) {
-      console.error('Education load error:', e);
+      if (__DEV__) console.warn('Education load error:', e);
     } finally {
       setLoading(false);
       setRefreshing(false);

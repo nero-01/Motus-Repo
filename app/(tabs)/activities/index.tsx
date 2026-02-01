@@ -27,7 +27,7 @@ export default function ActivitiesScreen() {
   const loadData = async () => {
     try {
       setLoading(true);
-      console.log('Activities: Loading data...');
+      if (__DEV__) console.log('Activities: Loading data...');
       
       const [activitiesData, statsData] = await Promise.all([
         ActivityService.getActivities(),
@@ -37,9 +37,9 @@ export default function ActivitiesScreen() {
       setActivities(activitiesData);
       setFilteredActivities(activitiesData);
       setStats(statsData);
-      console.log('Activities: Data loaded successfully');
+      if (__DEV__) console.log('Activities: Data loaded successfully');
     } catch (error) {
-      console.error('Activities: Error loading data:', error);
+      if (__DEV__) console.warn('Activities: Error loading data:', error);
       Alert.alert('Error', 'Failed to load activities. Please try again.');
     } finally {
       setLoading(false);

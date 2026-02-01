@@ -19,7 +19,8 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "com.nero01.MotusTots"
+      "package": "com.nero01.MotusTots",
+      "versionCode": 1
     },
     "plugins": [
       "expo-router",

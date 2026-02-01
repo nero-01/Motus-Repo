@@ -57,30 +57,13 @@ export default function OnboardingScreen() {
     }
 
     try {
-      console.log('=== ONBOARDING DEBUG START ===');
-      console.log('User object:', {
-        id: user.id,
-        email: user.email,
-        isMock: user.id.startsWith('mock-'),
-        user_metadata: user.user_metadata
-      });
-      console.log('Family data:', {
-        name: familyName,
-        description: familyDescription,
-        childrenCount: children.length
-      });
-      
-      // Test Supabase connection first
-      console.log('Testing Supabase connection...');
       const connectionTest = await testSupabaseConnection();
-      console.log('Connection test result:', connectionTest);
-      
+
       if (!connectionTest.success) {
-        console.error('Supabase connection test failed:', connectionTest.error);
-        
+        if (__DEV__) console.warn('Onboarding: Supabase connection test failed', connectionTest.error);
+
         // Check if this is a mock user (for testing without database)
         if (user.id.startsWith('mock-')) {
-          console.log('Using mock mode for onboarding');
           Alert.alert(
             'Mock Mode',
             'Database not available. Using mock mode for testing.',
@@ -97,57 +80,38 @@ export default function OnboardingScreen() {
         Alert.alert('Connection Error', 'Unable to connect to the database. Please check your internet connection and try again.');
         return;
       }
-      console.log('Supabase connection test passed');
-      
-      // Test user authentication
-      console.log('Testing user authentication...');
+
       const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser();
-      console.log('Auth test result:', { user: currentUser?.id, error: authError });
-      
+
       if (authError || !currentUser) {
-        console.error('Authentication test failed:', authError);
+        if (__DEV__) console.warn('Onboarding: auth check failed', authError);
         Alert.alert('Authentication Error', 'User authentication failed. Please sign in again.');
         return;
       }
-      
-      // Test database schema
-      console.log('Testing database schema...');
+
       const schemaTest = await testDatabaseSchema();
-      console.log('Schema test result:', schemaTest);
-      
+
       if (!schemaTest.success) {
-        console.error('Database schema test failed:', schemaTest.error);
+        if (__DEV__) console.warn('Onboarding: schema test failed', schemaTest.error);
         Alert.alert('Database Error', 'Unable to connect to the database. Please check your database setup.');
         return;
       }
-      console.log('Database schema test passed');
-      
-      // Check if user profile exists in database
-      console.log('Checking user profile in database...');
+
       const { data: userProfile, error: profileError } = await supabase
         .from('users')
         .select('*')
         .eq('id', user.id)
         .single();
-      
-      console.log('User profile check result:', { profile: userProfile, error: profileError });
-      
+
       if (profileError && profileError.code !== 'PGRST116') {
-        console.error('User profile check failed:', profileError);
+        if (__DEV__) console.warn('Onboarding: profile check failed', profileError);
         Alert.alert('Profile Error', 'Unable to verify user profile. Please try signing in again.');
         return;
       }
-      
-      if (!userProfile) {
-        console.log('User profile not found, this might be expected for new users');
-      }
-      
-      // Get current family (should exist from user creation)
-      console.log('Getting current family');
+
       const family = await getCurrentFamily();
-      
+
       if (!family) {
-        console.log('No family found, creating mock family for demo');
         // For demo purposes, we'll just proceed without a family
         Alert.alert(
           'Demo Mode',
@@ -161,24 +125,15 @@ export default function OnboardingScreen() {
         );
         return;
       }
-      
-      console.log('Family found:', family.id);
 
-      // Add children if family exists
-      console.log('Adding children:', children.length);
       for (const child of children) {
-        console.log('Adding child:', child.name);
         await addChildToFamily({
           family_id: family.id,
           name: child.name,
           birth_date: child.birthDate,
           preferences: {},
         });
-        console.log('Child added successfully:', child.name);
       }
-
-      console.log('Onboarding completed successfully');
-      console.log('=== ONBOARDING DEBUG END ===');
 
       Alert.alert(
         'Success!',
@@ -191,26 +146,8 @@ export default function OnboardingScreen() {
         ]
       );
     } catch (error) {
-      console.error('=== ONBOARDING ERROR DEBUG ===');
-      console.error('Error object:', error);
-      console.error('Error type:', typeof error);
-      console.error('Error constructor:', error?.constructor?.name);
-      console.error('Error message:', error instanceof Error ? error.message : 'No message');
-      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
-      console.error('Error keys:', Object.keys(error || {}));
-      console.error('Error stringified:', JSON.stringify(error, null, 2));
-      console.error('User context:', {
-        id: user?.id,
-        email: user?.email,
-        isMock: user?.id?.startsWith('mock-')
-      });
-      console.error('Family context:', {
-        name: familyName,
-        description: familyDescription,
-        childrenCount: children.length
-      });
-      console.error('=== END ERROR DEBUG ===');
-      
+      if (__DEV__) console.warn('Onboarding error:', error);
+
       let errorMessage = 'Failed to set up family. Please try again.';
       
       if (error instanceof Error) {

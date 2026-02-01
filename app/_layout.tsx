@@ -11,7 +11,7 @@ export default function RootLayout() {
   return (
     <ErrorBoundary
       onError={(error, errorInfo) => {
-        console.error('Global error caught:', error, errorInfo);
+        if (__DEV__) console.error('Global error caught:', error, errorInfo);
       }}
     >
       <PaperProvider theme={theme}>

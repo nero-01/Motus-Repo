@@ -247,6 +247,6 @@ export class ActivityService {
     await new Promise(resolve => setTimeout(resolve, 300));
     
     // In a real app, you'd update the session in the database
-    console.log('Session ended:', { sessionId, rating, notes });
+    if (__DEV__) console.log('Session ended:', { sessionId, rating, notes });
   }
 }

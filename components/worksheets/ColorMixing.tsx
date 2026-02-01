@@ -179,7 +179,7 @@ export default function ColorMixing({ level = 1, onComplete, onNext }: ColorMixi
           try {
             handleColorDropped(colorId);
           } catch (err) {
-            console.error('ColorMixing handleColorDropped:', err);
+            if (__DEV__) console.warn('ColorMixing handleColorDropped:', err);
           }
         }
 

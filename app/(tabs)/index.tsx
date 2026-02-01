@@ -121,7 +121,7 @@ export default function DashboardScreen() {
   const loadDashboardData = async () => {
     try {
       setIsLoading(true);
-      console.log('Dashboard: Loading data...');
+      if (__DEV__) console.log('Dashboard: Loading data...');
       
       // Simulate loading
       await new Promise(resolve => setTimeout(resolve, 800));
@@ -170,9 +170,9 @@ export default function DashboardScreen() {
       
       setStats(mockStats);
       setRecentActivities(mockActivities);
-      console.log('Dashboard: Data loaded successfully');
+      if (__DEV__) console.log('Dashboard: Data loaded successfully');
     } catch (error) {
-      console.error('Dashboard: Error loading data:', error);
+      if (__DEV__) console.warn('Dashboard: Error loading data:', error);
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -198,7 +198,7 @@ export default function DashboardScreen() {
           text: 'Sign Out',
           style: 'destructive',
           onPress: async () => {
-            console.log('Signing out...');
+            if (__DEV__) console.log('Signing out...');
             await logout();
             router.replace('/(auth)/login');
           },
