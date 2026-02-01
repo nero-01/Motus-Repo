@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Button } from 'react-native-paper';
+import * as Speech from 'expo-speech';
 import LetterTracing from '../../../components/worksheets/LetterTracing';
 import ColorMixing from '../../../components/worksheets/ColorMixing';
 import AnimalHabitats from '../../../components/worksheets/AnimalHabitats';
@@ -56,6 +57,23 @@ function getWordOptions(correctWord: string, allWords: string[]): string[] {
   const others = allWords.filter((w) => w !== correctWord);
   const wrong = others.length >= 3 ? others.sort(() => Math.random() - 0.5).slice(0, 3) : others;
   return [correctWord, ...wrong].sort(() => Math.random() - 0.5);
+}
+
+/** Shuffle array in place and return it. */
+function shuffle<T>(arr: T[]): T[] {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/** Pool of simple addition problems (1–5 + 1–5) for random selection each attempt. */
+const ADDITION_PROBLEM_POOL: string[] = [];
+for (let a = 1; a <= 5; a++) {
+  for (let b = 1; b <= 5; b++) {
+    ADDITION_PROBLEM_POOL.push(`${a}+${b}`);
+  }
 }
 
 interface SimpleAdditionWorksheetProps {
