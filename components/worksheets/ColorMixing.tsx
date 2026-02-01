@@ -12,7 +12,15 @@ import { playSuccessSound, playFailSound } from '../../utils/worksheetSounds';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
+/** Number of color mixes by level (1–10). */
+function getColorMixCount(level: number): number {
+  if (level <= 3) return 3;
+  if (level <= 6) return 4;
+  return 5;
+}
+
 interface ColorMixingProps {
+  level?: number;
   onComplete: (accuracy: number) => void;
   onNext: () => void;
 }
@@ -63,7 +71,7 @@ interface DraggableColor {
   originalPosition: { x: number; y: number };
 }
 
-export default function ColorMixing({ onComplete, onNext }: ColorMixingProps) {
+export default function ColorMixing({ level = 1, onComplete, onNext }: ColorMixingProps) {
   const [currentMixIndex, setCurrentMixIndex] = useState(0);
   const [draggableColors, setDraggableColors] = useState<DraggableColor[]>([]);
   const [mixedColor, setMixedColor] = useState<string | null>(null);
@@ -80,7 +88,11 @@ export default function ColorMixing({ onComplete, onNext }: ColorMixingProps) {
   const draggableColorsRef = useRef<DraggableColor[]>([]);
   const mixingAreaPositionRef = useRef({ x: 0, y: 0, width: 0, height: 0 });
 
-  const colorMixes = useMemo(() => shuffleColorMixes(COLOR_MIXES), []);
+  const mixCount = getColorMixCount(level);
+  const colorMixes = useMemo(
+    () => shuffleColorMixes([...COLOR_MIXES]).slice(0, mixCount),
+    [mixCount]
+  );
   const currentMix = colorMixes[currentMixIndex];
 
   // Keep refs in sync so pan responder callbacks always see latest state

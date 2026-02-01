@@ -19,7 +19,15 @@ import {
 
 const { width: screenWidth } = Dimensions.get('window');
 
+/** Question count by level (1–10). */
+function getCommunityHelpersQuestionCount(level: number): number {
+  if (level <= 2) return 3;
+  if (level <= 5) return 5;
+  return 7;
+}
+
 interface CommunityHelpersProps {
+  level?: number;
   onComplete: (accuracy: number) => void;
   onNext: () => void;
 }
@@ -50,7 +58,7 @@ const communityHelpers: HelperToolPair[] = [
   { helper: 'Electrician', tool: 'Light Bulb', helperEmoji: '⚡', toolEmoji: '💡' },
 ];
 
-export default function CommunityHelpers({ onComplete, onNext }: CommunityHelpersProps) {
+export default function CommunityHelpers({ level = 1, onComplete, onNext }: CommunityHelpersProps) {
   const [selectedPairs, setSelectedPairs] = useState<HelperToolPair[]>([]);
   const [currentQuestionNumber, setCurrentQuestionNumber] = useState(0);
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
@@ -61,10 +69,12 @@ export default function CommunityHelpers({ onComplete, onNext }: CommunityHelper
   const [feedback, setFeedback] = useState<'correct' | 'incorrect' | null>(null);
   const [questionTools, setQuestionTools] = useState<string[][]>([]);
 
-  // Select 5 random pairs in random order each time the worksheet loads
+  const questionCount = getCommunityHelpersQuestionCount(level);
+
+  // Select N random pairs in random order each time the worksheet loads
   useEffect(() => {
     const shuffled = shuffle([...communityHelpers]);
-    const selected = shuffled.slice(0, 5);
+    const selected = shuffled.slice(0, questionCount);
     setSelectedPairs(selected);
 
     const allTools = [...new Set(communityHelpers.map(pair => pair.tool))];
@@ -77,7 +87,7 @@ export default function CommunityHelpers({ onComplete, onNext }: CommunityHelper
 
     setQuestionTools(toolsForQuestions);
     setIsLoading(false);
-  }, []);
+  }, [questionCount]);
 
   // Don't render until pairs are selected
   if (isLoading || selectedPairs.length === 0 || questionTools.length === 0) {
@@ -157,7 +167,7 @@ export default function CommunityHelpers({ onComplete, onNext }: CommunityHelper
   return (
     <View style={styles.container}>
       <Text style={styles.progress}>
-        Question {currentQuestionNumber + 1} of 5
+        Question {currentQuestionNumber + 1} of {questionCount}
       </Text>
 
       <Text style={styles.question}>

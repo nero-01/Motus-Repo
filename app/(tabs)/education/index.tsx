@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { WORKSHEETS, type Worksheet } from './worksheetsData';
+import { getEducationLevel, setEducationLevel, MIN_LEVEL, MAX_LEVEL, clampLevel } from './educationLevel';
 
 interface EducationStats {
   totalWorksheets: number;
@@ -57,14 +58,19 @@ export default function EducationScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [stats, setStats] = useState<EducationStats | null>(null);
+  const [educationLevel, setEducationLevelState] = useState<number>(MIN_LEVEL);
   const { width } = useWindowDimensions();
 
   const loadData = async () => {
     try {
       setLoading(true);
-      await new Promise((r) => setTimeout(r, 400));
+      const [level] = await Promise.all([
+        getEducationLevel(),
+        new Promise<void>((r) => setTimeout(r, 200)),
+      ]);
+      setEducationLevelState(level);
       setWorksheets(WORKSHEETS);
-      setStats({ totalWorksheets: WORKSHEETS.length, currentLevel: 2 });
+      setStats({ totalWorksheets: WORKSHEETS.length, currentLevel: level });
     } catch (e) {
       console.error('Education load error:', e);
     } finally {
@@ -75,6 +81,13 @@ export default function EducationScreen() {
 
   useEffect(() => { loadData(); }, []);
 
+  const handleLevelChange = async (level: number) => {
+    const clamped = clampLevel(level);
+    setEducationLevelState(clamped);
+    setStats((prev) => (prev ? { ...prev, currentLevel: clamped } : null));
+    await setEducationLevel(clamped);
+  };
+
   const filtered = worksheets.filter((w) =>
     selectedCategory === 'all' || w.category === selectedCategory
   );
@@ -82,7 +95,7 @@ export default function EducationScreen() {
   const openWorksheet = (worksheet: Worksheet) => {
     router.push({
       pathname: '/education/worksheet',
-      params: { id: worksheet.id, _t: String(Date.now()) },
+      params: { id: worksheet.id, _t: String(Date.now()), level: String(educationLevel) },
     });
   };
 
@@ -107,9 +120,35 @@ export default function EducationScreen() {
         <Text style={styles.title}>📚 Learning</Text>
         {stats && (
           <Text style={styles.subtitle}>
-            {stats.totalWorksheets} activities · Level {stats.currentLevel}
+            {stats.totalWorksheets} activities · Level {educationLevel} of {MAX_LEVEL}
           </Text>
         )}
+      </View>
+
+      {/* Level selector: choose your comfort level (1–10) */}
+      <View style={styles.levelSection}>
+        <Text style={styles.levelLabel}>Your level (tap to change)</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.levelChips}
+        >
+          {Array.from({ length: MAX_LEVEL - MIN_LEVEL + 1 }, (_, i) => MIN_LEVEL + i).map((lvl) => {
+            const active = educationLevel === lvl;
+            return (
+              <TouchableOpacity
+                key={lvl}
+                style={[styles.levelChip, active && styles.levelChipActive]}
+                onPress={() => handleLevelChange(lvl)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.levelChipText, active && styles.levelChipTextActive]}>
+                  {lvl}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
       {/* Single row of category chips */}
@@ -231,6 +270,43 @@ const styles = StyleSheet.create({
     color: '#555',
   },
   chipTextActive: {
+    color: '#fff',
+  },
+  levelSection: {
+    backgroundColor: '#fff',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e8e8e8',
+  },
+  levelLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 6,
+    paddingHorizontal: 4,
+  },
+  levelChips: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingRight: 16,
+  },
+  levelChip: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#f0f0f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  levelChipActive: {
+    backgroundColor: '#006A60',
+  },
+  levelChipText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#555',
+  },
+  levelChipTextActive: {
     color: '#fff',
   },
   scroll: {

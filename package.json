@@ -80,7 +80,8 @@
     "react-native-webview": "13.15.0",
     "expo-file-system": "~19.0.21",
     "expo-speech": "~14.0.8",
-    "expo-av": "~16.0.8"
+    "expo-av": "~16.0.8",
+    "expo-image-manipulator": "~14.0.8"
   },
   "devDependencies": {
     "@storybook/addon-essentials": "^7.5.0",

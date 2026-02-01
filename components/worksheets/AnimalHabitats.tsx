@@ -20,7 +20,15 @@ import {
 
 const { width: screenWidth } = Dimensions.get('window');
 
+/** Question count by level (1–10). */
+function getAnimalHabitatsQuestionCount(level: number): number {
+  if (level <= 2) return 3;
+  if (level <= 5) return 5;
+  return 7;
+}
+
 interface AnimalHabitatsProps {
+  level?: number;
   onComplete: (accuracy: number) => void;
   onNext: () => void;
 }
@@ -51,7 +59,7 @@ const animalHabitats: AnimalHabitatPair[] = [
   { animal: 'Deer', habitat: 'Forest', animalEmoji: '🦌', habitatEmoji: '🌲' },
 ];
 
-export default function AnimalHabitats({ onComplete, onNext }: AnimalHabitatsProps) {
+export default function AnimalHabitats({ level = 1, onComplete, onNext }: AnimalHabitatsProps) {
   const [selectedAnimals, setSelectedAnimals] = useState<AnimalHabitatPair[]>([]);
   const [currentQuestionNumber, setCurrentQuestionNumber] = useState(0);
   const [selectedHabitat, setSelectedHabitat] = useState<string | null>(null);
@@ -60,12 +68,14 @@ export default function AnimalHabitats({ onComplete, onNext }: AnimalHabitatsPro
   const [correctAnswers, setCorrectAnswers] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Select 5 random animals in random order each time the worksheet loads
+  const questionCount = getAnimalHabitatsQuestionCount(level);
+
+  // Select N random animals in random order each time the worksheet loads
   useEffect(() => {
     const shuffled = shuffle([...animalHabitats]);
-    setSelectedAnimals(shuffled.slice(0, 5));
+    setSelectedAnimals(shuffled.slice(0, questionCount));
     setIsLoading(false);
-  }, []);
+  }, [questionCount]);
 
   // Don't render until animals are selected
   if (isLoading || selectedAnimals.length === 0) {
@@ -123,15 +133,14 @@ export default function AnimalHabitats({ onComplete, onNext }: AnimalHabitatsPro
   };
 
   const handleNext = () => {
-    if (currentQuestionNumber < 4) { // 5 questions total (0-4)
+    if (currentQuestionNumber < questionCount - 1) {
       setCurrentQuestionNumber(currentQuestionNumber + 1);
       setSelectedHabitat(null);
       setHasAnswered(false);
       setAccuracy(0);
-      onNext(); // Call the education screen's onNext to update question counter
+      onNext();
     } else {
-      // All questions completed
-      const finalAccuracy = Math.round((100 * correctAnswers) / 5);
+      const finalAccuracy = Math.round((100 * correctAnswers) / questionCount);
       onComplete(finalAccuracy);
     }
   };
@@ -144,7 +153,7 @@ export default function AnimalHabitats({ onComplete, onNext }: AnimalHabitatsPro
   return (
     <View style={styles.container}>
       <Text style={styles.progress}>
-        Question {currentQuestionNumber + 1} of 5
+        Question {currentQuestionNumber + 1} of {questionCount}
       </Text>
 
       <Text style={styles.question}>

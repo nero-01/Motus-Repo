@@ -17,8 +17,17 @@ import AnimalHabitats from '../../../components/worksheets/AnimalHabitats';
 import CommunityHelpers from '../../../components/worksheets/CommunityHelpers';
 import { WORKSHEETS, type Worksheet } from './worksheetsData';
 
+const MIN_LEVEL = 1;
+const MAX_LEVEL = 10;
+
+function parseLevel(levelParam: string | undefined): number {
+  if (levelParam == null) return MIN_LEVEL;
+  const n = parseInt(levelParam, 10);
+  return Number.isFinite(n) ? Math.max(MIN_LEVEL, Math.min(MAX_LEVEL, n)) : MIN_LEVEL;
+}
+
 function getDifficultyStars(difficulty: number) {
-  return '⭐'.repeat(difficulty);
+  return '⭐'.repeat(Math.min(5, Math.max(1, difficulty)));
 }
 
 /** Parse "a+b" and return the sum; otherwise return null. */
@@ -28,26 +37,27 @@ function parseAddition(problem: string): number | null {
   return parseInt(match[1], 10) + parseInt(match[2], 10);
 }
 
-/** Build answer options: one correct, three wrong (nearby numbers). */
-function getAnswerOptions(correct: number): number[] {
+/** Build answer options: one correct, three wrong (nearby numbers). maxSum for level scaling. */
+function getAnswerOptions(correct: number, maxSum: number = 30): number[] {
   const used = new Set<number>([correct]);
   const options = [correct];
   for (let offset of [1, 2, -1, -2, 3, -3]) {
     if (options.length >= 4) break;
     const n = correct + offset;
-    if (n >= 0 && n <= 20 && !used.has(n)) {
+    if (n >= 0 && n <= maxSum && !used.has(n)) {
       used.add(n);
       options.push(n);
     }
   }
   while (options.length < 4) {
-    const n = Math.max(0, correct + (options.length - 2));
+    const n = Math.max(0, Math.min(maxSum, correct + (options.length - 2)));
     if (!used.has(n)) {
       used.add(n);
       options.push(n);
     } else {
-      used.add(n + 5);
-      options.push(n + 5);
+      const alt = Math.max(0, Math.min(maxSum, n + 5));
+      used.add(alt);
+      options.push(alt);
     }
   }
   return options.sort(() => Math.random() - 0.5);
@@ -69,38 +79,52 @@ function shuffle<T>(arr: T[]): T[] {
   return arr;
 }
 
-/** Pool of simple addition problems (1–5 + 1–5) for random selection each attempt. */
-const ADDITION_PROBLEM_POOL: string[] = [];
-for (let a = 1; a <= 5; a++) {
-  for (let b = 1; b <= 5; b++) {
-    ADDITION_PROBLEM_POOL.push(`${a}+${b}`);
+/** Build addition problem pool by level: level 1–2 small numbers/few, level 9–10 larger/more. */
+function getAdditionConfig(level: number): { maxAddend: number; count: number } {
+  if (level <= 2) return { maxAddend: 5, count: 4 };
+  if (level <= 4) return { maxAddend: 8, count: 5 };
+  if (level <= 6) return { maxAddend: 10, count: 6 };
+  if (level <= 8) return { maxAddend: 12, count: 7 };
+  return { maxAddend: 15, count: 8 };
+}
+
+function buildAdditionPool(maxAddend: number): string[] {
+  const pool: string[] = [];
+  for (let a = 1; a <= maxAddend; a++) {
+    for (let b = 1; b <= maxAddend; b++) {
+      pool.push(`${a}+${b}`);
+    }
   }
+  return pool;
 }
 
 interface SimpleAdditionWorksheetProps {
   worksheet: Worksheet;
+  level: number;
   onComplete: (accuracy: number) => void;
 }
 
-function SimpleAdditionWorksheet({ worksheet, onComplete }: SimpleAdditionWorksheetProps) {
+function SimpleAdditionWorksheet({ worksheet, level, onComplete }: SimpleAdditionWorksheetProps) {
   const [selectedByIndex, setSelectedByIndex] = useState<Record<number, number>>({});
   const [showReview, setShowReview] = useState(false);
 
-  const problems = useMemo(
-    () => shuffle([...ADDITION_PROBLEM_POOL]).slice(0, 4),
-    []
-  );
+  const { maxAddend, count } = getAdditionConfig(level);
+  const problems = useMemo(() => {
+    const pool = buildAdditionPool(maxAddend);
+    return shuffle([...pool]).slice(0, count);
+  }, [maxAddend, count]);
 
+  const maxSum = maxAddend * 2;
   const problemsWithAnswers = useMemo(() => {
     return problems.map((prob) => {
       const correct = parseAddition(prob);
       return {
         problem: prob,
         correct: correct ?? 0,
-        options: getAnswerOptions(correct ?? 0),
+        options: getAnswerOptions(correct ?? 0, maxSum),
       };
     });
-  }, [problems]);
+  }, [problems, maxSum]);
 
   const handleSelect = (problemIndex: number, value: number) => {
     const problem = problemsWithAnswers[problemIndex];
@@ -235,23 +259,38 @@ function SimpleAdditionWorksheet({ worksheet, onComplete }: SimpleAdditionWorksh
   );
 }
 
+/** Number of sight-word prompts by level (1–10). */
+function getSightWordsCount(level: number): number {
+  if (level <= 2) return 4;
+  if (level <= 5) return 6;
+  if (level <= 8) return 8;
+  return 10;
+}
+
 interface SightWordsWorksheetProps {
   worksheet: Worksheet;
+  level: number;
   onComplete: (accuracy: number) => void;
 }
 
-function SightWordsWorksheet({ worksheet, onComplete }: SightWordsWorksheetProps) {
-  const words = (worksheet.content?.words as string[] | undefined) ?? [];
+function SightWordsWorksheet({ worksheet, level, onComplete }: SightWordsWorksheetProps) {
+  const allWords = (worksheet.content?.words as string[] | undefined) ?? [];
+  const wordCount = getSightWordsCount(level);
+  const words = useMemo(() => {
+    const list = (worksheet.content?.words as string[] | undefined) ?? [];
+    const take = Math.min(wordCount, list.length) || list.length;
+    return shuffle([...list]).slice(0, take);
+  }, [worksheet.content?.words, wordCount]);
   const [selectedByIndex, setSelectedByIndex] = useState<Record<number, string>>({});
   const [showReview, setShowReview] = useState(false);
 
-  const [promptsWithOptions] = useState(() => {
+  const promptsWithOptions = useMemo(() => {
     const shuffled = shuffle([...words]);
     return shuffled.map((word) => ({
       target: word,
       options: getWordOptions(word, words),
     }));
-  });
+  }, [words]);
 
   const handleSelect = (questionIndex: number, word: string) => {
     const prompt = promptsWithOptions[questionIndex];
@@ -403,20 +442,31 @@ function SightWordsWorksheet({ worksheet, onComplete }: SightWordsWorksheetProps
   );
 }
 
+/** Letter count by level (1–10) for letter tracing: more letters at higher level. */
+function getLetterTracingCount(level: number): number {
+  if (level <= 2) return 5;
+  if (level <= 5) return 10;
+  if (level <= 8) return 20;
+  return 26;
+}
+
 export default function WorksheetScreen() {
-  const { id, _t } = useLocalSearchParams<{ id: string; _t?: string }>();
+  const { id, _t, level: levelParam } = useLocalSearchParams<{ id: string; _t?: string; level?: string }>();
   const router = useRouter();
   const { height } = useWindowDimensions();
   const [score, setScore] = useState<number | null>(null);
 
+  const level = parseLevel(levelParam);
   const worksheet = id ? WORKSHEETS.find((w) => w.id === id) : null;
   const sessionKey = _t ?? id ?? '0';
 
   const letterToShow = useMemo(() => {
     if (!worksheet || worksheet.type !== 'letter_tracing') return 'A';
-    const letters = (worksheet.content?.letters as string[] | undefined) ?? ['A'];
-    return shuffle([...letters])[0] ?? 'A';
-  }, []);
+    const allLetters = (worksheet.content?.letters as string[] | undefined) ?? ['A'];
+    const count = getLetterTracingCount(level);
+    const pool = shuffle([...allLetters]).slice(0, Math.min(count, allLetters.length));
+    return pool[0] ?? 'A';
+  }, [worksheet?.id, worksheet?.type, worksheet?.content?.letters, level]);
 
   const handleComplete = (accuracy: number) => {
     setScore(accuracy);
@@ -477,7 +527,7 @@ export default function WorksheetScreen() {
     return (
       <View key={sessionKey} style={styles.container}>
         <View style={[styles.worksheetArea, { minHeight: height - 120 }]}>
-          <ColorMixing onComplete={handleComplete} onNext={() => {}} />
+          <ColorMixing level={level} onComplete={handleComplete} onNext={() => {}} />
         </View>
       </View>
     );
@@ -487,7 +537,7 @@ export default function WorksheetScreen() {
     return (
       <View key={sessionKey} style={styles.container}>
         <View style={[styles.worksheetArea, { minHeight: height - 120 }]}>
-          <AnimalHabitats onComplete={handleComplete} onNext={() => {}} />
+          <AnimalHabitats level={level} onComplete={handleComplete} onNext={() => {}} />
         </View>
       </View>
     );
@@ -497,7 +547,7 @@ export default function WorksheetScreen() {
     return (
       <View key={sessionKey} style={styles.container}>
         <View style={[styles.worksheetArea, { minHeight: height - 120 }]}>
-          <CommunityHelpers onComplete={handleComplete} onNext={() => {}} />
+          <CommunityHelpers level={level} onComplete={handleComplete} onNext={() => {}} />
         </View>
       </View>
     );
@@ -508,6 +558,7 @@ export default function WorksheetScreen() {
       <View key={sessionKey} style={styles.container}>
         <SimpleAdditionWorksheet
           worksheet={worksheet}
+          level={level}
           onComplete={handleComplete}
         />
       </View>
@@ -517,7 +568,7 @@ export default function WorksheetScreen() {
   if (type === 'reading') {
     return (
       <View key={sessionKey} style={styles.container}>
-        <SightWordsWorksheet worksheet={worksheet} onComplete={handleComplete} />
+        <SightWordsWorksheet worksheet={worksheet} level={level} onComplete={handleComplete} />
       </View>
     );
   }

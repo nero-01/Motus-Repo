@@ -5,8 +5,12 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { WebView } from 'react-native-webview';
 import ParentSheetImage from '../../../assets/parent_involvement_sheet_winter.png';
+
+const OCR_MAX_WIDTH = 1200;
+const OCR_JPEG_QUALITY = 0.85;
 
 const REMINDERS_CHANNEL_ID = 'motustots-reminders';
 
@@ -358,29 +362,22 @@ export default function RemindersTabScreen() {
     return true;
   };
 
-  const pickImage = async () => {
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 5],
-      quality: 1,
-    });
-    if (!res.canceled && res.assets?.[0]) {
-      setPlannerImage(res.assets[0].uri);
-      await Notifications.cancelAllScheduledNotificationsAsync();
-      setRemindersEnabled(false);
-      setWeek(emptyWeek());
-    }
-  };
-
-  const readFromImage = async () => {
-    if (!plannerImage) {
-      Alert.alert('No image', 'Upload a weekly planner image first.');
-      return;
-    }
+  /** Resize/compress image for faster OCR, then start OCR. Falls back to raw file if manipulation fails. */
+  const startOcrFromUri = async (uri: string) => {
     setReadingImage(true);
     try {
-      const base64 = await FileSystem.readAsStringAsync(plannerImage, { encoding: FileSystem.EncodingType.Base64 });
+      let base64: string;
+      try {
+        const result = await manipulateAsync(
+          uri,
+          [{ resize: { width: OCR_MAX_WIDTH } }],
+          { compress: OCR_JPEG_QUALITY, format: SaveFormat.JPEG, base64: true }
+        );
+        base64 = result.base64 ?? '';
+        if (!base64) throw new Error('No base64');
+      } catch {
+        base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+      }
       ocrBase64Ref.current = base64;
       setOcrModalVisible(true);
     } catch (e) {
@@ -389,7 +386,32 @@ export default function RemindersTabScreen() {
     }
   };
 
-  const onOcrMessage = (event: { nativeEvent: { data: string } }) => {
+  const pickImage = async () => {
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 5],
+      quality: 1,
+    });
+    if (!res.canceled && res.assets?.[0]) {
+      const uri = res.assets[0].uri;
+      setPlannerImage(uri);
+      await Notifications.cancelAllScheduledNotificationsAsync();
+      setRemindersEnabled(false);
+      setWeek(emptyWeek());
+      await startOcrFromUri(uri);
+    }
+  };
+
+  const readFromImage = async () => {
+    if (!plannerImage) {
+      Alert.alert('No image', 'Upload a weekly planner image first.');
+      return;
+    }
+    await startOcrFromUri(plannerImage);
+  };
+
+  const onOcrMessage = async (event: { nativeEvent: { data: string } }) => {
     const data = event.nativeEvent.data;
     if (data === 'READY') {
       const b64 = ocrBase64Ref.current;
@@ -405,9 +427,13 @@ export default function RemindersTabScreen() {
         Alert.alert('Read failed', payload.error);
       } else if (payload.text != null) {
         const parsed = parseWeekFromOcrText(payload.text);
-        setWeek(parsed);
         const filled = parsed.filter((e) => e.activity?.trim()).length;
-        Alert.alert('Done', filled > 0 ? `Found ${filled} day(s). Tap Enable Reminders.` : 'No day names found. Try a clearer image.');
+        setWeek(parsed);
+        if (filled > 0) {
+          await enableReminders(parsed);
+        } else {
+          Alert.alert('Done', 'No day names found. Try a clearer image.');
+        }
       }
     } catch (_) {}
     ocrBase64Ref.current = null;
@@ -422,15 +448,16 @@ export default function RemindersTabScreen() {
     Alert.alert('Cleared', 'Reminders cleared. Tap Read from image or Enable when ready.');
   };
 
-  const enableReminders = async () => {
+  const enableReminders = async (weekOverride?: { day: string; activity: string | null }[]) => {
+    const w = weekOverride ?? week;
     if (!(await ensurePermission())) return;
     await Notifications.cancelAllScheduledNotificationsAsync();
 
     const now = new Date();
     let count = 0;
 
-    for (let i = 0; i < week.length; i++) {
-      const a = week[i].activity?.trim();
+    for (let i = 0; i < w.length; i++) {
+      const a = w[i].activity?.trim();
       if (!a) continue;
 
       const prevDayGetDay = i;
@@ -443,7 +470,7 @@ export default function RemindersTabScreen() {
       const sec = Math.max(1, Math.floor((at.getTime() - Date.now()) / 1000));
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: `Reminder: ${week[i].day}`,
+          title: `Reminder: ${w[i].day}`,
           body: a,
           sound: true,
           ...(Platform.OS === 'android' && { channelId: REMINDERS_CHANNEL_ID }),
@@ -458,6 +485,7 @@ export default function RemindersTabScreen() {
     }
 
     setRemindersEnabled(true);
+    if (weekOverride) setWeek(weekOverride);
     Alert.alert('Enabled', `Scheduled ${count} reminder(s) for the week.`);
   };
 
@@ -539,7 +567,7 @@ export default function RemindersTabScreen() {
 
       <View style={{ marginTop: 20, marginHorizontal: 20, marginBottom: 20 }}>
         <TouchableOpacity
-          onPress={enableReminders}
+          onPress={() => enableReminders()}
           disabled={remindersEnabled}
           style={{ backgroundColor: remindersEnabled ? '#bdbdbd' : '#006A60', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 6, marginBottom: 10 }}
         >

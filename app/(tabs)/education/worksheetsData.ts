@@ -11,6 +11,7 @@ export interface Worksheet {
   image_url?: string;
 }
 
+/** Difficulty is 1–10. Higher = more challenging content for that activity type. */
 export const WORKSHEETS: Worksheet[] = [
   {
     id: '1',
@@ -22,7 +23,7 @@ export const WORKSHEETS: Worksheet[] = [
     estimated_time: 10,
     type: 'letter_tracing',
     content: {
-      letters: ['A', 'B', 'C', 'D', 'E'],
+      letters: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'],
       instructions: 'Trace each letter carefully',
     },
   },
@@ -45,7 +46,7 @@ export const WORKSHEETS: Worksheet[] = [
     title: 'Animal Habitats',
     description: 'Learn where different animals live',
     category: 'science',
-    difficulty: 2,
+    difficulty: 3,
     age_range: '5-7',
     estimated_time: 12,
     type: 'animal_habitats',
@@ -59,7 +60,7 @@ export const WORKSHEETS: Worksheet[] = [
     title: 'Community Helpers',
     description: 'Learn about people who help our community',
     category: 'social_studies',
-    difficulty: 2,
+    difficulty: 3,
     age_range: '4-6',
     estimated_time: 10,
     type: 'community_helpers',
@@ -71,9 +72,9 @@ export const WORKSHEETS: Worksheet[] = [
   {
     id: '5',
     title: 'Simple Addition',
-    description: 'Practice adding numbers 1-10',
+    description: 'Practice adding numbers (difficulty by level)',
     category: 'math',
-    difficulty: 1,
+    difficulty: 2,
     age_range: '5-7',
     estimated_time: 8,
     type: 'math',
@@ -87,12 +88,12 @@ export const WORKSHEETS: Worksheet[] = [
     title: 'Sight Words',
     description: 'Learn common sight words',
     category: 'reading',
-    difficulty: 1,
+    difficulty: 2,
     age_range: '4-6',
     estimated_time: 10,
     type: 'reading',
     content: {
-      words: ['the', 'and', 'is', 'in', 'it'],
+      words: ['the', 'and', 'is', 'in', 'it', 'to', 'of', 'was', 'for', 'on', 'are', 'as', 'with', 'his', 'they', 'at', 'be', 'this', 'have', 'from'],
       instructions: 'Read and recognize these words',
     },
   },
