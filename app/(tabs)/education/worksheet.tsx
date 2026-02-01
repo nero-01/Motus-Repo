@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
   useWindowDimensions,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -18,6 +17,188 @@ import { WORKSHEETS, type Worksheet } from './worksheetsData';
 
 function getDifficultyStars(difficulty: number) {
   return '⭐'.repeat(difficulty);
+}
+
+/** Parse "a+b" and return the sum; otherwise return null. */
+function parseAddition(problem: string): number | null {
+  const match = problem.match(/^(\d+)\s*\+\s*(\d+)$/);
+  if (!match) return null;
+  return parseInt(match[1], 10) + parseInt(match[2], 10);
+}
+
+/** Build answer options: one correct, three wrong (nearby numbers). */
+function getAnswerOptions(correct: number): number[] {
+  const used = new Set<number>([correct]);
+  const options = [correct];
+  for (let offset of [1, 2, -1, -2, 3, -3]) {
+    if (options.length >= 4) break;
+    const n = correct + offset;
+    if (n >= 0 && n <= 20 && !used.has(n)) {
+      used.add(n);
+      options.push(n);
+    }
+  }
+  while (options.length < 4) {
+    const n = Math.max(0, correct + (options.length - 2));
+    if (!used.has(n)) {
+      used.add(n);
+      options.push(n);
+    } else {
+      used.add(n + 5);
+      options.push(n + 5);
+    }
+  }
+  return options.sort(() => Math.random() - 0.5);
+}
+
+interface SimpleAdditionWorksheetProps {
+  worksheet: Worksheet;
+  onComplete: (accuracy: number) => void;
+}
+
+function SimpleAdditionWorksheet({ worksheet, onComplete }: SimpleAdditionWorksheetProps) {
+  const problems = (worksheet.content?.problems as string[] | undefined) ?? [];
+  const [selectedByIndex, setSelectedByIndex] = useState<Record<number, number>>({});
+  const [showReview, setShowReview] = useState(false);
+
+  const problemsWithAnswers = useMemo(() => {
+    return problems.map((prob) => {
+      const correct = parseAddition(prob);
+      return {
+        problem: prob,
+        correct: correct ?? 0,
+        options: getAnswerOptions(correct ?? 0),
+      };
+    });
+  }, [problems]);
+
+  const handleSelect = (problemIndex: number, value: number) => {
+    setSelectedByIndex((prev) => ({ ...prev, [problemIndex]: value }));
+  };
+
+  const handleDone = () => {
+    const total = problemsWithAnswers.length;
+    if (total === 0) {
+      onComplete(0);
+      return;
+    }
+    setShowReview(true);
+  };
+
+  const handleSeeScore = () => {
+    const total = problemsWithAnswers.length;
+    let correct = 0;
+    problemsWithAnswers.forEach((p, i) => {
+      if (selectedByIndex[i] === p.correct) correct++;
+    });
+    onComplete(Math.round((100 * correct) / total));
+  };
+
+  // Review screen: show right/wrong for each problem, then "See my score"
+  if (showReview) {
+    return (
+      <View style={styles.container}>
+        <ScrollView
+          contentContainerStyle={styles.addReviewScroll}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.addReviewTitle}>Check your answers</Text>
+          <Text style={styles.addReviewSubtitle}>Here's what was right and wrong.</Text>
+          <View style={styles.addReviewList}>
+            {problemsWithAnswers.map((item, i) => {
+              const chosen = selectedByIndex[i];
+              const isCorrect = chosen === item.correct;
+              return (
+                <View
+                  key={i}
+                  style={[
+                    styles.addReviewItemWrap,
+                    isCorrect ? styles.addReviewItemCorrect : styles.addReviewItemWrong,
+                  ]}
+                >
+                  <Text style={styles.addReviewItemProblem}>{item.problem} = {item.correct}</Text>
+                  <View style={styles.addReviewItemResult}>
+                    {isCorrect ? (
+                      <Text style={styles.addReviewCorrectText}>✓ Correct! You picked {chosen}.</Text>
+                    ) : (
+                      <>
+                        <Text style={styles.addReviewWrongText}>
+                          ✗ You picked {chosen ?? '—'}. Correct answer is {item.correct}.
+                        </Text>
+                      </>
+                    )}
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+          <TouchableOpacity
+            style={[styles.finishButton, styles.addFinishButton]}
+            onPress={handleSeeScore}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.finishButtonText}>See my score</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.addScrollContent}>
+        <Text style={styles.addTitle}>{worksheet.title}</Text>
+        <Text style={styles.addInstructions}>Tap the correct answer for each.</Text>
+        <View style={styles.addList}>
+          {problemsWithAnswers.map((item, i) => (
+            <View key={i} style={styles.addItemWrap}>
+              <Text style={styles.addItem}>{item.problem} = ?</Text>
+              <View style={styles.addOptions}>
+                {item.options.map((opt) => {
+                  const selected = selectedByIndex[i] === opt;
+                  const correct = item.correct === opt;
+                  const showCorrect = selectedByIndex[i] != null;
+                  const isRightAnswer = showCorrect && selected && correct;
+                  const isWrongAnswer = showCorrect && selected && !correct;
+                  return (
+                    <TouchableOpacity
+                      key={opt}
+                      style={[
+                        styles.addOptionBtn,
+                        selected && styles.addOptionBtnSelected,
+                        isRightAnswer && styles.addOptionBtnCorrect,
+                        isWrongAnswer && styles.addOptionBtnWrong,
+                      ]}
+                      onPress={() => handleSelect(i, opt)}
+                      activeOpacity={0.8}
+                    >
+                      <Text
+                        style={[
+                          styles.addOptionText,
+                          selected && styles.addOptionTextSelected,
+                          isRightAnswer && styles.addOptionTextCorrect,
+                          isWrongAnswer && styles.addOptionTextWrong,
+                        ]}
+                      >
+                        {opt}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          ))}
+        </View>
+        <TouchableOpacity
+          style={[styles.finishButton, styles.addFinishButton]}
+          onPress={handleDone}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.finishButtonText}>I'm done! ✓</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 }
 
 export default function WorksheetScreen() {
@@ -115,13 +296,19 @@ export default function WorksheetScreen() {
     );
   }
 
-  if (type === 'math' || type === 'reading') {
+  if (type === 'math') {
+    return (
+      <SimpleAdditionWorksheet
+        worksheet={worksheet}
+        onComplete={handleComplete}
+      />
+    );
+  }
+
+  if (type === 'reading') {
     const instructions =
       (worksheet.content?.instructions as string | undefined) ?? 'Complete the activity.';
-    const items =
-      type === 'math'
-        ? ((worksheet.content?.problems as string[] | undefined) ?? [])
-        : ((worksheet.content?.words as string[] | undefined) ?? []);
+    const items = ((worksheet.content?.words as string[] | undefined) ?? []);
     return (
       <View style={styles.container}>
         <ScrollView
@@ -134,9 +321,7 @@ export default function WorksheetScreen() {
             <View style={styles.simpleList}>
               {items.map((item, i) => (
                 <View key={i} style={styles.simpleItemWrap}>
-                  <Text style={styles.simpleItem}>
-                    {type === 'math' ? `${item} = ?` : item}
-                  </Text>
+                  <Text style={styles.simpleItem}>{item}</Text>
                 </View>
               ))}
             </View>
@@ -273,5 +458,146 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     color: '#fff',
+  },
+  // Simple Addition – compact, no scroll
+  addScrollContent: {
+    flex: 1,
+    padding: 12,
+    paddingTop: 16,
+    paddingBottom: 24,
+    justifyContent: 'flex-start',
+  },
+  addTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 2,
+    textAlign: 'center',
+  },
+  addInstructions: {
+    fontSize: 13,
+    color: '#555',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  addList: {
+    marginBottom: 10,
+  },
+  addItemWrap: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 8,
+    marginBottom: 6,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+  },
+  addItem: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  addOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  addOptionBtn: {
+    minWidth: 48,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: '#f0f0f0',
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+    alignItems: 'center',
+  },
+  addOptionBtnSelected: {
+    borderColor: '#006A60',
+    backgroundColor: '#e8f5f3',
+  },
+  addOptionBtnCorrect: {
+    borderColor: '#28a745',
+    backgroundColor: '#d4edda',
+  },
+  addOptionBtnWrong: {
+    borderColor: '#dc3545',
+    backgroundColor: '#f8d7da',
+  },
+  addOptionText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#333',
+  },
+  addOptionTextSelected: {
+    color: '#006A60',
+  },
+  addOptionTextCorrect: {
+    color: '#28a745',
+  },
+  addOptionTextWrong: {
+    color: '#dc3545',
+  },
+  addFinishButton: {
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    minWidth: 160,
+  },
+  // Simple Addition – review (right/wrong) before score
+  addReviewScroll: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  addReviewTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  addReviewSubtitle: {
+    fontSize: 14,
+    color: '#555',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  addReviewList: {
+    marginBottom: 24,
+  },
+  addReviewItemWrap: {
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 2,
+  },
+  addReviewItemCorrect: {
+    backgroundColor: '#d4edda',
+    borderColor: '#28a745',
+  },
+  addReviewItemWrong: {
+    backgroundColor: '#f8d7da',
+    borderColor: '#dc3545',
+  },
+  addReviewItemProblem: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 6,
+  },
+  addReviewItemResult: {},
+  addReviewCorrectText: {
+    fontSize: 15,
+    color: '#155724',
+    fontWeight: '600',
+  },
+  addReviewWrongText: {
+    fontSize: 15,
+    color: '#721c24',
+    fontWeight: '600',
   },
 });
