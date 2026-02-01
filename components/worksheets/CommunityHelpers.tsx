@@ -1,4 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
+
+function shuffle<T>(arr: T[]): T[] {
+  const out = [...arr];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
 import {
   View,
   Text,
@@ -51,21 +60,20 @@ export default function CommunityHelpers({ onComplete, onNext }: CommunityHelper
   const [feedback, setFeedback] = useState<'correct' | 'incorrect' | null>(null);
   const [questionTools, setQuestionTools] = useState<string[][]>([]);
 
-  // Select 5 random pairs for this worksheet session
+  // Select 5 random pairs in random order each time the worksheet loads
   useEffect(() => {
-    const shuffled = [...communityHelpers].sort(() => Math.random() - 0.5);
+    const shuffled = shuffle([...communityHelpers]);
     const selected = shuffled.slice(0, 5);
     setSelectedPairs(selected);
-    
-    // Generate tool options for each question
+
     const allTools = [...new Set(communityHelpers.map(pair => pair.tool))];
     const toolsForQuestions = selected.map(pair => {
       const correctTool = pair.tool;
       const otherTools = allTools.filter(tool => tool !== correctTool);
-      const shuffledOtherTools = otherTools.sort(() => Math.random() - 0.5).slice(0, 3);
-      return [correctTool, ...shuffledOtherTools].sort(() => Math.random() - 0.5);
+      const shuffledOtherTools = shuffle([...otherTools]).slice(0, 3);
+      return shuffle([correctTool, ...shuffledOtherTools]);
     });
-    
+
     setQuestionTools(toolsForQuestions);
     setIsLoading(false);
   }, []);

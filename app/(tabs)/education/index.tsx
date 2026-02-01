@@ -124,7 +124,10 @@ export default function EducationScreen() {
   };
 
   const openWorksheet = (worksheet: Worksheet) => {
-    router.push({ pathname: '/education/worksheet', params: { id: worksheet.id } });
+    router.push({
+      pathname: '/education/worksheet',
+      params: { id: worksheet.id, _t: String(Date.now()) },
+    });
   };
 
   if (loading) {

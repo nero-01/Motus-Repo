@@ -1,4 +1,13 @@
 import React, { useState, useEffect } from 'react';
+
+function shuffle<T>(arr: T[]): T[] {
+  const out = [...arr];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
 import {
   View,
   Text,
@@ -50,9 +59,9 @@ export default function AnimalHabitats({ onComplete, onNext }: AnimalHabitatsPro
   const [correctAnswers, setCorrectAnswers] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Select 5 random animals for this worksheet session
+  // Select 5 random animals in random order each time the worksheet loads
   useEffect(() => {
-    const shuffled = [...animalHabitats].sort(() => Math.random() - 0.5);
+    const shuffled = shuffle([...animalHabitats]);
     setSelectedAnimals(shuffled.slice(0, 5));
     setIsLoading(false);
   }, []);

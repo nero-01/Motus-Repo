@@ -240,12 +240,13 @@ function SightWordsWorksheet({ worksheet, onComplete }: SightWordsWorksheetProps
   const [selectedByIndex, setSelectedByIndex] = useState<Record<number, string>>({});
   const [showReview, setShowReview] = useState(false);
 
-  const promptsWithOptions = useMemo(() => {
-    return words.map((word) => ({
+  const [promptsWithOptions] = useState(() => {
+    const shuffled = shuffle([...words]);
+    return shuffled.map((word) => ({
       target: word,
       options: getWordOptions(word, words),
     }));
-  }, [words]);
+  });
 
   const handleSelect = (questionIndex: number, word: string) => {
     setSelectedByIndex((prev) => ({ ...prev, [questionIndex]: word }));
@@ -394,12 +395,19 @@ function SightWordsWorksheet({ worksheet, onComplete }: SightWordsWorksheetProps
 }
 
 export default function WorksheetScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, _t } = useLocalSearchParams<{ id: string; _t?: string }>();
   const router = useRouter();
   const { height } = useWindowDimensions();
   const [score, setScore] = useState<number | null>(null);
 
   const worksheet = id ? WORKSHEETS.find((w) => w.id === id) : null;
+  const sessionKey = _t ?? id ?? '0';
+
+  const letterToShow = useMemo(() => {
+    if (!worksheet || worksheet.type !== 'letter_tracing') return 'A';
+    const letters = (worksheet.content?.letters as string[] | undefined) ?? ['A'];
+    return shuffle([...letters])[0] ?? 'A';
+  }, []);
 
   const handleComplete = (accuracy: number) => {
     setScore(accuracy);
@@ -443,13 +451,11 @@ export default function WorksheetScreen() {
   const type = worksheet.type;
 
   if (type === 'letter_tracing') {
-    const letters = (worksheet.content?.letters as string[] | undefined) ?? ['A'];
-    const firstLetter = letters[0] ?? 'A';
     return (
-      <View style={styles.container}>
+      <View key={sessionKey} style={styles.container}>
         <View style={[styles.worksheetArea, { minHeight: height - 120 }]}>
           <LetterTracing
-            letter={firstLetter}
+            letter={letterToShow}
             onComplete={handleComplete}
             onNext={() => {}}
           />
@@ -460,7 +466,7 @@ export default function WorksheetScreen() {
 
   if (type === 'color_mixing') {
     return (
-      <View style={styles.container}>
+      <View key={sessionKey} style={styles.container}>
         <View style={[styles.worksheetArea, { minHeight: height - 120 }]}>
           <ColorMixing onComplete={handleComplete} onNext={() => {}} />
         </View>
@@ -470,7 +476,7 @@ export default function WorksheetScreen() {
 
   if (type === 'animal_habitats') {
     return (
-      <View style={styles.container}>
+      <View key={sessionKey} style={styles.container}>
         <View style={[styles.worksheetArea, { minHeight: height - 120 }]}>
           <AnimalHabitats onComplete={handleComplete} onNext={() => {}} />
         </View>
@@ -480,7 +486,7 @@ export default function WorksheetScreen() {
 
   if (type === 'community_helpers') {
     return (
-      <View style={styles.container}>
+      <View key={sessionKey} style={styles.container}>
         <View style={[styles.worksheetArea, { minHeight: height - 120 }]}>
           <CommunityHelpers onComplete={handleComplete} onNext={() => {}} />
         </View>
@@ -490,16 +496,20 @@ export default function WorksheetScreen() {
 
   if (type === 'math') {
     return (
-      <SimpleAdditionWorksheet
-        worksheet={worksheet}
-        onComplete={handleComplete}
-      />
+      <View key={sessionKey} style={styles.container}>
+        <SimpleAdditionWorksheet
+          worksheet={worksheet}
+          onComplete={handleComplete}
+        />
+      </View>
     );
   }
 
   if (type === 'reading') {
     return (
-      <SightWordsWorksheet worksheet={worksheet} onComplete={handleComplete} />
+      <View key={sessionKey} style={styles.container}>
+        <SightWordsWorksheet worksheet={worksheet} onComplete={handleComplete} />
+      </View>
     );
   }
 

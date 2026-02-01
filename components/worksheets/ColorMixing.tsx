@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -23,13 +23,22 @@ interface ColorMix {
   emoji: string;
 }
 
-const colorMixes: ColorMix[] = [
+const COLOR_MIXES: ColorMix[] = [
   { color1: 'red', color2: 'blue', result: 'purple', emoji: '🟣' },
   { color1: 'red', color2: 'yellow', result: 'orange', emoji: '🟠' },
   { color1: 'blue', color2: 'yellow', result: 'green', emoji: '🟢' },
   { color1: 'red', color2: 'white', result: 'pink', emoji: '🌸' },
   { color1: 'blue', color2: 'white', result: 'light blue', emoji: '💙' },
 ];
+
+function shuffleColorMixes<T>(arr: T[]): T[] {
+  const out = [...arr];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
 
 const colorMap: { [key: string]: string } = {
   red: '#FF0000',
@@ -70,6 +79,7 @@ export default function ColorMixing({ onComplete, onNext }: ColorMixingProps) {
   const draggableColorsRef = useRef<DraggableColor[]>([]);
   const mixingAreaPositionRef = useRef({ x: 0, y: 0, width: 0, height: 0 });
 
+  const colorMixes = useMemo(() => shuffleColorMixes(COLOR_MIXES), []);
   const currentMix = colorMixes[currentMixIndex];
 
   // Keep refs in sync so pan responder callbacks always see latest state
