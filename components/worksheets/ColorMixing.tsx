@@ -8,6 +8,7 @@ import {
   Animated,
   PanResponder,
 } from 'react-native';
+import { playSuccessSound, playFailSound } from '../../utils/worksheetSounds';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -219,10 +220,12 @@ export default function ColorMixing({ onComplete, onNext }: ColorMixingProps) {
 
           const isCorrect = resultColor === colorMap[currentMix.result];
           if (isCorrect) {
+            playSuccessSound();
             setScore(s => s + 1);
             setFeedback('correct');
             setTimeout(() => handleNext(), 2500);
           } else {
+            playFailSound();
             setFeedback('incorrect');
             setShowHint(true);
             setTimeout(() => {

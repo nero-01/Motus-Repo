@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { playSuccessSound, playFailSound } from '../../utils/worksheetSounds';
 
 function shuffle<T>(arr: T[]): T[] {
   const out = [...arr];
@@ -99,6 +100,8 @@ export default function AnimalHabitats({ onComplete, onNext }: AnimalHabitatsPro
     setHasAnswered(true);
     
     const isCorrect = habitat === currentPair.habitat;
+    if (isCorrect) playSuccessSound();
+    else playFailSound();
     setAccuracy(isCorrect ? 100 : 0);
     
     // Track correct answers

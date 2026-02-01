@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { playSuccessSound, playFailSound } from '../../utils/worksheetSounds';
 
 function shuffle<T>(arr: T[]): T[] {
   const out = [...arr];
@@ -106,6 +107,8 @@ export default function CommunityHelpers({ onComplete, onNext }: CommunityHelper
     setHasAnswered(true);
     
     const isCorrect = tool === currentPair.tool;
+    if (isCorrect) playSuccessSound();
+    else playFailSound();
     
     if (isCorrect) {
       setCorrectAnswers(prev => prev + 1);

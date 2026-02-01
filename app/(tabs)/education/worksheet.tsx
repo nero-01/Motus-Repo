@@ -10,6 +10,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Button } from 'react-native-paper';
 import * as Speech from 'expo-speech';
+import { playSuccessSound, playFailSound } from '../../../utils/worksheetSounds';
 import LetterTracing from '../../../components/worksheets/LetterTracing';
 import ColorMixing from '../../../components/worksheets/ColorMixing';
 import AnimalHabitats from '../../../components/worksheets/AnimalHabitats';
@@ -102,6 +103,10 @@ function SimpleAdditionWorksheet({ worksheet, onComplete }: SimpleAdditionWorksh
   }, [problems]);
 
   const handleSelect = (problemIndex: number, value: number) => {
+    const problem = problemsWithAnswers[problemIndex];
+    const isCorrect = problem && value === problem.correct;
+    if (isCorrect) playSuccessSound();
+    else playFailSound();
     setSelectedByIndex((prev) => ({ ...prev, [problemIndex]: value }));
   };
 
@@ -249,6 +254,10 @@ function SightWordsWorksheet({ worksheet, onComplete }: SightWordsWorksheetProps
   });
 
   const handleSelect = (questionIndex: number, word: string) => {
+    const prompt = promptsWithOptions[questionIndex];
+    const isCorrect = prompt && word === prompt.target;
+    if (isCorrect) playSuccessSound();
+    else playFailSound();
     setSelectedByIndex((prev) => ({ ...prev, [questionIndex]: word }));
   };
 
