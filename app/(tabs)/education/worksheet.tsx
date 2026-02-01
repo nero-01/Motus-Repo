@@ -51,6 +51,13 @@ function getAnswerOptions(correct: number): number[] {
   return options.sort(() => Math.random() - 0.5);
 }
 
+/** Build word options: one correct + three wrong from the same list. */
+function getWordOptions(correctWord: string, allWords: string[]): string[] {
+  const others = allWords.filter((w) => w !== correctWord);
+  const wrong = others.length >= 3 ? others.sort(() => Math.random() - 0.5).slice(0, 3) : others;
+  return [correctWord, ...wrong].sort(() => Math.random() - 0.5);
+}
+
 interface SimpleAdditionWorksheetProps {
   worksheet: Worksheet;
   onComplete: (accuracy: number) => void;
@@ -201,6 +208,146 @@ function SimpleAdditionWorksheet({ worksheet, onComplete }: SimpleAdditionWorksh
   );
 }
 
+interface SightWordsWorksheetProps {
+  worksheet: Worksheet;
+  onComplete: (accuracy: number) => void;
+}
+
+function SightWordsWorksheet({ worksheet, onComplete }: SightWordsWorksheetProps) {
+  const words = (worksheet.content?.words as string[] | undefined) ?? [];
+  const [selectedByIndex, setSelectedByIndex] = useState<Record<number, string>>({});
+  const [showReview, setShowReview] = useState(false);
+
+  const promptsWithOptions = useMemo(() => {
+    return words.map((word) => ({
+      target: word,
+      options: getWordOptions(word, words),
+    }));
+  }, [words]);
+
+  const handleSelect = (questionIndex: number, word: string) => {
+    setSelectedByIndex((prev) => ({ ...prev, [questionIndex]: word }));
+  };
+
+  const handleDone = () => {
+    if (promptsWithOptions.length === 0) {
+      onComplete(0);
+      return;
+    }
+    setShowReview(true);
+  };
+
+  const handleSeeScore = () => {
+    const total = promptsWithOptions.length;
+    let correct = 0;
+    promptsWithOptions.forEach((p, i) => {
+      if (selectedByIndex[i] === p.target) correct++;
+    });
+    onComplete(Math.round((100 * correct) / total));
+  };
+
+  if (showReview) {
+    return (
+      <View style={styles.container}>
+        <ScrollView
+          contentContainerStyle={styles.sightReviewScroll}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.sightReviewTitle}>Check your answers</Text>
+          <Text style={styles.sightReviewSubtitle}>Here's what was right and wrong.</Text>
+          <View style={styles.sightReviewList}>
+            {promptsWithOptions.map((item, i) => {
+              const chosen = selectedByIndex[i];
+              const isCorrect = chosen === item.target;
+              return (
+                <View
+                  key={i}
+                  style={[
+                    styles.sightReviewItemWrap,
+                    isCorrect ? styles.sightReviewItemCorrect : styles.sightReviewItemWrong,
+                  ]}
+                >
+                  <Text style={styles.sightReviewItemPrompt}>Find: "{item.target}"</Text>
+                  {isCorrect ? (
+                    <Text style={styles.sightReviewCorrectText}>✓ Correct! You picked "{chosen}".</Text>
+                  ) : (
+                    <Text style={styles.sightReviewWrongText}>
+                      ✗ You picked "{chosen ?? '—'}". Correct: "{item.target}".
+                    </Text>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+          <TouchableOpacity
+            style={[styles.finishButton, styles.sightFinishButton]}
+            onPress={handleSeeScore}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.finishButtonText}>See my score</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.sightContent}>
+        <Text style={styles.sightTitle}>{worksheet.title}</Text>
+        <Text style={styles.sightInstructions}>Tap the word that matches.</Text>
+        <View style={styles.sightList}>
+          {promptsWithOptions.map((item, i) => (
+            <View key={i} style={styles.sightItemWrap}>
+              <Text style={styles.sightItemPrompt}>Find the word: <Text style={styles.sightItemTarget}>{item.target}</Text></Text>
+              <View style={styles.sightOptions}>
+                {item.options.map((opt) => {
+                  const selected = selectedByIndex[i] === opt;
+                  const isCorrect = item.target === opt;
+                  const showResult = selectedByIndex[i] != null;
+                  const isRight = showResult && selected && isCorrect;
+                  const isWrong = showResult && selected && !isCorrect;
+                  return (
+                    <TouchableOpacity
+                      key={opt}
+                      style={[
+                        styles.sightOptionBtn,
+                        selected && styles.sightOptionBtnSelected,
+                        isRight && styles.sightOptionBtnCorrect,
+                        isWrong && styles.sightOptionBtnWrong,
+                      ]}
+                      onPress={() => handleSelect(i, opt)}
+                      activeOpacity={0.8}
+                    >
+                      <Text
+                        style={[
+                          styles.sightOptionText,
+                          selected && styles.sightOptionTextSelected,
+                          isRight && styles.sightOptionTextCorrect,
+                          isWrong && styles.sightOptionTextWrong,
+                        ]}
+                      >
+                        {opt}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          ))}
+        </View>
+        <TouchableOpacity
+          style={[styles.finishButton, styles.sightFinishButton]}
+          onPress={handleDone}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.finishButtonText}>I'm done! ✓</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
 export default function WorksheetScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -306,35 +453,8 @@ export default function WorksheetScreen() {
   }
 
   if (type === 'reading') {
-    const instructions =
-      (worksheet.content?.instructions as string | undefined) ?? 'Complete the activity.';
-    const items = ((worksheet.content?.words as string[] | undefined) ?? []);
     return (
-      <View style={styles.container}>
-        <ScrollView
-          contentContainerStyle={styles.simpleScrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <Text style={styles.simpleTitle}>{worksheet.title}</Text>
-          <Text style={styles.simpleInstructions}>{instructions}</Text>
-          {items.length > 0 && (
-            <View style={styles.simpleList}>
-              {items.map((item, i) => (
-                <View key={i} style={styles.simpleItemWrap}>
-                  <Text style={styles.simpleItem}>{item}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-          <TouchableOpacity
-            style={styles.finishButton}
-            onPress={() => handleComplete(85)}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.finishButtonText}>I'm done! ✓</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
+      <SightWordsWorksheet worksheet={worksheet} onComplete={handleComplete} />
     );
   }
 
@@ -596,6 +716,148 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   addReviewWrongText: {
+    fontSize: 15,
+    color: '#721c24',
+    fontWeight: '600',
+  },
+  // Sight Words – compact, tappable
+  sightContent: {
+    flex: 1,
+    padding: 12,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  sightTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 2,
+    textAlign: 'center',
+  },
+  sightInstructions: {
+    fontSize: 13,
+    color: '#555',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  sightList: {
+    marginBottom: 12,
+  },
+  sightItemWrap: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 8,
+    marginBottom: 6,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+  },
+  sightItemPrompt: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  sightItemTarget: {
+    fontWeight: '700',
+    color: '#006A60',
+  },
+  sightOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  sightOptionBtn: {
+    minWidth: 56,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: '#f0f0f0',
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+    alignItems: 'center',
+  },
+  sightOptionBtnSelected: {
+    borderColor: '#006A60',
+    backgroundColor: '#e8f5f3',
+  },
+  sightOptionBtnCorrect: {
+    borderColor: '#28a745',
+    backgroundColor: '#d4edda',
+  },
+  sightOptionBtnWrong: {
+    borderColor: '#dc3545',
+    backgroundColor: '#f8d7da',
+  },
+  sightOptionText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#333',
+  },
+  sightOptionTextSelected: {
+    color: '#006A60',
+  },
+  sightOptionTextCorrect: {
+    color: '#28a745',
+  },
+  sightOptionTextWrong: {
+    color: '#dc3545',
+  },
+  sightFinishButton: {
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    minWidth: 160,
+  },
+  // Sight Words – review
+  sightReviewScroll: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  sightReviewTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  sightReviewSubtitle: {
+    fontSize: 14,
+    color: '#555',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  sightReviewList: {
+    marginBottom: 24,
+  },
+  sightReviewItemWrap: {
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 2,
+  },
+  sightReviewItemCorrect: {
+    backgroundColor: '#d4edda',
+    borderColor: '#28a745',
+  },
+  sightReviewItemWrong: {
+    backgroundColor: '#f8d7da',
+    borderColor: '#dc3545',
+  },
+  sightReviewItemPrompt: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 6,
+  },
+  sightReviewCorrectText: {
+    fontSize: 15,
+    color: '#155724',
+    fontWeight: '600',
+  },
+  sightReviewWrongText: {
     fontSize: 15,
     color: '#721c24',
     fontWeight: '600',
