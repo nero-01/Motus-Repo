@@ -49,6 +49,7 @@ interface DraggableColor {
   id: string;
   color: string;
   position: Animated.ValueXY;
+  scale: Animated.Value;
   isDragging: boolean;
   originalPosition: { x: number; y: number };
 }
@@ -59,7 +60,6 @@ export default function ColorMixing({ onComplete, onNext }: ColorMixingProps) {
   const [mixedColor, setMixedColor] = useState<string | null>(null);
   const [isMixing, setIsMixing] = useState(false);
   const [feedback, setFeedback] = useState<'correct' | 'incorrect' | null>(null);
-  const [showCelebration, setShowCelebration] = useState(false);
   const [score, setScore] = useState(0);
   const [totalAttempts, setTotalAttempts] = useState(0);
   const [showHint, setShowHint] = useState(false);
@@ -67,18 +67,18 @@ export default function ColorMixing({ onComplete, onNext }: ColorMixingProps) {
   const [mixingAreaPosition, setMixingAreaPosition] = useState({ x: 0, y: 0, width: 0, height: 0 });
   
   const mixingAreaRef = useRef<View>(null);
-  const celebrationAnimation = useRef(new Animated.Value(0)).current;
-  const sparkleAnimation = useRef(new Animated.Value(0)).current;
+  const resultOpacity = useRef(new Animated.Value(0)).current;
 
   const currentMix = colorMixes[currentMixIndex];
 
-  // Initialize draggable colors
+  // Initialize draggable colors with scale animation
   useEffect(() => {
     const colors = [
       { 
         id: 'color1', 
         color: currentMix.color1, 
         position: new Animated.ValueXY({ x: 0, y: 0 }), 
+        scale: new Animated.Value(1),
         isDragging: false,
         originalPosition: { x: 0, y: 0 }
       },
@@ -86,6 +86,7 @@ export default function ColorMixing({ onComplete, onNext }: ColorMixingProps) {
         id: 'color2', 
         color: currentMix.color2, 
         position: new Animated.ValueXY({ x: 0, y: 0 }), 
+        scale: new Animated.Value(1),
         isDragging: false,
         originalPosition: { x: 0, y: 0 }
       },
@@ -94,8 +95,8 @@ export default function ColorMixing({ onComplete, onNext }: ColorMixingProps) {
     setMixedColor(null);
     setIsMixing(false);
     setFeedback(null);
-    setShowCelebration(false);
     setSelectedColors([]);
+    resultOpacity.setValue(0);
   }, [currentMixIndex]);
 
   // Get mixing area position
@@ -107,17 +108,24 @@ export default function ColorMixing({ onComplete, onNext }: ColorMixingProps) {
     }
   }, []);
 
-  // Create PanResponder for each color
+  // Create PanResponder for each color with drag animations
   const createPanResponder = (colorId: string) => {
     return PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
+        const color = draggableColors.find(c => c.id === colorId);
+        if (color) {
+          Animated.spring(color.scale, {
+            toValue: 1.25,
+            useNativeDriver: true,
+            friction: 6,
+            tension: 100,
+          }).start();
+        }
         setDraggableColors(prev => 
-          prev.map(color => 
-            color.id === colorId 
-              ? { ...color, isDragging: true }
-              : color
+          prev.map(c => 
+            c.id === colorId ? { ...c, isDragging: true } : c
           )
         );
       },
@@ -130,8 +138,6 @@ export default function ColorMixing({ onComplete, onNext }: ColorMixingProps) {
       onPanResponderRelease: (evt, gestureState) => {
         const dropX = gestureState.moveX;
         const dropY = gestureState.moveY;
-        
-        // Check if color was dropped in mixing area
         const isInMixingArea = 
           dropX >= mixingAreaPosition.x && 
           dropX <= mixingAreaPosition.x + mixingAreaPosition.width &&
@@ -142,20 +148,20 @@ export default function ColorMixing({ onComplete, onNext }: ColorMixingProps) {
           handleColorDropped(colorId);
         }
         
-        // Reset position
         const color = draggableColors.find(c => c.id === colorId);
         if (color) {
+          Animated.spring(color.scale, {
+            toValue: 1,
+            useNativeDriver: true,
+            friction: 6,
+            tension: 100,
+          }).start();
           Animated.spring(color.position, {
             toValue: { x: 0, y: 0 },
             useNativeDriver: false,
           }).start();
-          
           setDraggableColors(prev => 
-            prev.map(c => 
-              c.id === colorId 
-                ? { ...c, isDragging: false }
-                : c
-            )
+            prev.map(c => c.id === colorId ? { ...c, isDragging: false } : c)
           );
         }
       },
@@ -178,51 +184,35 @@ export default function ColorMixing({ onComplete, onNext }: ColorMixingProps) {
         setIsMixing(true);
         setTotalAttempts(prev => prev + 1);
         
-        // Animate the mixing
+        // Animate mixing: short delay then reveal result with fade-in
         setTimeout(() => {
           const resultColor = getMixedColor(newSelectedColors);
           setMixedColor(resultColor);
-          
-          // Check if correct
+          resultOpacity.setValue(0);
+          Animated.timing(resultOpacity, {
+            toValue: 1,
+            duration: 600,
+            useNativeDriver: true,
+          }).start();
+
           const isCorrect = resultColor === colorMap[currentMix.result];
-          
           if (isCorrect) {
             setScore(prev => prev + 1);
             setFeedback('correct');
-            setShowCelebration(true);
-            
-            // Celebration animation
-            Animated.sequence([
-              Animated.timing(celebrationAnimation, {
-                toValue: 1,
-                duration: 500,
-                useNativeDriver: true,
-              }),
-              Animated.timing(sparkleAnimation, {
-                toValue: 1,
-                duration: 1000,
-                useNativeDriver: true,
-              }),
-            ]).start();
-            
-            // Auto advance after celebration
-            setTimeout(() => {
-              handleNext();
-            }, 3000);
+            setTimeout(() => handleNext(), 2500);
           } else {
             setFeedback('incorrect');
             setShowHint(true);
-            
-            // Reset after showing feedback
             setTimeout(() => {
               setMixedColor(null);
               setFeedback(null);
               setShowHint(false);
               setIsMixing(false);
               setSelectedColors([]);
-            }, 2000);
+              resultOpacity.setValue(0);
+            }, 2500);
           }
-        }, 1000);
+        }, 800);
       }
     }
   };
@@ -250,11 +240,7 @@ export default function ColorMixing({ onComplete, onNext }: ColorMixingProps) {
   const handleNext = () => {
     if (currentMixIndex < colorMixes.length - 1) {
       setCurrentMixIndex(prev => prev + 1);
-      setShowCelebration(false);
-      celebrationAnimation.setValue(0);
-      sparkleAnimation.setValue(0);
     } else {
-      // All mixes completed
       const finalAccuracy = Math.round((score / colorMixes.length) * 100);
       onComplete(finalAccuracy);
     }
@@ -265,10 +251,8 @@ export default function ColorMixing({ onComplete, onNext }: ColorMixingProps) {
     setFeedback(null);
     setShowHint(false);
     setIsMixing(false);
-    setShowCelebration(false);
     setSelectedColors([]);
-    celebrationAnimation.setValue(0);
-    sparkleAnimation.setValue(0);
+    resultOpacity.setValue(0);
   };
 
   return (
@@ -301,9 +285,11 @@ export default function ColorMixing({ onComplete, onNext }: ColorMixingProps) {
                     transform: [
                       { translateX: color.position.x },
                       { translateY: color.position.y },
-                      { scale: color.isDragging ? 1.1 : 1 },
+                      { scale: color.scale },
                     ],
                     zIndex: color.isDragging ? 1000 : 1,
+                    elevation: color.isDragging ? 12 : 4,
+                    shadowOpacity: color.isDragging ? 0.4 : 0.2,
                   },
                 ]}
                 {...createPanResponder(color.id).panHandlers}
@@ -324,7 +310,7 @@ export default function ColorMixing({ onComplete, onNext }: ColorMixingProps) {
             style={[
               styles.mixingArea,
               mixedColor && { backgroundColor: mixedColor },
-              isMixing && styles.mixingActive,
+              isMixing && !mixedColor && styles.mixingActive,
             ]}
             onLayout={() => {
               if (mixingAreaRef.current) {
@@ -334,8 +320,10 @@ export default function ColorMixing({ onComplete, onNext }: ColorMixingProps) {
               }
             }}
           >
-            {!mixedColor && (
-              <Text style={styles.mixingPlaceholder}>Drop colors here! 👇</Text>
+            {!mixedColor && !isMixing && (
+              <Text style={styles.mixingPlaceholder}>
+                {selectedColors.length === 0 ? 'Drop colors here! 👇' : 'Drop another color! 👇'}
+              </Text>
             )}
             {isMixing && !mixedColor && (
               <View style={styles.mixingAnimation}>
@@ -343,13 +331,30 @@ export default function ColorMixing({ onComplete, onNext }: ColorMixingProps) {
               </View>
             )}
             {mixedColor && (
-              <View style={styles.resultContainer}>
+              <Animated.View style={[styles.resultContainer, { opacity: resultOpacity }]}>
                 <Text style={styles.resultText}>
                   {currentMix.result.charAt(0).toUpperCase() + currentMix.result.slice(1)}!
                 </Text>
-              </View>
+              </Animated.View>
             )}
           </View>
+
+          {/* Inline feedback below bowl - never covers the result */}
+          {feedback && (
+            <View style={[
+              styles.inlineFeedback,
+              feedback === 'correct' ? styles.inlineFeedbackCorrect : styles.inlineFeedbackIncorrect,
+            ]}>
+              <Text style={styles.inlineFeedbackEmoji}>
+                {feedback === 'correct' ? '🎉' : '😅'}
+              </Text>
+              <Text style={styles.inlineFeedbackText}>
+                {feedback === 'correct'
+                  ? `You made ${currentMix.result}!`
+                  : `Try again! Mix ${currentMix.color1} + ${currentMix.color2}`}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Selected Colors Display */}
@@ -380,74 +385,12 @@ export default function ColorMixing({ onComplete, onNext }: ColorMixingProps) {
         )}
       </View>
 
-      {/* Hint */}
+      {/* Hint - below controls, does not cover bowl */}
       {showHint && (
         <View style={styles.hintContainer}>
           <Text style={styles.hintText}>
             💡 Try mixing {currentMix.color1} and {currentMix.color2} to make {currentMix.result}!
           </Text>
-        </View>
-      )}
-
-      {/* Feedback Overlay */}
-      {feedback && (
-        <View style={styles.overlayContainer}>
-          <View style={styles.overlayContent}>
-            <View style={[
-              styles.feedbackContainer,
-              feedback === 'correct' ? styles.feedbackCorrect : styles.feedbackIncorrect
-            ]}>
-              <Text style={styles.feedbackEmoji}>
-                {feedback === 'correct' ? '🎉' : '😅'}
-              </Text>
-              <Text style={styles.feedbackText}>
-                {feedback === 'correct' ? 'Amazing! You did it!' : 'Oops! Try again!'}
-              </Text>
-              {feedback === 'correct' && (
-                <Text style={styles.feedbackSubtext}>
-                  You mixed {currentMix.color1} and {currentMix.color2} to make {currentMix.result}!
-                </Text>
-              )}
-              {feedback === 'incorrect' && (
-                <Text style={styles.feedbackSubtext}>
-                  The correct mix is {currentMix.color1} + {currentMix.color2} = {currentMix.result}
-                </Text>
-              )}
-            </View>
-          </View>
-        </View>
-      )}
-
-      {/* Celebration Animation */}
-      {showCelebration && (
-        <View style={styles.celebrationContainer}>
-          <Animated.View
-            style={[
-              styles.celebration,
-              {
-                transform: [
-                  { scale: celebrationAnimation },
-                  { rotate: celebrationAnimation.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ['0deg', '360deg'],
-                  })},
-                ],
-              },
-            ]}
-          >
-            <Text style={styles.celebrationText}>🎉</Text>
-          </Animated.View>
-          <Animated.View
-            style={[
-              styles.sparkles,
-              {
-                opacity: sparkleAnimation,
-                transform: [{ scale: sparkleAnimation }],
-              },
-            ]}
-          >
-            <Text style={styles.sparkleText}>✨✨✨</Text>
-          </Animated.View>
         </View>
       )}
     </View>
@@ -678,81 +621,32 @@ const styles = StyleSheet.create({
     color: '#856404',
     textAlign: 'center',
   },
-  overlayContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
+  inlineFeedback: {
+    marginTop: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    zIndex: 1000,
+    minWidth: 200,
   },
-  overlayContent: {
-    alignItems: 'center',
-  },
-  feedbackContainer: {
-    padding: 24,
-    borderRadius: 16,
-    alignItems: 'center',
-    width: '85%',
-    maxWidth: 320,
-    backgroundColor: 'white',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-  feedbackCorrect: {
+  inlineFeedbackCorrect: {
     backgroundColor: '#d4edda',
+    borderWidth: 2,
     borderColor: '#28a745',
-    borderWidth: 2,
   },
-  feedbackIncorrect: {
+  inlineFeedbackIncorrect: {
     backgroundColor: '#f8d7da',
-    borderColor: '#dc3545',
     borderWidth: 2,
+    borderColor: '#dc3545',
   },
-  feedbackEmoji: {
-    fontSize: 40,
-    marginBottom: 12,
+  inlineFeedbackEmoji: {
+    fontSize: 28,
+    marginBottom: 6,
   },
-  feedbackText: {
-    fontSize: 20,
+  inlineFeedbackText: {
+    fontSize: 16,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 8,
     color: '#333',
-  },
-  feedbackSubtext: {
-    fontSize: 16,
-    textAlign: 'center',
-    color: '#666',
-    lineHeight: 20,
-  },
-  celebrationContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 2000,
-  },
-  celebration: {
-    alignItems: 'center',
-  },
-  celebrationText: {
-    fontSize: 80,
-  },
-  sparkles: {
-    position: 'absolute',
-    alignItems: 'center',
-  },
-  sparkleText: {
-    fontSize: 50,
   },
 }); 
