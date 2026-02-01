@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import ColorMixing from '../../../components/worksheets/ColorMixing';
 import AnimalHabitats from '../../../components/worksheets/AnimalHabitats';
 import CommunityHelpers from '../../../components/worksheets/CommunityHelpers';
 import { WORKSHEETS, type Worksheet } from './worksheetsData';
+import { getEducationLevel } from './educationLevel';
 
 const MIN_LEVEL = 1;
 const MAX_LEVEL = 10;
@@ -112,7 +113,7 @@ function SimpleAdditionWorksheet({ worksheet, level, onComplete }: SimpleAdditio
   const problems = useMemo(() => {
     const pool = buildAdditionPool(maxAddend);
     return shuffle([...pool]).slice(0, count);
-  }, [maxAddend, count]);
+  }, [level, maxAddend, count]);
 
   const maxSum = maxAddend * 2;
   const problemsWithAnswers = useMemo(() => {
@@ -274,13 +275,12 @@ interface SightWordsWorksheetProps {
 }
 
 function SightWordsWorksheet({ worksheet, level, onComplete }: SightWordsWorksheetProps) {
-  const allWords = (worksheet.content?.words as string[] | undefined) ?? [];
   const wordCount = getSightWordsCount(level);
   const words = useMemo(() => {
     const list = (worksheet.content?.words as string[] | undefined) ?? [];
-    const take = Math.min(wordCount, list.length) || list.length;
+    const take = Math.max(1, Math.min(wordCount, list.length));
     return shuffle([...list]).slice(0, take);
-  }, [worksheet.content?.words, wordCount]);
+  }, [level, worksheet.id]);
   const [selectedByIndex, setSelectedByIndex] = useState<Record<number, string>>({});
   const [showReview, setShowReview] = useState(false);
 
@@ -455,10 +455,19 @@ export default function WorksheetScreen() {
   const router = useRouter();
   const { height } = useWindowDimensions();
   const [score, setScore] = useState<number | null>(null);
+  const [level, setLevel] = useState<number>(() => parseLevel(levelParam));
 
-  const level = parseLevel(levelParam);
+  useEffect(() => {
+    const fromParam = parseLevel(levelParam);
+    if (levelParam != null && levelParam !== '') {
+      setLevel(fromParam);
+    } else {
+      getEducationLevel().then(setLevel);
+    }
+  }, [levelParam]);
+
   const worksheet = id ? WORKSHEETS.find((w) => w.id === id) : null;
-  const sessionKey = _t ?? id ?? '0';
+  const sessionKey = `${_t ?? id ?? '0'}-L${level}`;
 
   const letterToShow = useMemo(() => {
     if (!worksheet || worksheet.type !== 'letter_tracing') return 'A';

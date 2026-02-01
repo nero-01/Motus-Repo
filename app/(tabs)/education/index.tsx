@@ -93,10 +93,10 @@ export default function EducationScreen() {
   );
 
   const openWorksheet = (worksheet: Worksheet) => {
-    router.push({
-      pathname: '/education/worksheet',
-      params: { id: worksheet.id, _t: String(Date.now()), level: String(educationLevel) },
-    });
+    const id = worksheet.id;
+    const t = Date.now();
+    const level = educationLevel;
+    router.push(`/education/worksheet?id=${id}&_t=${t}&level=${level}`);
   };
 
   if (loading) {
