@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, ScrollView, Text, TouchableOpacity, Alert, TextInput, Platform, Modal } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Notifications from 'expo-notifications';
@@ -13,6 +14,8 @@ const OCR_MAX_WIDTH = 1200;
 const OCR_JPEG_QUALITY = 0.85;
 
 const REMINDERS_CHANNEL_ID = 'motustots-reminders';
+const REMINDERS_STORAGE_KEY_WEEK = 'motustots_reminders_week';
+const REMINDERS_STORAGE_KEY_ENABLED = 'motustots_reminders_enabled';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -275,6 +278,7 @@ export default function RemindersTabScreen() {
   const [ocrModalVisible, setOcrModalVisible] = useState(false);
   const ocrWebViewRef = useRef<WebView>(null);
   const ocrBase64Ref = useRef<string | null>(null);
+  const hasLoadedFromStorageRef = useRef(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -307,36 +311,43 @@ export default function RemindersTabScreen() {
     };
   }, []);
 
+  // Load baked-in reminders from storage only; do not refresh from notifications on reload
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
-        const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+        const [storedWeek, storedEnabled] = await Promise.all([
+          AsyncStorage.getItem(REMINDERS_STORAGE_KEY_WEEK),
+          AsyncStorage.getItem(REMINDERS_STORAGE_KEY_ENABLED),
+        ]);
         if (!mounted) return;
-        const prefix = 'Reminder: ';
-        const nextWeek = emptyWeek();
-        let found = 0;
-        for (const n of scheduled) {
-          const title = n.content.title ?? '';
-          if (!title.startsWith(prefix)) continue;
-          const dayName = title.slice(prefix.length).trim();
-          const body = n.content.body ?? '';
-          const idx = DAYS.indexOf(dayName);
-          if (idx !== -1) {
-            nextWeek[idx] = { day: dayName, activity: body || null };
-            found++;
-          }
+        if (storedWeek) {
+          try {
+            const parsed = JSON.parse(storedWeek) as { day: string; activity: string | null }[];
+            if (Array.isArray(parsed) && parsed.length === DAYS.length) {
+              setWeek(parsed);
+            }
+          } catch (_) {}
         }
-        if (found > 0) {
-          setWeek(nextWeek);
+        if (storedEnabled === 'true') {
           setRemindersEnabled(true);
         }
-      } catch (_) {
-        // Notifications may be unavailable (e.g. web)
-      }
+      } catch (_) {}
+      if (mounted) hasLoadedFromStorageRef.current = true;
     })();
     return () => { mounted = false; };
   }, []);
+
+  // Persist reminders when they change (stay baked in across reloads)
+  useEffect(() => {
+    if (!hasLoadedFromStorageRef.current) return;
+    (async () => {
+      try {
+        await AsyncStorage.setItem(REMINDERS_STORAGE_KEY_WEEK, JSON.stringify(week));
+        await AsyncStorage.setItem(REMINDERS_STORAGE_KEY_ENABLED, remindersEnabled ? 'true' : 'false');
+      } catch (_) {}
+    })();
+  }, [week, remindersEnabled]);
 
   const ensurePermission = async () => {
     if (Platform.OS === 'android') {
