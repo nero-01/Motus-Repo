@@ -8,6 +8,7 @@ import {
   Dimensions,
   PanResponder,
 } from 'react-native';
+import { playSuccessSound, playFailSound } from '../../utils/worksheetSounds';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -130,8 +131,12 @@ export default function LetterTracing({ letter, onComplete, onNext }: LetterTrac
       Alert.alert('Start Tracing', 'Please trace the letter first!');
       return;
     }
-    
-    // Call the onComplete function with the accuracy
+    const threshold = 60;
+    if (accuracy >= threshold) {
+      playSuccessSound();
+    } else {
+      playFailSound();
+    }
     onComplete(accuracy);
   };
 
