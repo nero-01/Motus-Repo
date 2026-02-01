@@ -131,7 +131,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   setUser: (user: User | null) => {
-    console.log('Setting user:', user?.id || 'null');
+    if (__DEV__) console.log('Setting user:', user?.id || 'null');
     set({ 
       user, 
       isAuthenticated: !!user,
@@ -143,10 +143,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       try {
         const familyStore = useFamilyStore.getState();
         familyStore.loadFamilies(user.id).catch(error => {
-          console.error('Error loading families after setUser:', error);
+          if (__DEV__) console.warn('Error loading families after setUser:', error);
         });
       } catch (error) {
-        console.error('Error accessing family store in setUser:', error);
+        if (__DEV__) console.warn('Error accessing family store in setUser:', error);
       }
     }
   },
@@ -156,17 +156,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   checkAuth: async () => {
-    console.log('Checking auth...');
+    if (__DEV__) console.log('Checking auth...');
     set({ isLoading: true });
-    
+
     try {
       const { user, error } = await authService.getCurrentUser();
-      
-      if (error) {
-        console.error('Auth check error:', error);
-      }
-
-      console.log('Auth check result:', { user: user?.id || 'null', error: error?.message });
+      if (error && __DEV__) console.warn('Auth check error:', error);
+      if (__DEV__) console.log('Auth check result:', { user: user?.id || 'null', error: error?.message });
       set({ 
         user, 
         isAuthenticated: !!user, 
