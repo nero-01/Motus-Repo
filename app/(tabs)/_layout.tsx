@@ -1,11 +1,35 @@
 import { Tabs } from 'expo-router';
-import { Platform, Text } from 'react-native';
+import { Platform, Text, View, StyleSheet } from 'react-native';
+
+function MoreIcon({ color }: { color: string }) {
+  return (
+    <View style={iconStyles.dotsRow}>
+      <View style={[iconStyles.dot, { backgroundColor: color }]} />
+      <View style={[iconStyles.dot, { backgroundColor: color }]} />
+      <View style={[iconStyles.dot, { backgroundColor: color }]} />
+    </View>
+  );
+}
+
+const iconStyles = StyleSheet.create({
+  dotsRow: {
+    flexDirection: 'row',
+    gap: 4,
+    alignItems: 'center',
+  },
+  dot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+  },
+});
 
 export default function TabLayout() {
   const isAndroid = Platform.OS === 'android';
 
   return (
     <Tabs
+      initialRouteName="index"
       screenOptions={{
         tabBarActiveTintColor: '#6200ee',
         tabBarInactiveTintColor: '#666',
@@ -43,11 +67,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="education/index"
+        name="activities/index"
         options={{
-          title: 'Education',
+          title: 'Activities',
           tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>📚</Text>
+            <Text style={{ color, fontSize: 20 }}>⭐</Text>
           ),
         }}
       />
@@ -61,11 +85,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="activities/index"
+        name="education"
         options={{
-          title: 'Activities',
+          title: 'Education',
           tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>⭐</Text>
+            <Text style={{ color, fontSize: 20 }}>📚</Text>
           ),
         }}
       />
@@ -73,9 +97,7 @@ export default function TabLayout() {
         name="profile/index"
         options={{
           title: 'More',
-          tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>⋯</Text>
-          ),
+          tabBarIcon: ({ color }) => <MoreIcon color={color} />,
         }}
       />
     </Tabs>

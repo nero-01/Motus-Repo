@@ -20,16 +20,15 @@ interface ColorMix {
   color1: string;
   color2: string;
   result: string;
-  question: string;
   emoji: string;
 }
 
 const colorMixes: ColorMix[] = [
-  { color1: 'red', color2: 'blue', result: 'purple', question: 'Mix red and blue to make purple!', emoji: '🟣' },
-  { color1: 'red', color2: 'yellow', result: 'orange', question: 'Mix red and yellow to make orange!', emoji: '🟠' },
-  { color1: 'blue', color2: 'yellow', result: 'green', question: 'Mix blue and yellow to make green!', emoji: '🟢' },
-  { color1: 'red', color2: 'white', result: 'pink', question: 'Mix red and white to make pink!', emoji: '🌸' },
-  { color1: 'blue', color2: 'white', result: 'light blue', question: 'Mix blue and white to make light blue!', emoji: '💙' },
+  { color1: 'red', color2: 'blue', result: 'purple', emoji: '🟣' },
+  { color1: 'red', color2: 'yellow', result: 'orange', emoji: '🟠' },
+  { color1: 'blue', color2: 'yellow', result: 'green', emoji: '🟢' },
+  { color1: 'red', color2: 'white', result: 'pink', emoji: '🌸' },
+  { color1: 'blue', color2: 'white', result: 'light blue', emoji: '💙' },
 ];
 
 const colorMap: { [key: string]: string } = {
@@ -68,8 +67,14 @@ export default function ColorMixing({ onComplete, onNext }: ColorMixingProps) {
   
   const mixingAreaRef = useRef<View>(null);
   const resultOpacity = useRef(new Animated.Value(0)).current;
+  const draggableColorsRef = useRef<DraggableColor[]>([]);
+  const mixingAreaPositionRef = useRef({ x: 0, y: 0, width: 0, height: 0 });
 
   const currentMix = colorMixes[currentMixIndex];
+
+  // Keep refs in sync so pan responder callbacks always see latest state
+  draggableColorsRef.current = draggableColors;
+  mixingAreaPositionRef.current = mixingAreaPosition;
 
   // Initialize draggable colors with scale animation
   useEffect(() => {
@@ -99,60 +104,67 @@ export default function ColorMixing({ onComplete, onNext }: ColorMixingProps) {
     resultOpacity.setValue(0);
   }, [currentMixIndex]);
 
-  // Get mixing area position
+  // Get mixing area position (ref updated immediately for drop detection)
   useEffect(() => {
     if (mixingAreaRef.current) {
       mixingAreaRef.current.measure((x, y, width, height, pageX, pageY) => {
-        setMixingAreaPosition({ x: pageX, y: pageY, width, height });
+        const rect = { x: pageX, y: pageY, width, height };
+        mixingAreaPositionRef.current = rect;
+        setMixingAreaPosition(rect);
       });
     }
   }, []);
 
-  // Create PanResponder for each color with drag animations
+  // Create PanResponder for each color with drag animations (uses refs to avoid stale closures)
   const createPanResponder = (colorId: string) => {
     return PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
-        const color = draggableColors.find(c => c.id === colorId);
+        const color = draggableColorsRef.current.find(c => c.id === colorId);
         if (color) {
           Animated.spring(color.scale, {
             toValue: 1.25,
-            useNativeDriver: true,
+            useNativeDriver: false,
             friction: 6,
             tension: 100,
           }).start();
         }
-        setDraggableColors(prev => 
-          prev.map(c => 
-            c.id === colorId ? { ...c, isDragging: true } : c
-          )
+        setDraggableColors(prev =>
+          prev.map(c => (c.id === colorId ? { ...c, isDragging: true } : c))
         );
       },
       onPanResponderMove: (evt, gestureState) => {
-        const color = draggableColors.find(c => c.id === colorId);
+        const color = draggableColorsRef.current.find(c => c.id === colorId);
         if (color) {
           color.position.setValue({ x: gestureState.dx, y: gestureState.dy });
         }
       },
       onPanResponderRelease: (evt, gestureState) => {
+        const pos = mixingAreaPositionRef.current;
         const dropX = gestureState.moveX;
         const dropY = gestureState.moveY;
-        const isInMixingArea = 
-          dropX >= mixingAreaPosition.x && 
-          dropX <= mixingAreaPosition.x + mixingAreaPosition.width &&
-          dropY >= mixingAreaPosition.y && 
-          dropY <= mixingAreaPosition.y + mixingAreaPosition.height;
-        
+        const isInMixingArea =
+          pos.width > 0 &&
+          pos.height > 0 &&
+          dropX >= pos.x &&
+          dropX <= pos.x + pos.width &&
+          dropY >= pos.y &&
+          dropY <= pos.y + pos.height;
+
         if (isInMixingArea) {
-          handleColorDropped(colorId);
+          try {
+            handleColorDropped(colorId);
+          } catch (err) {
+            console.error('ColorMixing handleColorDropped:', err);
+          }
         }
-        
-        const color = draggableColors.find(c => c.id === colorId);
+
+        const color = draggableColorsRef.current.find(c => c.id === colorId);
         if (color) {
           Animated.spring(color.scale, {
             toValue: 1,
-            useNativeDriver: true,
+            useNativeDriver: false,
             friction: 6,
             tension: 100,
           }).start();
@@ -160,8 +172,8 @@ export default function ColorMixing({ onComplete, onNext }: ColorMixingProps) {
             toValue: { x: 0, y: 0 },
             useNativeDriver: false,
           }).start();
-          setDraggableColors(prev => 
-            prev.map(c => c.id === colorId ? { ...c, isDragging: false } : c)
+          setDraggableColors(prev =>
+            prev.map(c => (c.id === colorId ? { ...c, isDragging: false } : c))
           );
         }
       },
@@ -170,23 +182,23 @@ export default function ColorMixing({ onComplete, onNext }: ColorMixingProps) {
 
   const handleColorDropped = (colorId: string) => {
     if (isMixing) return;
-    
-    const droppedColor = draggableColors.find(c => c.id === colorId);
+
+    const droppedColor = draggableColorsRef.current.find(c => c.id === colorId);
     if (!droppedColor) return;
     
-    // Add to selected colors if not already selected
-    if (!selectedColors.includes(droppedColor.color)) {
-      const newSelectedColors = [...selectedColors, droppedColor.color];
-      setSelectedColors(newSelectedColors);
+    // Add to selected colors if not already selected (use functional update for latest state)
+    setSelectedColors(prev => {
+      if (prev.includes(droppedColor.color)) return prev;
+      const newSelectedColors = [...prev, droppedColor.color];
       
       // If we have 2 colors, start mixing
       if (newSelectedColors.length === 2) {
         setIsMixing(true);
-        setTotalAttempts(prev => prev + 1);
-        
+        setTotalAttempts(t => t + 1);
+        const colorsToMix = newSelectedColors;
         // Animate mixing: short delay then reveal result with fade-in
         setTimeout(() => {
-          const resultColor = getMixedColor(newSelectedColors);
+          const resultColor = getMixedColor(colorsToMix);
           setMixedColor(resultColor);
           resultOpacity.setValue(0);
           Animated.timing(resultOpacity, {
@@ -197,7 +209,7 @@ export default function ColorMixing({ onComplete, onNext }: ColorMixingProps) {
 
           const isCorrect = resultColor === colorMap[currentMix.result];
           if (isCorrect) {
-            setScore(prev => prev + 1);
+            setScore(s => s + 1);
             setFeedback('correct');
             setTimeout(() => handleNext(), 2500);
           } else {
@@ -214,13 +226,13 @@ export default function ColorMixing({ onComplete, onNext }: ColorMixingProps) {
           }
         }, 800);
       }
-    }
+      return newSelectedColors;
+    });
   };
 
   const getMixedColor = (colors: string[]) => {
     if (colors.length !== 2) return null;
-    
-    const [color1, color2] = colors.sort();
+    const [color1, color2] = [...colors].sort();
     
     if ((color1 === 'red' && color2 === 'blue') || (color1 === 'blue' && color2 === 'red')) {
       return colorMap.purple;
@@ -264,9 +276,11 @@ export default function ColorMixing({ onComplete, onNext }: ColorMixingProps) {
         <Text style={styles.score}>Stars: {score} ⭐</Text>
       </View>
 
-      {/* Question */}
+      {/* Question - don't give away the result */}
       <View style={styles.questionContainer}>
-        <Text style={styles.question}>{currentMix.question}</Text>
+        <Text style={styles.question}>
+          Mix {currentMix.color1} and {currentMix.color2} to make…?
+        </Text>
         <Text style={styles.emoji}>{currentMix.emoji}</Text>
       </View>
 
@@ -315,7 +329,9 @@ export default function ColorMixing({ onComplete, onNext }: ColorMixingProps) {
             onLayout={() => {
               if (mixingAreaRef.current) {
                 mixingAreaRef.current.measure((x, y, width, height, pageX, pageY) => {
-                  setMixingAreaPosition({ x: pageX, y: pageY, width, height });
+                  const rect = { x: pageX, y: pageY, width, height };
+                  mixingAreaPositionRef.current = rect;
+                  setMixingAreaPosition(rect);
                 });
               }
             }}
@@ -405,29 +421,29 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 10,
   },
   title: {
-    fontSize: 26,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 6,
-  },
-  progress: {
-    fontSize: 18,
-    color: '#555',
     marginBottom: 4,
   },
+  progress: {
+    fontSize: 14,
+    color: '#555',
+    marginBottom: 2,
+  },
   score: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#2E7D32',
   },
   questionContainer: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 10,
     backgroundColor: 'white',
-    padding: 16,
+    padding: 10,
     borderRadius: 12,
     elevation: 2,
     shadowColor: '#000',
@@ -436,26 +452,26 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   question: {
-    fontSize: 22,
+    fontSize: 17,
     fontWeight: 'bold',
     textAlign: 'center',
     color: '#333',
-    marginBottom: 10,
+    marginBottom: 6,
   },
   emoji: {
-    fontSize: 48,
+    fontSize: 32,
   },
   gameArea: {
     flex: 1,
     justifyContent: 'space-between',
   },
   colorsContainer: {
-    marginBottom: 20,
+    marginBottom: 12,
   },
   instruction: {
-    fontSize: 20,
+    fontSize: 16,
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 10,
     color: '#333',
     fontWeight: '600',
   },
@@ -491,18 +507,18 @@ const styles = StyleSheet.create({
   },
   mixingAreaContainer: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   mixingTitle: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: 'bold',
-    marginBottom: 14,
+    marginBottom: 10,
     color: '#333',
   },
   mixingArea: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
     borderWidth: 4,
     borderColor: '#333',
     borderStyle: 'dashed',
@@ -520,7 +536,7 @@ const styles = StyleSheet.create({
     borderStyle: 'solid',
   },
   mixingPlaceholder: {
-    fontSize: 18,
+    fontSize: 16,
     color: '#666',
     textAlign: 'center',
     fontWeight: '600',
@@ -537,7 +553,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   resultText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     color: 'white',
     textShadowColor: 'rgba(0, 0, 0, 0.8)',
