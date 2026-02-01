@@ -272,6 +272,7 @@ function SightWordsWorksheet({ worksheet, onComplete }: SightWordsWorksheetProps
     return (
       <View style={styles.container}>
         <ScrollView
+          style={styles.sightScroll}
           contentContainerStyle={styles.sightReviewScroll}
           showsVerticalScrollIndicator={false}
         >
@@ -289,7 +290,7 @@ function SightWordsWorksheet({ worksheet, onComplete }: SightWordsWorksheetProps
                     isCorrect ? styles.sightReviewItemCorrect : styles.sightReviewItemWrong,
                   ]}
                 >
-                  <Text style={styles.sightReviewItemPrompt}>Find: "{item.target}"</Text>
+                  <Text style={styles.sightReviewItemPrompt}>Word: "{item.target}"</Text>
                   {isCorrect ? (
                     <Text style={styles.sightReviewCorrectText}>✓ Correct! You picked "{chosen}".</Text>
                   ) : (
@@ -301,6 +302,8 @@ function SightWordsWorksheet({ worksheet, onComplete }: SightWordsWorksheetProps
               );
             })}
           </View>
+        </ScrollView>
+        <View style={styles.sightBottomBar}>
           <TouchableOpacity
             style={[styles.finishButton, styles.sightFinishButton]}
             onPress={handleSeeScore}
@@ -308,20 +311,38 @@ function SightWordsWorksheet({ worksheet, onComplete }: SightWordsWorksheetProps
           >
             <Text style={styles.finishButtonText}>See my score</Text>
           </TouchableOpacity>
-        </ScrollView>
+        </View>
       </View>
     );
   }
 
+  const speakWord = (word: string) => {
+    Speech.speak(word, { language: 'en', rate: 0.9 });
+  };
+
   return (
     <View style={styles.container}>
-      <View style={styles.sightContent}>
+      <ScrollView
+        style={styles.sightScroll}
+        contentContainerStyle={styles.sightScrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         <Text style={styles.sightTitle}>{worksheet.title}</Text>
-        <Text style={styles.sightInstructions}>Tap the word that matches.</Text>
+        <Text style={styles.sightInstructions}>
+          Tap the speaker to hear the word, then tap the word you hear.
+        </Text>
         <View style={styles.sightList}>
           {promptsWithOptions.map((item, i) => (
             <View key={i} style={styles.sightItemWrap}>
-              <Text style={styles.sightItemPrompt}>Find the word: <Text style={styles.sightItemTarget}>{item.target}</Text></Text>
+              <Text style={styles.sightItemPrompt}>Tap the word you hear:</Text>
+              <TouchableOpacity
+                style={styles.sightHearButton}
+                onPress={() => speakWord(item.target)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.sightHearButtonText}>🔊 Hear word</Text>
+              </TouchableOpacity>
               <View style={styles.sightOptions}>
                 {item.options.map((opt) => {
                   const selected = selectedByIndex[i] === opt;
@@ -358,6 +379,8 @@ function SightWordsWorksheet({ worksheet, onComplete }: SightWordsWorksheetProps
             </View>
           ))}
         </View>
+      </ScrollView>
+      <View style={styles.sightBottomBar}>
         <TouchableOpacity
           style={[styles.finishButton, styles.sightFinishButton]}
           onPress={handleDone}
@@ -742,12 +765,22 @@ const styles = StyleSheet.create({
     color: '#721c24',
     fontWeight: '600',
   },
-  // Sight Words – compact, tappable
-  sightContent: {
+  // Sight Words – compact, tappable, bottom button always visible
+  sightScroll: {
     flex: 1,
+  },
+  sightScrollContent: {
     padding: 12,
     paddingTop: 16,
+    paddingBottom: 16,
+  },
+  sightBottomBar: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     paddingBottom: 24,
+    backgroundColor: '#f8f9fa',
+    borderTopWidth: 1,
+    borderTopColor: '#e9ecef',
   },
   sightTitle: {
     fontSize: 17,
@@ -785,6 +818,19 @@ const styles = StyleSheet.create({
   sightItemTarget: {
     fontWeight: '700',
     color: '#006A60',
+  },
+  sightHearButton: {
+    backgroundColor: '#006A60',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignSelf: 'center',
+    marginBottom: 8,
+  },
+  sightHearButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
   },
   sightOptions: {
     flexDirection: 'row',
