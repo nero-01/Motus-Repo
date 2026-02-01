@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   ScrollView,
@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
 import { ActivityIndicator, Chip, Searchbar, FAB } from 'react-native-paper';
 import { router } from 'expo-router';
 import { ActivityService } from '../../../src/modules/activities/services/activityService';
@@ -50,17 +49,6 @@ export default function ActivitiesScreen() {
   useEffect(() => {
     loadData();
   }, []);
-
-  const firstFocusRef = useRef(true);
-  useFocusEffect(
-    useCallback(() => {
-      if (firstFocusRef.current) {
-        firstFocusRef.current = false;
-        return;
-      }
-      loadData();
-    }, [])
-  );
 
   useEffect(() => {
     filterActivities();
@@ -111,7 +99,17 @@ export default function ActivitiesScreen() {
   };
 
   const handleActivityPress = (activity: Activity) => {
-    router.push(`/activities/session?id=${activity.id}`);
+    Alert.alert(
+      'Activity Details',
+      `Viewing details for: ${activity.title}`,
+      [
+        { text: 'OK' },
+        { 
+          text: 'Start Activity', 
+          onPress: () => handleStartActivity(activity) 
+        }
+      ]
+    );
   };
 
   const handleToggleFavorite = async (activityId: string) => {
@@ -130,8 +128,25 @@ export default function ActivitiesScreen() {
     }
   };
 
-  const handleStartActivity = (activity: Activity) => {
-    router.push(`/activities/session?id=${activity.id}`);
+  const handleStartActivity = async (activity: Activity) => {
+    try {
+      await ActivityService.startActivitySession(activity.id);
+      Alert.alert(
+        'Activity Started!',
+        `You've started: ${activity.title}`,
+        [
+          {
+            text: 'Continue',
+            onPress: () => {
+              Alert.alert('Great!', 'Activity session is now active. Track your progress!');
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      if (__DEV__) console.warn('Error starting activity:', error);
+      Alert.alert('Error', 'Failed to start activity session.');
+    }
   };
 
   const renderActivityCard = (activity: Activity) => (
