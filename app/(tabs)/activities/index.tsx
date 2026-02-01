@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   ScrollView,
@@ -6,9 +6,9 @@ import {
   RefreshControl,
   Text,
   TouchableOpacity,
-  FlatList,
   Alert,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { ActivityIndicator, Chip, Searchbar, FAB } from 'react-native-paper';
 import { router } from 'expo-router';
 import { ActivityService } from '../../../src/modules/activities/services/activityService';
@@ -51,6 +51,17 @@ export default function ActivitiesScreen() {
     loadData();
   }, []);
 
+  const firstFocusRef = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (firstFocusRef.current) {
+        firstFocusRef.current = false;
+        return;
+      }
+      loadData();
+    }, [])
+  );
+
   useEffect(() => {
     filterActivities();
   }, [activities, searchQuery, selectedFilter, activeTab]);
@@ -60,10 +71,11 @@ export default function ActivitiesScreen() {
 
     // Apply search filter
     if (searchQuery) {
+      const q = searchQuery.toLowerCase();
       filtered = filtered.filter(activity =>
-        activity.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        activity.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        activity.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+        activity.title.toLowerCase().includes(q) ||
+        activity.description.toLowerCase().includes(q) ||
+        (activity.tags ?? []).some(tag => tag.toLowerCase().includes(q))
       );
     }
 
@@ -99,17 +111,7 @@ export default function ActivitiesScreen() {
   };
 
   const handleActivityPress = (activity: Activity) => {
-    Alert.alert(
-      'Activity Details',
-      `Viewing details for: ${activity.title}`,
-      [
-        { text: 'OK' },
-        { 
-          text: 'Start Activity', 
-          onPress: () => handleStartActivity(activity) 
-        }
-      ]
-    );
+    router.push(`/activities/session?id=${activity.id}`);
   };
 
   const handleToggleFavorite = async (activityId: string) => {
@@ -123,35 +125,16 @@ export default function ActivitiesScreen() {
         )
       );
     } catch (error) {
-      console.error('Error toggling favorite:', error);
+      if (__DEV__) console.warn('Error toggling favorite:', error);
       Alert.alert('Error', 'Failed to update favorite status.');
     }
   };
 
-  const handleStartActivity = async (activity: Activity) => {
-    try {
-      await ActivityService.startActivitySession(activity.id);
-      Alert.alert(
-        'Activity Started!',
-        `You've started: ${activity.title}`,
-        [
-          { 
-            text: 'Continue', 
-            onPress: () => {
-              // Here you would typically navigate to the activity session
-              // For now, we'll just show a success message
-              Alert.alert('Great!', 'Activity session is now active. Track your progress!');
-            }
-          }
-        ]
-      );
-    } catch (error) {
-      console.error('Error starting activity:', error);
-      Alert.alert('Error', 'Failed to start activity session.');
-    }
+  const handleStartActivity = (activity: Activity) => {
+    router.push(`/activities/session?id=${activity.id}`);
   };
 
-  const renderActivityCard = ({ item: activity }: { item: Activity }) => (
+  const renderActivityCard = (activity: Activity) => (
     <TouchableOpacity
       style={styles.activityCard}
       onPress={() => handleActivityPress(activity)}
@@ -186,8 +169,8 @@ export default function ActivitiesScreen() {
       </View>
 
       <View style={styles.activityTags}>
-        {activity.tags.slice(0, 3).map((tag, index) => (
-          <Chip key={index} compact style={styles.tagChip}>
+        {(activity.tags ?? []).slice(0, 3).map((tag, index) => (
+          <Chip key={`${activity.id}-tag-${index}`} compact style={styles.tagChip}>
             {tag}
           </Chip>
         ))}
@@ -284,6 +267,8 @@ export default function ActivitiesScreen() {
 
       <ScrollView
         style={styles.content}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={true}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -310,13 +295,13 @@ export default function ActivitiesScreen() {
           </Text>
 
           {filteredActivities.length > 0 ? (
-            <FlatList
-              data={filteredActivities}
-              renderItem={renderActivityCard}
-              keyExtractor={(item) => item.id}
-              scrollEnabled={false}
-              contentContainerStyle={styles.activitiesList}
-            />
+            <View style={styles.activitiesList}>
+              {filteredActivities.map((activity) => (
+                <View key={activity.id}>
+                  {renderActivityCard(activity)}
+                </View>
+              ))}
+            </View>
           ) : (
             <View style={styles.emptyState}>
               <Text style={styles.emptyIcon}>🎨</Text>
@@ -364,6 +349,9 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 100,
   },
   loadingContainer: {
     flex: 1,
@@ -426,7 +414,7 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   activitiesList: {
-    gap: 16,
+    gap: 12,
   },
   activityCard: {
     backgroundColor: '#ffffff',
