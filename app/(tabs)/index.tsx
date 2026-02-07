@@ -231,6 +231,8 @@ export default function DashboardScreen() {
       style={styles.actionTile}
       onPress={() => router.push(action.route as any)}
       activeOpacity={0.8}
+      accessibilityLabel={`${action.title}, ${action.subtitle}`}
+      accessibilityRole="button"
     >
       <LinearGradient
         colors={action.gradient as any}
@@ -278,7 +280,13 @@ export default function DashboardScreen() {
               <Text style={styles.greeting}>{getGreeting().message} {getGreeting().icon}</Text>
               <Text style={styles.subtitle}>Ready to make today amazing?</Text>
             </View>
-            <TouchableOpacity onPress={handleSignOut} style={styles.profileButton}>
+            <TouchableOpacity
+              onPress={handleSignOut}
+              style={styles.profileButton}
+              activeOpacity={0.8}
+              accessibilityLabel="Profile and sign out"
+              accessibilityRole="button"
+            >
               <Avatar.Text size={40} label="U" style={styles.avatar} />
             </TouchableOpacity>
           </View>
@@ -328,7 +336,11 @@ export default function DashboardScreen() {
         <View style={styles.recentSection}>
           <Text style={styles.sectionTitle}>Recent Activity</Text>
           {recentActivities.map((activity) => (
-            <Surface key={activity.id} style={styles.activityItem}>
+            <Surface
+              key={activity.id}
+              style={styles.activityItem}
+              accessibilityLabel={`${activity.title}, ${activity.description}`}
+            >
               <View style={styles.activityContent}>
                 <View style={[styles.activityIcon, { backgroundColor: activity.color + '20' }]}>
                   <Text style={styles.activityIconText}>{activity.icon}</Text>

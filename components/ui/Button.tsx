@@ -12,6 +12,10 @@ export interface ButtonProps {
   loading?: boolean;
   disabled?: boolean;
   style?: ViewStyle;
+  /** Optional. Improves screen reader experience when set. */
+  accessibilityLabel?: string;
+  /** Optional. Hint read after the label when focused. */
+  accessibilityHint?: string;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -23,6 +27,8 @@ export const Button: React.FC<ButtonProps> = ({
   loading = false,
   disabled = false,
   style,
+  accessibilityLabel,
+  accessibilityHint,
 }) => {
   const getMode = () => {
     switch (variant) {
@@ -69,6 +75,8 @@ export const Button: React.FC<ButtonProps> = ({
         loading={loading}
         disabled={disabled}
         contentStyle={getContentStyle()}
+        accessibilityLabel={accessibilityLabel}
+        accessibilityHint={accessibilityHint}
         theme={{
           colors: {
             primary: theme.colors.primary,

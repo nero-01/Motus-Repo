@@ -17,6 +17,8 @@ export interface InputProps {
   multiline?: boolean;
   numberOfLines?: number;
   maxLength?: number;
+  /** Optional. Defaults to label. Use for clearer screen reader context. */
+  accessibilityLabel?: string;
 }
 
 export const Input: React.FC<InputProps> = ({
@@ -33,7 +35,9 @@ export const Input: React.FC<InputProps> = ({
   multiline = false,
   numberOfLines = 1,
   maxLength,
+  accessibilityLabel: accessibilityLabelProp,
 }) => {
+  const accessibilityLabel = accessibilityLabelProp ?? label;
   const getHelperColor = (): TextStyle['color'] => {
     if (error) {
       return theme.colors.error;
@@ -57,6 +61,7 @@ export const Input: React.FC<InputProps> = ({
         numberOfLines={numberOfLines}
         maxLength={maxLength}
         style={styles.input}
+        accessibilityLabel={accessibilityLabel}
         theme={{
           colors: {
             primary: theme.colors.primary,

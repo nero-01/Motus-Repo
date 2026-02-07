@@ -39,7 +39,7 @@ export default function ActivitiesScreen() {
       if (__DEV__) console.log('Activities: Data loaded successfully');
     } catch (error) {
       if (__DEV__) console.warn('Activities: Error loading data:', error);
-      Alert.alert('Error', 'Failed to load activities. Please try again.');
+      Alert.alert('Something went wrong', 'We couldn’t load activities. Pull to refresh or try again in a moment.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -124,7 +124,7 @@ export default function ActivitiesScreen() {
       );
     } catch (error) {
       if (__DEV__) console.warn('Error toggling favorite:', error);
-      Alert.alert('Error', 'Failed to update favorite status.');
+      Alert.alert('Something went wrong', 'We couldn’t update your favorite. Please try again.');
     }
   };
 
@@ -145,7 +145,7 @@ export default function ActivitiesScreen() {
       );
     } catch (error) {
       if (__DEV__) console.warn('Error starting activity:', error);
-      Alert.alert('Error', 'Failed to start activity session.');
+      Alert.alert('Something went wrong', 'We couldn’t start the activity. Please try again.');
     }
   };
 
@@ -153,6 +153,9 @@ export default function ActivitiesScreen() {
     <TouchableOpacity
       style={styles.activityCard}
       onPress={() => handleActivityPress(activity)}
+      activeOpacity={0.85}
+      accessibilityLabel={`${activity.title}. ${activity.duration} minutes, ${activity.difficulty}`}
+      accessibilityRole="button"
     >
       <View style={styles.activityHeader}>
         <View style={styles.activityInfo}>
@@ -164,6 +167,9 @@ export default function ActivitiesScreen() {
         <TouchableOpacity
           style={styles.favoriteButton}
           onPress={() => handleToggleFavorite(activity.id)}
+          activeOpacity={0.7}
+          accessibilityLabel={activity.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+          accessibilityRole="button"
         >
           <Text style={[styles.favoriteIcon, activity.isFavorite && styles.favoriteActive]}>
             {activity.isFavorite ? '❤️' : '🤍'}
@@ -195,6 +201,9 @@ export default function ActivitiesScreen() {
         <TouchableOpacity
           style={[styles.actionButton, styles.startButton]}
           onPress={() => handleStartActivity(activity)}
+          activeOpacity={0.85}
+          accessibilityLabel={`Start activity: ${activity.title}`}
+          accessibilityRole="button"
         >
           <Text style={styles.startButtonText}>Start Activity</Text>
         </TouchableOpacity>
@@ -266,7 +275,7 @@ export default function ActivitiesScreen() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#006A60" />
-        <Text style={styles.loadingText}>Loading activities...</Text>
+        <Text style={styles.loadingText}>Loading activities…</Text>
       </View>
     );
   }
@@ -322,9 +331,9 @@ export default function ActivitiesScreen() {
               <Text style={styles.emptyIcon}>🎨</Text>
               <Text style={styles.emptyTitle}>No activities found</Text>
               <Text style={styles.emptyText}>
-                {searchQuery 
-                  ? 'Try adjusting your search terms'
-                  : 'Start by exploring different categories'
+                {searchQuery
+                  ? 'Try different keywords or clear the search'
+                  : 'Switch tabs or filters to see more'
                 }
               </Text>
             </View>

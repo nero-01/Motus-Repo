@@ -103,7 +103,7 @@ export default function EducationScreen() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#006A60" />
-        <Text style={styles.loadingText}>Loading...</Text>
+        <Text style={styles.loadingText}>Loading learning activities…</Text>
       </View>
     );
   }
@@ -141,6 +141,8 @@ export default function EducationScreen() {
                 style={[styles.levelChip, active && styles.levelChipActive]}
                 onPress={() => handleLevelChange(lvl)}
                 activeOpacity={0.8}
+                accessibilityLabel={`Level ${lvl}${active ? ', selected' : ''}`}
+                accessibilityRole="button"
               >
                 <Text style={[styles.levelChipText, active && styles.levelChipTextActive]}>
                   {lvl}
@@ -166,6 +168,8 @@ export default function EducationScreen() {
               style={[styles.chip, active && styles.chipActive]}
               onPress={() => setSelectedCategory(c.value)}
               activeOpacity={0.8}
+              accessibilityLabel={`Category ${c.label}${active ? ', selected' : ''}`}
+              accessibilityRole="button"
             >
               <Text style={[styles.chipText, active && styles.chipTextActive]}>
                 {c.label}
@@ -194,6 +198,8 @@ export default function EducationScreen() {
                 style={[styles.tile, { width: tileWidth, height: tileHeight }]}
                 onPress={() => openWorksheet(worksheet)}
                 activeOpacity={0.85}
+                accessibilityLabel={`${worksheet.title}, open worksheet`}
+                accessibilityRole="button"
               >
                 <View style={[styles.tileIconWrap, { backgroundColor: color }]}>
                   <Text style={styles.tileIcon}>{icon}</Text>
