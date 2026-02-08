@@ -190,7 +190,7 @@ export const getMealPlansByFamily = async (familyId: string): Promise<MealPlan[]
     const data = await Promise.race([queryPromise, timeoutPromise]) as any;
     return data || [];
   } catch (error) {
-    console.error('Exception in getMealPlansByFamily, using mock data:', error);
+    if (__DEV__) console.error('Exception in getMealPlansByFamily, using mock data:', error);
     // Return mock data when database fails
     return [
       {
@@ -533,7 +533,7 @@ export const getMealPlanStats = async (mealPlanId: string): Promise<{
       uniqueRecipes: 0, // Mock data
     };
   } catch (error) {
-    console.error('Exception in getMealPlanStats, using mock data:', error);
+    if (__DEV__) console.error('Exception in getMealPlanStats, using mock data:', error);
     // Return mock stats when database fails
     return {
       totalMeals: 5,

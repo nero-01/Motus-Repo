@@ -81,7 +81,7 @@ export const dashboardService = {
 
       return stats;
     } catch (error) {
-      console.error('Error fetching dashboard stats:', error);
+      if (__DEV__) console.error('Error fetching dashboard stats:', error);
       throw new Error('Failed to load dashboard data');
     }
   },
@@ -94,7 +94,7 @@ export const dashboardService = {
       
       return [];
     } catch (error) {
-      console.error('Error fetching recent activities:', error);
+      if (__DEV__) console.error('Error fetching recent activities:', error);
       throw new Error('Failed to load recent activities');
     }
   },
@@ -107,7 +107,7 @@ export const dashboardService = {
       
       return [];
     } catch (error) {
-      console.error('Error fetching upcoming tasks:', error);
+      if (__DEV__) console.error('Error fetching upcoming tasks:', error);
       throw new Error('Failed to load upcoming tasks');
     }
   },

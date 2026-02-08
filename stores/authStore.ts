@@ -48,11 +48,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           const familyStore = useFamilyStore.getState();
           await familyStore.loadFamilies(user.id);
         } catch (error) {
-          console.error('Error loading families after sign in:', error);
+          if (__DEV__) console.error('Error loading families after sign in:', error);
         }
       }
     } catch (error) {
-      console.error('Sign in error:', error);
+      if (__DEV__) console.error('Sign in error:', error);
       set({ 
         error: 'An unexpected error occurred', 
         isLoading: false 
@@ -84,11 +84,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           const familyStore = useFamilyStore.getState();
           await familyStore.loadFamilies(user.id);
         } catch (error) {
-          console.error('Error loading families after sign up:', error);
+          if (__DEV__) console.error('Error loading families after sign up:', error);
         }
       }
     } catch (error) {
-      console.error('Sign up error:', error);
+      if (__DEV__) console.error('Sign up error:', error);
       set({ 
         error: 'An unexpected error occurred', 
         isLoading: false 
@@ -119,10 +119,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         const familyStore = useFamilyStore.getState();
         familyStore.reset();
       } catch (error) {
-        console.error('Error resetting family store:', error);
+        if (__DEV__) console.error('Error resetting family store:', error);
       }
     } catch (error) {
-      console.error('Sign out error:', error);
+      if (__DEV__) console.error('Sign out error:', error);
       set({ 
         error: 'An unexpected error occurred', 
         isLoading: false 
@@ -174,14 +174,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         try {
           const familyStore = useFamilyStore.getState();
           await familyStore.loadFamilies(user.id).catch(error => {
-            console.error('Error loading families after auth check:', error);
+            if (__DEV__) console.error('Error loading families after auth check:', error);
           });
         } catch (error) {
-          console.error('Error accessing family store in checkAuth:', error);
+          if (__DEV__) console.error('Error accessing family store in checkAuth:', error);
         }
       }
     } catch (error) {
-      console.error('Auth check failed:', error);
+      if (__DEV__) console.error('Auth check failed:', error);
       set({ 
         user: null, 
         isAuthenticated: false, 

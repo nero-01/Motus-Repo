@@ -84,7 +84,7 @@ export class AuthService {
         updatedAt: user.updated_at!,
       };
     } catch (error) {
-      console.error('Error getting current user:', error);
+      if (__DEV__) console.error('Error getting current user:', error);
       return null;
     }
   }

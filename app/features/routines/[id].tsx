@@ -79,7 +79,7 @@ export default function RoutineDetailScreen() {
         ),
       }));
     } catch (err: any) {
-      console.error('Failed to complete task:', err);
+      if (__DEV__) console.error('Failed to complete task:', err);
       // You might want to show an error toast here
     }
   };
@@ -191,7 +191,7 @@ export default function RoutineDetailScreen() {
             style={styles.actionButton}
             onPress={() => {
               // TODO: Reset routine for next day
-              console.log('Reset routine');
+              if (__DEV__) console.log('Reset routine');
             }}
           >
             Reset for Tomorrow

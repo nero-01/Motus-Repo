@@ -106,7 +106,7 @@ export default function CreateRoutineScreen() {
         ]
       );
     } catch (error) {
-      console.error('Error creating routine:', error);
+      if (__DEV__) console.error('Error creating routine:', error);
       Alert.alert('Error', 'Failed to create routine. Please try again.');
     } finally {
       setIsLoading(false);

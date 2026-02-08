@@ -29,7 +29,7 @@ export default function ForgotPasswordScreen() {
       
       setSuccess(true);
     } catch (err) {
-      console.error('Password reset error:', err);
+      if (__DEV__) console.error('Password reset error:', err);
       setError('An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(false);

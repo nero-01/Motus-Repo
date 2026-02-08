@@ -55,7 +55,7 @@ export default function LoginForm() {
       await login({ email, password });
       router.replace('/(tabs)');
     } catch (err) {
-      console.error('Login error:', err);
+      if (__DEV__) console.error('Login error:', err);
       Alert.alert('Error', 'Failed to sign in. Please try again.');
     }
   };
@@ -67,7 +67,7 @@ export default function LoginForm() {
       await SocialAuthService.signInWithProvider(provider.id);
       router.replace('/(tabs)');
     } catch (err) {
-      console.error(`${provider.name} login error:`, err);
+      if (__DEV__) console.error(`${provider.name} login error:`, err);
       Alert.alert('Error', `Failed to sign in with ${provider.name}. Please try again.`);
     } finally {
       setSocialLoading(null);

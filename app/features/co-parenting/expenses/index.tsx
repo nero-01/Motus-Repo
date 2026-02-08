@@ -303,7 +303,7 @@ export default function ExpensesScreen() {
             style={styles.actionButton}
             onPress={() => {
               // TODO: Generate report
-              console.log('Generate report');
+              if (__DEV__) console.log('Generate report');
             }}
           >
             Generate Report
@@ -314,7 +314,7 @@ export default function ExpensesScreen() {
             style={styles.actionButton}
             onPress={() => {
               // TODO: Export data
-              console.log('Export data');
+              if (__DEV__) console.log('Export data');
             }}
           >
             Export Data
@@ -327,7 +327,7 @@ export default function ExpensesScreen() {
         style={styles.fab}
         onPress={() => {
           // TODO: Navigate to add expense screen
-          console.log('Add new expense');
+          if (__DEV__) console.log('Add new expense');
         }}
       />
     </View>

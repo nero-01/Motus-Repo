@@ -270,7 +270,7 @@ export default function MessagesScreen() {
         style={styles.fab}
         onPress={() => {
           // TODO: Start new conversation
-          console.log('Start new conversation');
+          if (__DEV__) console.log('Start new conversation');
         }}
       />
     </View>

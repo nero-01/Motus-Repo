@@ -90,7 +90,7 @@ export default function CoParentingCalendarScreen() {
       setPendingExpenses(pendingCount);
 
     } catch (error) {
-      console.error('Error loading calendar data:', error);
+      if (__DEV__) console.error('Error loading calendar data:', error);
       Alert.alert('Error', 'Failed to load calendar data');
     } finally {
       setIsLoading(false);
@@ -129,7 +129,7 @@ export default function CoParentingCalendarScreen() {
       setShowAddDialog(false);
       loadCalendarData();
     } catch (error) {
-      console.error('Error creating event:', error);
+      if (__DEV__) console.error('Error creating event:', error);
       Alert.alert('Error', 'Failed to create event');
     }
   };
@@ -140,7 +140,7 @@ export default function CoParentingCalendarScreen() {
       Alert.alert('Success', 'Event deleted successfully');
       loadCalendarData();
     } catch (error) {
-      console.error('Error deleting event:', error);
+      if (__DEV__) console.error('Error deleting event:', error);
       Alert.alert('Error', 'Failed to delete event');
     }
   };

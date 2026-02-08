@@ -16,15 +16,17 @@ Use this before submitting MotusTots to the Google Play Store (internal or close
   - **Supabase client (client.ts)**: Connection/schema test logs and missing-config warning wrapped in `__DEV__`.
   - **Auth store**: setUser/checkAuth and family-load errors wrapped in `__DEV__`.
 
-- **Remaining `console` usage (non-blocking)**
-  - `services/supabase/education.ts`, `chores.ts`, `rewards.ts`, `family.ts`: success/info logs (e.g. "Creating chore", "Points added") still run in production. They do not log sensitive data; optionally wrap in `__DEV__` later.
-  - A few placeholder buttons (co-parenting messages/expenses, routines reset) still have `console.log`; no user data. Optional to remove.
+- **Console usage (deployment pass)**
+  - All `console.log` / `console.error` / `console.warn` in app code, stores, and services are now wrapped in `__DEV__` (no console output in production). This includes: education, chores, rewards, family, dashboard, meals, auth store, Supabase client schema test, calendar, coparenting, routines, analytics, co-parenting messages/expenses, forgot-password, and placeholder buttons.
 
 - **App config**
   - `app.json`: `android.versionCode: 1` added (required for Play Store; increment for each release).
 
 - **Sensitive data**
   - No API keys or secrets are logged. Supabase URL/anon key in `config/env.ts` are client-side defaults; prefer setting `EXPO_PUBLIC_*` in EAS/CI and not committing real keys.
+
+- **Production config (env)**
+  - `config/env.ts`: In production (`EXPO_PUBLIC_APP_ENV=production`), no fallback Supabase URL/anon key is used; you must set `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` in EAS Secrets or build env. `FORCE_MOCK` is forced to `false` in production.
 
 ## ⚠️ Before you submit
 

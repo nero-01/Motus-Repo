@@ -108,7 +108,7 @@ export const testDatabaseSchema = async () => {
     
     return { success: true, results };
   } catch (error) {
-    console.error('Database schema test exception:', error);
+    if (__DEV__) console.error('Database schema test exception:', error);
     return { success: false, error };
   }
 };
