@@ -10,6 +10,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Button } from 'react-native-paper';
 import * as Speech from 'expo-speech';
+import Svg, { Polygon, Circle, Rect } from 'react-native-svg';
 import { playSuccessSound, playFailSound } from '../../../utils/worksheetSounds';
 import LetterTracing from '../../../components/worksheets/LetterTracing';
 import ColorMixing from '../../../components/worksheets/ColorMixing';
@@ -468,6 +469,169 @@ interface GeometryQuestion {
   options: string[];
 }
 
+/** Extract shape name from question text */
+function extractShapeFromQuestion(question: string): string | null {
+  const shapes = ['triangle', 'square', 'circle', 'rectangle', 'pentagon', 'hexagon', 'heptagon', 'octagon'];
+  const lowerQuestion = question.toLowerCase();
+  
+  // First check for direct shape mentions
+  for (const shape of shapes) {
+    if (lowerQuestion.includes(shape)) {
+      return shape;
+    }
+  }
+  
+  // Check for specific patterns (order matters - more specific first)
+  if (lowerQuestion.includes('all sides equal and all angles equal')) {
+    return 'square';
+  }
+  if (lowerQuestion.includes('4 equal sides')) {
+    return 'square';
+  }
+  if (lowerQuestion.includes('0 sides') || lowerQuestion.includes('no sides')) {
+    return 'circle';
+  }
+  if (lowerQuestion.includes('3 sides') && !lowerQuestion.includes('pentagon') && !lowerQuestion.includes('hexagon')) {
+    return 'triangle';
+  }
+  if (lowerQuestion.includes('4 corners') || (lowerQuestion.includes('4 sides') && !lowerQuestion.includes('equal'))) {
+    return 'rectangle';
+  }
+  if (lowerQuestion.includes('5 sides') || lowerQuestion.includes('shape with 5 sides')) {
+    return 'pentagon';
+  }
+  if (lowerQuestion.includes('6 sides')) {
+    return 'hexagon';
+  }
+  if (lowerQuestion.includes('7 sides')) {
+    return 'heptagon';
+  }
+  if (lowerQuestion.includes('8 sides')) {
+    return 'octagon';
+  }
+  return null;
+}
+
+/** Shape component to render geometric shapes */
+function ShapeVisualization({ shape, size = 60 }: { shape: string | null; size?: number }) {
+  if (!shape) return null;
+
+  const center = size / 2;
+  const strokeWidth = 3;
+  const strokeColor = '#006A60';
+  const fillColor = '#e8f5f3';
+
+  switch (shape.toLowerCase()) {
+    case 'circle':
+      return (
+        <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          <Circle cx={center} cy={center} r={center - strokeWidth} fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth} />
+        </Svg>
+      );
+    case 'triangle':
+      return (
+        <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          <Polygon
+            points={`${center},${strokeWidth + 5} ${size - strokeWidth - 5},${size - strokeWidth - 5} ${strokeWidth + 5},${size - strokeWidth - 5}`}
+            fill={fillColor}
+            stroke={strokeColor}
+            strokeWidth={strokeWidth}
+          />
+        </Svg>
+      );
+    case 'square':
+      return (
+        <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          <Rect
+            x={strokeWidth + 5}
+            y={strokeWidth + 5}
+            width={size - (strokeWidth + 5) * 2}
+            height={size - (strokeWidth + 5) * 2}
+            fill={fillColor}
+            stroke={strokeColor}
+            strokeWidth={strokeWidth}
+          />
+        </Svg>
+      );
+    case 'rectangle':
+      return (
+        <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          <Rect
+            x={strokeWidth + 8}
+            y={strokeWidth + 5}
+            width={size - (strokeWidth + 8) * 2}
+            height={size - (strokeWidth + 5) * 2}
+            fill={fillColor}
+            stroke={strokeColor}
+            strokeWidth={strokeWidth}
+          />
+        </Svg>
+      );
+    case 'pentagon': {
+      const points = [];
+      const radius = center - strokeWidth - 5;
+      for (let i = 0; i < 5; i++) {
+        const angle = (i * 2 * Math.PI) / 5 - Math.PI / 2;
+        const x = center + radius * Math.cos(angle);
+        const y = center + radius * Math.sin(angle);
+        points.push(`${x},${y}`);
+      }
+      return (
+        <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          <Polygon points={points.join(' ')} fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth} />
+        </Svg>
+      );
+    }
+    case 'hexagon': {
+      const points = [];
+      const radius = center - strokeWidth - 5;
+      for (let i = 0; i < 6; i++) {
+        const angle = (i * 2 * Math.PI) / 6 - Math.PI / 2;
+        const x = center + radius * Math.cos(angle);
+        const y = center + radius * Math.sin(angle);
+        points.push(`${x},${y}`);
+      }
+      return (
+        <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          <Polygon points={points.join(' ')} fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth} />
+        </Svg>
+      );
+    }
+    case 'heptagon': {
+      const points = [];
+      const radius = center - strokeWidth - 5;
+      for (let i = 0; i < 7; i++) {
+        const angle = (i * 2 * Math.PI) / 7 - Math.PI / 2;
+        const x = center + radius * Math.cos(angle);
+        const y = center + radius * Math.sin(angle);
+        points.push(`${x},${y}`);
+      }
+      return (
+        <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          <Polygon points={points.join(' ')} fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth} />
+        </Svg>
+      );
+    }
+    case 'octagon': {
+      const points = [];
+      const radius = center - strokeWidth - 5;
+      for (let i = 0; i < 8; i++) {
+        const angle = (i * 2 * Math.PI) / 8 - Math.PI / 2;
+        const x = center + radius * Math.cos(angle);
+        const y = center + radius * Math.sin(angle);
+        points.push(`${x},${y}`);
+      }
+      return (
+        <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          <Polygon points={points.join(' ')} fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth} />
+        </Svg>
+      );
+    }
+    default:
+      return null;
+  }
+}
+
 function getGeometryConfig(level: number): { count: number } {
   if (level <= 2) return { count: 4 };
   if (level <= 5) return { count: 6 };
@@ -615,6 +779,7 @@ function GeometryWorksheet({ worksheet, level, onComplete }: GeometryWorksheetPr
             {questions.map((item, i) => {
               const chosen = selectedByIndex[i];
               const isCorrect = chosen === item.correct;
+              const shapeName = extractShapeFromQuestion(item.question);
               return (
                 <View
                   key={i}
@@ -623,7 +788,12 @@ function GeometryWorksheet({ worksheet, level, onComplete }: GeometryWorksheetPr
                     isCorrect ? styles.addReviewItemCorrect : styles.addReviewItemWrong,
                   ]}
                 >
-                  <Text style={styles.addReviewItemProblem}>{item.question}</Text>
+                  <View style={styles.geometryQuestionRow}>
+                    <View style={styles.geometryShapeContainer}>
+                      <ShapeVisualization shape={shapeName} size={40} />
+                    </View>
+                    <Text style={styles.addReviewItemProblem}>{item.question}</Text>
+                  </View>
                   <Text style={styles.addReviewItemAnswer}>Answer: {item.correct}</Text>
                   <View style={styles.addReviewItemResult}>
                     {isCorrect ? (
@@ -661,44 +831,52 @@ function GeometryWorksheet({ worksheet, level, onComplete }: GeometryWorksheetPr
         <Text style={styles.addTitle}>{worksheet.title}</Text>
         <Text style={styles.addInstructions}>Tap the correct answer for each question.</Text>
         <View style={styles.addList}>
-          {questions.map((item, i) => (
-            <View key={i} style={styles.addItemWrap}>
-              <Text style={styles.addItem}>{item.question}</Text>
-              <View style={styles.addOptions}>
-                {item.options.map((opt) => {
-                  const selected = selectedByIndex[i] === opt;
-                  const correct = item.correct === opt;
-                  const showCorrect = selectedByIndex[i] != null;
-                  const isRightAnswer = showCorrect && selected && correct;
-                  const isWrongAnswer = showCorrect && selected && !correct;
-                  return (
-                    <TouchableOpacity
-                      key={opt}
-                      style={[
-                        styles.addOptionBtn,
-                        selected && styles.addOptionBtnSelected,
-                        isRightAnswer && styles.addOptionBtnCorrect,
-                        isWrongAnswer && styles.addOptionBtnWrong,
-                      ]}
-                      onPress={() => handleSelect(i, opt)}
-                      activeOpacity={0.8}
-                    >
-                      <Text
+          {questions.map((item, i) => {
+            const shapeName = extractShapeFromQuestion(item.question);
+            return (
+              <View key={i} style={styles.addItemWrap}>
+                <View style={styles.geometryQuestionRow}>
+                  <View style={styles.geometryShapeContainer}>
+                    <ShapeVisualization shape={shapeName} size={50} />
+                  </View>
+                  <Text style={styles.addItem}>{item.question}</Text>
+                </View>
+                <View style={styles.addOptions}>
+                  {item.options.map((opt) => {
+                    const selected = selectedByIndex[i] === opt;
+                    const correct = item.correct === opt;
+                    const showCorrect = selectedByIndex[i] != null;
+                    const isRightAnswer = showCorrect && selected && correct;
+                    const isWrongAnswer = showCorrect && selected && !correct;
+                    return (
+                      <TouchableOpacity
+                        key={opt}
                         style={[
-                          styles.addOptionText,
-                          selected && styles.addOptionTextSelected,
-                          isRightAnswer && styles.addOptionTextCorrect,
-                          isWrongAnswer && styles.addOptionTextWrong,
+                          styles.addOptionBtn,
+                          selected && styles.addOptionBtnSelected,
+                          isRightAnswer && styles.addOptionBtnCorrect,
+                          isWrongAnswer && styles.addOptionBtnWrong,
                         ]}
+                        onPress={() => handleSelect(i, opt)}
+                        activeOpacity={0.8}
                       >
-                        {opt}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
+                        <Text
+                          style={[
+                            styles.addOptionText,
+                            selected && styles.addOptionTextSelected,
+                            isRightAnswer && styles.addOptionTextCorrect,
+                            isWrongAnswer && styles.addOptionTextWrong,
+                          ]}
+                        >
+                          {opt}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
               </View>
-            </View>
-          ))}
+            );
+          })}
         </View>
         <TouchableOpacity
           style={[styles.finishButton, styles.addFinishButton]}
@@ -1027,6 +1205,18 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 6,
     textAlign: 'center',
+    flex: 1,
+  },
+  geometryQuestionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 12,
+  },
+  geometryShapeContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 4,
   },
   addOptions: {
     flexDirection: 'row',
