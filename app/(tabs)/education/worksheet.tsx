@@ -11,7 +11,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Button } from 'react-native-paper';
 import * as Speech from 'expo-speech';
 import Svg, { Polygon, Circle, Rect, Ellipse } from 'react-native-svg';
-import { playSuccessSound, playFailSound } from '../../../utils/worksheetSounds';
+import { playSuccessSound, playFailSound, playVictorySound, playDefeatSound } from '../../../utils/worksheetSounds';
 import LetterTracing from '../../../components/worksheets/LetterTracing';
 import ColorMixing from '../../../components/worksheets/ColorMixing';
 import AnimalHabitats from '../../../components/worksheets/AnimalHabitats';
@@ -151,7 +151,14 @@ function SimpleAdditionWorksheet({ worksheet, level, onComplete }: SimpleAdditio
     problemsWithAnswers.forEach((p, i) => {
       if (selectedByIndex[i] === p.correct) correct++;
     });
-    onComplete(Math.round((100 * correct) / total));
+    const score = Math.round((100 * correct) / total);
+    // Play victory sound for scores >= 70%, defeat sound for lower scores
+    if (score >= 70) {
+      playVictorySound();
+    } else {
+      playDefeatSound();
+    }
+    onComplete(score);
   };
 
   // Review screen: show right/wrong for each problem, then "See my score"
@@ -334,7 +341,14 @@ function SightWordsWorksheet({ worksheet, level, onComplete }: SightWordsWorkshe
     promptsWithOptions.forEach((p, i) => {
       if (selectedByIndex[i] === p.target) correct++;
     });
-    onComplete(Math.round((100 * correct) / total));
+    const score = Math.round((100 * correct) / total);
+    // Play victory sound for scores >= 70%, defeat sound for lower scores
+    if (score >= 70) {
+      playVictorySound();
+    } else {
+      playDefeatSound();
+    }
+    onComplete(score);
   };
 
   if (showReview) {
@@ -909,7 +923,14 @@ function GeometryWorksheet({ worksheet, level, onComplete }: GeometryWorksheetPr
     questions.forEach((q, i) => {
       if (selectedByIndex[i] === q.correct) correct++;
     });
-    onComplete(Math.round((100 * correct) / total));
+    const score = Math.round((100 * correct) / total);
+    // Play victory sound for scores >= 70%, defeat sound for lower scores
+    if (score >= 70) {
+      playVictorySound();
+    } else {
+      playDefeatSound();
+    }
+    onComplete(score);
   };
 
   // Review screen

@@ -1,6 +1,7 @@
 /**
  * Child-friendly success and fail sound effects for educational worksheets.
  * Uses local assets (success.mp3, wrong.mp3) at reduced volume.
+ * Victory/defeat sounds use victory.mp3/defeat.mp3 if available, otherwise fall back to success/wrong.
  */
 
 import { Audio } from 'expo-av';
@@ -10,6 +11,22 @@ const VOLUME = 0.5;
 // Local sound files from assets/sounds/
 const SUCCESS_SOUND = require('../assets/sounds/success.mp3');
 const WRONG_SOUND = require('../assets/sounds/wrong.mp3');
+
+// Victory/defeat sounds - try to use dedicated files, fallback to success/wrong
+let VICTORY_SOUND: number | null = null;
+let DEFEAT_SOUND: number | null = null;
+
+try {
+  VICTORY_SOUND = require('../assets/sounds/victory.mp3');
+} catch {
+  VICTORY_SOUND = SUCCESS_SOUND;
+}
+
+try {
+  DEFEAT_SOUND = require('../assets/sounds/defeat.mp3');
+} catch {
+  DEFEAT_SOUND = WRONG_SOUND;
+}
 
 let audioModeReady = false;
 
@@ -56,4 +73,20 @@ export function playSuccessSound(): void {
  */
 export function playFailSound(): void {
   playLocalSound(WRONG_SOUND);
+}
+
+/**
+ * Play victory sound when completing a worksheet with a good score (>= 70%).
+ * Uses victory.mp3 if available, otherwise falls back to success.mp3.
+ */
+export function playVictorySound(): void {
+  playLocalSound(VICTORY_SOUND || SUCCESS_SOUND);
+}
+
+/**
+ * Play defeat sound when completing a worksheet with a low score (< 70%).
+ * Uses defeat.mp3 if available, otherwise falls back to wrong.mp3.
+ */
+export function playDefeatSound(): void {
+  playLocalSound(DEFEAT_SOUND || WRONG_SOUND);
 }
