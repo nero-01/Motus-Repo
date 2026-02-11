@@ -97,4 +97,18 @@ export const WORKSHEETS: Worksheet[] = [
       instructions: 'Read and recognize these words',
     },
   },
+  {
+    id: '7',
+    title: 'Geometry Shapes',
+    description: 'Learn about shapes and their properties',
+    category: 'math',
+    difficulty: 3,
+    age_range: '5-8',
+    estimated_time: 12,
+    type: 'geometry',
+    content: {
+      shapes: ['circle', 'square', 'triangle', 'rectangle', 'pentagon', 'hexagon'],
+      instructions: 'Answer questions about shapes',
+    },
+  },
 ];

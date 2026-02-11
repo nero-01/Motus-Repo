@@ -461,6 +461,257 @@ function SightWordsWorksheet({ worksheet, level, onComplete }: SightWordsWorkshe
   );
 }
 
+/** Geometry question configuration by level */
+interface GeometryQuestion {
+  question: string;
+  correct: string;
+  options: string[];
+}
+
+function getGeometryConfig(level: number): { count: number } {
+  if (level <= 2) return { count: 4 };
+  if (level <= 5) return { count: 6 };
+  if (level <= 8) return { count: 8 };
+  return { count: 10 };
+}
+
+function buildGeometryQuestions(level: number): GeometryQuestion[] {
+  const questions: GeometryQuestion[] = [];
+  
+  // Basic shape questions (levels 1-3)
+  if (level <= 3) {
+    questions.push(
+      {
+        question: 'How many sides does a triangle have?',
+        correct: '3',
+        options: ['2', '3', '4', '5'],
+      },
+      {
+        question: 'How many sides does a square have?',
+        correct: '4',
+        options: ['3', '4', '5', '6'],
+      },
+      {
+        question: 'What shape has 0 sides?',
+        correct: 'Circle',
+        options: ['Circle', 'Triangle', 'Square', 'Rectangle'],
+      },
+      {
+        question: 'How many corners does a rectangle have?',
+        correct: '4',
+        options: ['2', '3', '4', '5'],
+      },
+    );
+  }
+  
+  // Intermediate questions (levels 4-6)
+  if (level >= 4 && level <= 6) {
+    questions.push(
+      {
+        question: 'How many sides does a pentagon have?',
+        correct: '5',
+        options: ['4', '5', '6', '7'],
+      },
+      {
+        question: 'How many sides does a hexagon have?',
+        correct: '6',
+        options: ['5', '6', '7', '8'],
+      },
+      {
+        question: 'What shape has 4 equal sides?',
+        correct: 'Square',
+        options: ['Rectangle', 'Square', 'Triangle', 'Circle'],
+      },
+      {
+        question: 'What shape has 3 sides?',
+        correct: 'Triangle',
+        options: ['Square', 'Triangle', 'Circle', 'Rectangle'],
+      },
+    );
+  }
+  
+  // Advanced questions (levels 7-10)
+  if (level >= 7) {
+    questions.push(
+      {
+        question: 'How many sides does an octagon have?',
+        correct: '8',
+        options: ['6', '7', '8', '9'],
+      },
+      {
+        question: 'What shape has all sides equal and all angles equal?',
+        correct: 'Square',
+        options: ['Rectangle', 'Square', 'Triangle', 'Circle'],
+      },
+      {
+        question: 'How many sides does a heptagon have?',
+        correct: '7',
+        options: ['6', '7', '8', '9'],
+      },
+      {
+        question: 'What is a shape with 5 sides called?',
+        correct: 'Pentagon',
+        options: ['Hexagon', 'Pentagon', 'Octagon', 'Triangle'],
+      },
+    );
+  }
+  
+  return shuffle(questions);
+}
+
+interface GeometryWorksheetProps {
+  worksheet: Worksheet;
+  level: number;
+  onComplete: (accuracy: number) => void;
+}
+
+function GeometryWorksheet({ worksheet, level, onComplete }: GeometryWorksheetProps) {
+  const [selectedByIndex, setSelectedByIndex] = useState<Record<number, string>>({});
+  const [showReview, setShowReview] = useState(false);
+
+  const { count } = getGeometryConfig(level);
+  const questions = useMemo(() => {
+    const allQuestions = buildGeometryQuestions(level);
+    return allQuestions.slice(0, count);
+  }, [level, count]);
+
+  const handleSelect = (questionIndex: number, answer: string) => {
+    const question = questions[questionIndex];
+    const isCorrect = question && answer === question.correct;
+    if (isCorrect) playSuccessSound();
+    else playFailSound();
+    setSelectedByIndex((prev) => ({ ...prev, [questionIndex]: answer }));
+  };
+
+  const handleDone = () => {
+    const total = questions.length;
+    if (total === 0) {
+      onComplete(0);
+      return;
+    }
+    setShowReview(true);
+  };
+
+  const handleSeeScore = () => {
+    const total = questions.length;
+    let correct = 0;
+    questions.forEach((q, i) => {
+      if (selectedByIndex[i] === q.correct) correct++;
+    });
+    onComplete(Math.round((100 * correct) / total));
+  };
+
+  // Review screen
+  if (showReview) {
+    return (
+      <View style={styles.container}>
+        <ScrollView
+          contentContainerStyle={styles.addReviewScroll}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.addReviewTitle}>Check your answers</Text>
+          <Text style={styles.addReviewSubtitle}>Here's what was right and wrong.</Text>
+          <View style={styles.addReviewList}>
+            {questions.map((item, i) => {
+              const chosen = selectedByIndex[i];
+              const isCorrect = chosen === item.correct;
+              return (
+                <View
+                  key={i}
+                  style={[
+                    styles.addReviewItemWrap,
+                    isCorrect ? styles.addReviewItemCorrect : styles.addReviewItemWrong,
+                  ]}
+                >
+                  <Text style={styles.addReviewItemProblem}>{item.question}</Text>
+                  <Text style={styles.addReviewItemAnswer}>Answer: {item.correct}</Text>
+                  <View style={styles.addReviewItemResult}>
+                    {isCorrect ? (
+                      <Text style={styles.addReviewCorrectText}>✓ Correct! You picked {chosen}.</Text>
+                    ) : (
+                      <Text style={styles.addReviewWrongText}>
+                        ✗ You picked {chosen ?? '—'}. Correct answer is {item.correct}.
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+          <TouchableOpacity
+            style={[styles.finishButton, styles.addFinishButton]}
+            onPress={handleSeeScore}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.finishButtonText}>See my score</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <ScrollView
+        style={styles.addScrollView}
+        contentContainerStyle={styles.addScrollContent}
+        showsVerticalScrollIndicator={true}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text style={styles.addTitle}>{worksheet.title}</Text>
+        <Text style={styles.addInstructions}>Tap the correct answer for each question.</Text>
+        <View style={styles.addList}>
+          {questions.map((item, i) => (
+            <View key={i} style={styles.addItemWrap}>
+              <Text style={styles.addItem}>{item.question}</Text>
+              <View style={styles.addOptions}>
+                {item.options.map((opt) => {
+                  const selected = selectedByIndex[i] === opt;
+                  const correct = item.correct === opt;
+                  const showCorrect = selectedByIndex[i] != null;
+                  const isRightAnswer = showCorrect && selected && correct;
+                  const isWrongAnswer = showCorrect && selected && !correct;
+                  return (
+                    <TouchableOpacity
+                      key={opt}
+                      style={[
+                        styles.addOptionBtn,
+                        selected && styles.addOptionBtnSelected,
+                        isRightAnswer && styles.addOptionBtnCorrect,
+                        isWrongAnswer && styles.addOptionBtnWrong,
+                      ]}
+                      onPress={() => handleSelect(i, opt)}
+                      activeOpacity={0.8}
+                    >
+                      <Text
+                        style={[
+                          styles.addOptionText,
+                          selected && styles.addOptionTextSelected,
+                          isRightAnswer && styles.addOptionTextCorrect,
+                          isWrongAnswer && styles.addOptionTextWrong,
+                        ]}
+                      >
+                        {opt}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          ))}
+        </View>
+        <TouchableOpacity
+          style={[styles.finishButton, styles.addFinishButton]}
+          onPress={handleDone}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.finishButtonText}>I'm done! ✓</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
+  );
+}
+
 /** Letter count by level (1–10) for letter tracing: more letters at higher level. */
 function getLetterTracingCount(level: number): number {
   if (level <= 2) return 5;
@@ -585,6 +836,18 @@ export default function WorksheetScreen() {
     return (
       <View key={sessionKey} style={styles.container}>
         <SimpleAdditionWorksheet
+          worksheet={worksheet}
+          level={level}
+          onComplete={handleComplete}
+        />
+      </View>
+    );
+  }
+
+  if (type === 'geometry') {
+    return (
+      <View key={sessionKey} style={styles.container}>
+        <GeometryWorksheet
           worksheet={worksheet}
           level={level}
           onComplete={handleComplete}
