@@ -10,7 +10,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Button } from 'react-native-paper';
 import * as Speech from 'expo-speech';
-import Svg, { Polygon, Circle, Rect } from 'react-native-svg';
+import Svg, { Polygon, Circle, Rect, Ellipse } from 'react-native-svg';
 import { playSuccessSound, playFailSound } from '../../../utils/worksheetSounds';
 import LetterTracing from '../../../components/worksheets/LetterTracing';
 import ColorMixing from '../../../components/worksheets/ColorMixing';
@@ -471,12 +471,19 @@ interface GeometryQuestion {
 
 /** Extract shape name from question text */
 function extractShapeFromQuestion(question: string): string | null {
-  const shapes = ['triangle', 'square', 'circle', 'rectangle', 'pentagon', 'hexagon', 'heptagon', 'octagon'];
+  const shapes = [
+    'triangle', 'square', 'circle', 'rectangle', 'pentagon', 'hexagon', 
+    'heptagon', 'octagon', 'oval', 'ellipse', 'diamond', 'rhombus', 
+    'star', 'trapezoid', 'parallelogram'
+  ];
   const lowerQuestion = question.toLowerCase();
   
   // First check for direct shape mentions
   for (const shape of shapes) {
     if (lowerQuestion.includes(shape)) {
+      // Handle synonyms
+      if (shape === 'ellipse') return 'oval';
+      if (shape === 'rhombus') return 'diamond';
       return shape;
     }
   }
@@ -512,14 +519,35 @@ function extractShapeFromQuestion(question: string): string | null {
   return null;
 }
 
+/** Get color scheme for each shape */
+function getShapeColors(shape: string): { fill: string; stroke: string } {
+  const colorMap: Record<string, { fill: string; stroke: string }> = {
+    circle: { fill: '#FFE5E5', stroke: '#FF6B6B' }, // Red
+    triangle: { fill: '#FFF4E5', stroke: '#FFA500' }, // Orange
+    square: { fill: '#E5F5FF', stroke: '#4A90E2' }, // Blue
+    rectangle: { fill: '#E5FFE5', stroke: '#50C878' }, // Green
+    pentagon: { fill: '#F0E5FF', stroke: '#9B59B6' }, // Purple
+    hexagon: { fill: '#FFE5F5', stroke: '#E91E63' }, // Pink
+    heptagon: { fill: '#E5FFFF', stroke: '#00CED1' }, // Cyan
+    octagon: { fill: '#FFFACD', stroke: '#FFD700' }, // Gold
+    oval: { fill: '#FFE5CC', stroke: '#FF8C42' }, // Dark Orange
+    diamond: { fill: '#E5E5FF', stroke: '#6A5ACD' }, // Slate Blue
+    star: { fill: '#FFFFE5', stroke: '#FFD700' }, // Yellow
+    trapezoid: { fill: '#E5FFE5', stroke: '#32CD32' }, // Lime Green
+    parallelogram: { fill: '#FFE5F0', stroke: '#FF69B4' }, // Hot Pink
+  };
+  return colorMap[shape.toLowerCase()] || { fill: '#e8f5f3', stroke: '#006A60' };
+}
+
 /** Shape component to render geometric shapes */
 function ShapeVisualization({ shape, size = 60 }: { shape: string | null; size?: number }) {
   if (!shape) return null;
 
   const center = size / 2;
   const strokeWidth = 3;
-  const strokeColor = '#006A60';
-  const fillColor = '#e8f5f3';
+  const colors = getShapeColors(shape);
+  const strokeColor = colors.stroke;
+  const fillColor = colors.fill;
 
   switch (shape.toLowerCase()) {
     case 'circle':
@@ -627,6 +655,85 @@ function ShapeVisualization({ shape, size = 60 }: { shape: string | null; size?:
         </Svg>
       );
     }
+    case 'oval':
+    case 'ellipse': {
+      const rx = (size - strokeWidth * 2 - 10) / 2;
+      const ry = (size - strokeWidth * 2 - 20) / 2;
+      return (
+        <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          <Ellipse cx={center} cy={center} rx={rx} ry={ry} fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth} />
+        </Svg>
+      );
+    }
+    case 'diamond':
+    case 'rhombus': {
+      const points = [
+        `${center},${strokeWidth + 5}`,
+        `${size - strokeWidth - 5},${center}`,
+        `${center},${size - strokeWidth - 5}`,
+        `${strokeWidth + 5},${center}`,
+      ];
+      return (
+        <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          <Polygon points={points.join(' ')} fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth} />
+        </Svg>
+      );
+    }
+    case 'star': {
+      const points = [];
+      const outerRadius = center - strokeWidth - 5;
+      const innerRadius = outerRadius * 0.4;
+      for (let i = 0; i < 10; i++) {
+        const angle = (i * Math.PI) / 5 - Math.PI / 2;
+        const radius = i % 2 === 0 ? outerRadius : innerRadius;
+        const x = center + radius * Math.cos(angle);
+        const y = center + radius * Math.sin(angle);
+        points.push(`${x},${y}`);
+      }
+      return (
+        <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          <Polygon points={points.join(' ')} fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth} />
+        </Svg>
+      );
+    }
+    case 'trapezoid': {
+      const topWidth = size * 0.5;
+      const bottomWidth = size * 0.8;
+      const height = size * 0.7;
+      const topX = (size - topWidth) / 2;
+      const bottomX = (size - bottomWidth) / 2;
+      const topY = strokeWidth + 5;
+      const bottomY = topY + height;
+      const points = [
+        `${topX},${topY}`,
+        `${topX + topWidth},${topY}`,
+        `${bottomX + bottomWidth},${bottomY}`,
+        `${bottomX},${bottomY}`,
+      ];
+      return (
+        <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          <Polygon points={points.join(' ')} fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth} />
+        </Svg>
+      );
+    }
+    case 'parallelogram': {
+      const offset = size * 0.15;
+      const width = size * 0.7;
+      const height = size * 0.6;
+      const x = strokeWidth + 5;
+      const y = (size - height) / 2;
+      const points = [
+        `${x + offset},${y}`,
+        `${x + offset + width},${y}`,
+        `${x + width},${y + height}`,
+        `${x},${y + height}`,
+      ];
+      return (
+        <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          <Polygon points={points.join(' ')} fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth} />
+        </Svg>
+      );
+    }
     default:
       return null;
   }
@@ -665,6 +772,16 @@ function buildGeometryQuestions(level: number): GeometryQuestion[] {
         correct: '4',
         options: ['2', '3', '4', '5'],
       },
+      {
+        question: 'What shape looks like an egg?',
+        correct: 'Oval',
+        options: ['Circle', 'Oval', 'Square', 'Triangle'],
+      },
+      {
+        question: 'What shape has 4 sides that look like a diamond?',
+        correct: 'Diamond',
+        options: ['Square', 'Diamond', 'Circle', 'Triangle'],
+      },
     );
   }
   
@@ -691,6 +808,21 @@ function buildGeometryQuestions(level: number): GeometryQuestion[] {
         correct: 'Triangle',
         options: ['Square', 'Triangle', 'Circle', 'Rectangle'],
       },
+      {
+        question: 'What shape has 5 points like a star?',
+        correct: 'Star',
+        options: ['Circle', 'Star', 'Square', 'Triangle'],
+      },
+      {
+        question: 'What shape has 4 sides with one pair parallel?',
+        correct: 'Trapezoid',
+        options: ['Square', 'Trapezoid', 'Circle', 'Triangle'],
+      },
+      {
+        question: 'What shape looks like a slanted rectangle?',
+        correct: 'Parallelogram',
+        options: ['Square', 'Parallelogram', 'Circle', 'Triangle'],
+      },
     );
   }
   
@@ -716,6 +848,21 @@ function buildGeometryQuestions(level: number): GeometryQuestion[] {
         question: 'What is a shape with 5 sides called?',
         correct: 'Pentagon',
         options: ['Hexagon', 'Pentagon', 'Octagon', 'Triangle'],
+      },
+      {
+        question: 'What shape has 4 equal sides but is tilted?',
+        correct: 'Diamond',
+        options: ['Square', 'Diamond', 'Rectangle', 'Circle'],
+      },
+      {
+        question: 'What shape is like a stretched circle?',
+        correct: 'Oval',
+        options: ['Circle', 'Oval', 'Square', 'Triangle'],
+      },
+      {
+        question: 'What shape has 4 sides with opposite sides parallel?',
+        correct: 'Parallelogram',
+        options: ['Square', 'Parallelogram', 'Triangle', 'Circle'],
       },
     );
   }
