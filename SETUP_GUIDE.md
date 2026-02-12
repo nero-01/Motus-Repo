@@ -74,6 +74,13 @@ Scan the QR code with Expo Go app.
 4. Configure domains and redirect URLs
 5. Copy Client ID to `.env`
 
+#### Reminders – Google Cloud Vision (optional)
+To scan weekly planner images and build reminders from text:
+1. In [Google Cloud Console](https://console.cloud.google.com), enable **Cloud Vision API** for your project
+2. Create an **API key** (APIs & Services → Credentials → Create credentials → API key)
+3. Restrict the key to “Cloud Vision API” (and optionally to your app’s bundle ID) for security
+4. Add to `.env`: `EXPO_PUBLIC_GOOGLE_VISION_API_KEY=your_vision_api_key_here`
+
 ## 📱 Features Overview
 
 ### 🔐 Authentication
