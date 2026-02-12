@@ -213,4 +213,6 @@ This file lists known issues and incomplete work across the app so you can track
 
 ---
 
+**GitHub Issues:** All issues are created at https://github.com/nero-01/Motus-Repo/issues — I001→#1 … I019→#19.
+
 *To track in GitHub: create an Issue per ID (e.g. “I003 – Dashboard uses mock data”) and link this file in the Issue description.*
