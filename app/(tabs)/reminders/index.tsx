@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, ScrollView, Text, TouchableOpacity, Alert, TextInput, Platform, Modal } from 'react-native';
+import { View, ScrollView, Text, TouchableOpacity, Alert, TextInput, Platform, Modal, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -7,8 +7,8 @@ import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
-import { WebView } from 'react-native-webview';
 import ParentSheetImage from '../../../assets/parent_involvement_sheet_winter.png';
+import { extractTextFromImage } from '../../../services/googleVision';
 
 const OCR_MAX_WIDTH = 1200;
 const OCR_JPEG_QUALITY = 0.85;
@@ -247,37 +247,12 @@ function parseWeekFromOcrText(fullText: string): { day: string; activity: string
   return week;
 }
 
-const OCR_HTML = `
-<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"/></head><body>
-<p style="padding:20px;text-align:center;">Reading image…</p>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"><\/script>
-<script>
-(function(){
-  function go(){
-    window.runOCR=function(dataUrl){
-      Tesseract.recognize(dataUrl,'eng',{logger:function(){}}).then(function(r){
-        var text=(r&&r.data&&r.data.text)||'';
-        if(window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify({text:text}));
-      }).catch(function(e){
-        if(window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify({error:(e&&e.message)||'Failed'}));
-      });
-    };
-    if(window.ReactNativeWebView) window.ReactNativeWebView.postMessage('READY');
-  }
-  if(typeof Tesseract!=='undefined') go(); else window.addEventListener('load',go);
-})();
-<\/script>
-</body></html>
-`;
-
 export default function RemindersTabScreen() {
   const [remindersEnabled, setRemindersEnabled] = useState(false);
   const [plannerImage, setPlannerImage] = useState<string | null>(null);
   const [week, setWeek] = useState(emptyWeek());
   const [readingImage, setReadingImage] = useState(false);
-  const [ocrModalVisible, setOcrModalVisible] = useState(false);
-  const ocrWebViewRef = useRef<WebView>(null);
-  const ocrBase64Ref = useRef<string | null>(null);
+  const [visionModalVisible, setVisionModalVisible] = useState(false);
   const hasLoadedFromStorageRef = useRef(false);
   const router = useRouter();
 
@@ -373,9 +348,10 @@ export default function RemindersTabScreen() {
     return true;
   };
 
-  /** Resize/compress image for faster OCR, then start OCR. Falls back to raw file if manipulation fails. */
-  const startOcrFromUri = async (uri: string) => {
+  /** Resize/compress image, then run Google Vision OCR and build reminders. */
+  const startVisionFromUri = async (uri: string) => {
     setReadingImage(true);
+    setVisionModalVisible(true);
     try {
       let base64: string;
       try {
@@ -389,11 +365,31 @@ export default function RemindersTabScreen() {
       } catch {
         base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
       }
-      ocrBase64Ref.current = base64;
-      setOcrModalVisible(true);
-    } catch (e) {
+
+      const visionResult = await extractTextFromImage(base64);
+
+      if (!visionResult.success) {
+        setVisionModalVisible(false);
+        setReadingImage(false);
+        Alert.alert('Scan failed', visionResult.error);
+        return;
+      }
+
+      const parsed = parseWeekFromOcrText(visionResult.text);
+      const filled = parsed.filter((e) => e.activity?.trim()).length;
+      setWeek(parsed);
+      setVisionModalVisible(false);
       setReadingImage(false);
-      Alert.alert('Could not read image', 'Try choosing the image again.');
+
+      if (filled > 0) {
+        await enableReminders(parsed);
+      } else {
+        Alert.alert('Done', 'No day names found. Try a clearer image or check that the Vision API key is set.');
+      }
+    } catch (e) {
+      setVisionModalVisible(false);
+      setReadingImage(false);
+      Alert.alert('Could not read image', e instanceof Error ? e.message : 'Try choosing the image again.');
     }
   };
 
@@ -410,7 +406,7 @@ export default function RemindersTabScreen() {
       await Notifications.cancelAllScheduledNotificationsAsync();
       setRemindersEnabled(false);
       setWeek(emptyWeek());
-      await startOcrFromUri(uri);
+      await startVisionFromUri(uri);
     }
   };
 
@@ -419,37 +415,7 @@ export default function RemindersTabScreen() {
       Alert.alert('No image', 'Upload a weekly planner image first.');
       return;
     }
-    await startOcrFromUri(plannerImage);
-  };
-
-  const onOcrMessage = async (event: { nativeEvent: { data: string } }) => {
-    const data = event.nativeEvent.data;
-    if (data === 'READY') {
-      const b64 = ocrBase64Ref.current;
-      if (b64 && ocrWebViewRef.current) {
-        const dataUrl = 'data:image/jpeg;base64,' + b64;
-        ocrWebViewRef.current.injectJavaScript('window.runOCR(' + JSON.stringify(dataUrl) + ');');
-      }
-      return;
-    }
-    try {
-      const payload = JSON.parse(data) as { text?: string; error?: string };
-      if (payload.error) {
-        Alert.alert('Read failed', payload.error);
-      } else if (payload.text != null) {
-        const parsed = parseWeekFromOcrText(payload.text);
-        const filled = parsed.filter((e) => e.activity?.trim()).length;
-        setWeek(parsed);
-        if (filled > 0) {
-          await enableReminders(parsed);
-        } else {
-          Alert.alert('Done', 'No day names found. Try a clearer image.');
-        }
-      }
-    } catch (_) {}
-    ocrBase64Ref.current = null;
-    setOcrModalVisible(false);
-    setReadingImage(false);
+    await startVisionFromUri(plannerImage);
   };
 
   const clearReminders = async () => {
@@ -591,29 +557,12 @@ export default function RemindersTabScreen() {
         </TouchableOpacity>
       </View>
 
-      <Modal visible={ocrModalVisible} transparent animationType="fade">
+      <Modal visible={visionModalVisible} transparent animationType="fade">
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 }}>
-          <View style={{ backgroundColor: '#fff', borderRadius: 12, overflow: 'hidden', height: 260 }}>
-            <View style={{ padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text style={{ fontSize: 18, fontWeight: 'bold' }}>Reading image…</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  ocrBase64Ref.current = null;
-                  setOcrModalVisible(false);
-                  setReadingImage(false);
-                }}
-              >
-                <Text style={{ color: '#006A60', fontWeight: 'bold' }}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-            <WebView
-              ref={ocrWebViewRef}
-              source={{ html: OCR_HTML }}
-              onMessage={onOcrMessage}
-              style={{ flex: 1, backgroundColor: '#fff' }}
-              originWhitelist={['*']}
-              mixedContentMode="compatibility"
-            />
+          <View style={{ backgroundColor: '#fff', borderRadius: 12, overflow: 'hidden', padding: 24, alignItems: 'center', minHeight: 120 }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 16 }}>Scanning image…</Text>
+            <ActivityIndicator size="large" color="#006A60" />
+            <Text style={{ fontSize: 14, color: '#666', marginTop: 12 }}>Google Vision</Text>
           </View>
         </View>
       </Modal>
