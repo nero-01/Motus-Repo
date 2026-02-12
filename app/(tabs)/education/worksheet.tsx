@@ -483,19 +483,19 @@ interface GeometryQuestion {
   options: string[];
 }
 
-/** Extract shape name from question text */
+/** Extract shape name from question text (for visualization next to the question). */
 function extractShapeFromQuestion(question: string): string | null {
-  const shapes = [
-    'triangle', 'square', 'circle', 'rectangle', 'pentagon', 'hexagon', 
-    'heptagon', 'octagon', 'oval', 'ellipse', 'diamond', 'rhombus', 
-    'star', 'trapezoid', 'parallelogram'
-  ];
   const lowerQuestion = question.toLowerCase();
-  
-  // First check for direct shape mentions
-  for (const shape of shapes) {
+
+  // Disambiguate before generic word match: "slanted rectangle" describes a parallelogram, not a rectangle
+  if (lowerQuestion.includes('slanted rectangle')) {
+    return 'parallelogram';
+  }
+
+  // Check direct shape mentions; order matters so "parallelogram" wins over "rectangle" when both could match
+  const shapeOrder = ['parallelogram', 'trapezoid', 'rectangle', 'triangle', 'square', 'circle', 'pentagon', 'hexagon', 'heptagon', 'octagon', 'oval', 'ellipse', 'diamond', 'rhombus', 'star'];
+  for (const shape of shapeOrder) {
     if (lowerQuestion.includes(shape)) {
-      // Handle synonyms
       if (shape === 'ellipse') return 'oval';
       if (shape === 'rhombus') return 'diamond';
       return shape;
