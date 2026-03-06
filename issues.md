@@ -34,8 +34,8 @@ This file lists known issues and incomplete work across the app so you can track
 | I015 | Family      | Parent invite & View analytics – TODO                 | P2 |
 | I016 | Auth        | Social auth (e.g. Google) placeholder implementation | P2 |
 | I017 | Reminders   | Vision: no cancel while “Scanning image…”             | P2 |
-| I018 | Store       | Store listing, privacy URL, content rating – manual   | P0 for launch |
-| I019 | Store       | Production env vars must be set (EAS/CI)              | P0 for launch |
+| I018 | Store       | Store listing, privacy URL, content rating – manual – *checklist* | P0 for launch |
+| I019 | Store       | Production env vars must be set (EAS/CI) – *documented* | P0 for launch |
 
 ---
 
@@ -188,12 +188,14 @@ This file lists known issues and incomplete work across the app so you can track
 - **Priority:** P0 for launch
 - **Description:** Store listing (short/long description, screenshots, feature graphic), privacy policy URL, content rating, and data safety forms must be completed in Play Console (and App Store Connect if applicable). See PLAY_STORE_READINESS.md and BETA_CHECKLIST.md.
 - **Fix:** Complete all store listing and policy steps in the respective consoles; add privacy policy URL to app if required.
+- **Status:** **I018_CHECKLIST.md** added (tick list for store listing, policies, release). **In-app privacy link:** set `EXPO_PUBLIC_PRIVACY_POLICY_URL` (EAS Secrets or .env) and the app shows “Privacy Policy” in Settings and Profile that opens the URL in the browser. Privacy policy text: `docs/PRIVACY_POLICY.md`.
 
 ### I019 – Production environment variables
 - **Area:** Build / EAS
 - **Priority:** P0 for launch
 - **Description:** For production builds, `EXPO_PUBLIC_APP_ENV=production`, `EXPO_PUBLIC_SUPABASE_URL`, and `EXPO_PUBLIC_SUPABASE_ANON_KEY` must be set in EAS Secrets (or CI), not only in local `config/env.ts` fallbacks.
 - **Fix:** Configure EAS Secrets (or equivalent) for production builds; document in SETUP_GUIDE or README.
+- **Status:** Documented in SETUP_GUIDE.md (section “Production builds (EAS) – required environment variables”) and referenced in README.md; EAS Secrets steps and variable table added.
 
 ---
 

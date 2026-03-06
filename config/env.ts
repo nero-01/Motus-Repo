@@ -25,6 +25,9 @@ export const ENV = {
   APP_ENV,
   APP_VERSION: process.env.EXPO_PUBLIC_APP_VERSION || '1.0.0',
 
+  // Optional: public URL for privacy policy (in-app link; also set in Play Console store listing)
+  PRIVACY_POLICY_URL: process.env.EXPO_PUBLIC_PRIVACY_POLICY_URL || '',
+
   // Mock mode: always false in production; only enabled in dev if EXPO_PUBLIC_FORCE_MOCK=true
   FORCE_MOCK: isProduction ? false : process.env.EXPO_PUBLIC_FORCE_MOCK === 'true',
 };

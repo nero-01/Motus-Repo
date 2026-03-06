@@ -487,9 +487,15 @@ interface GeometryQuestion {
 function extractShapeFromQuestion(question: string): string | null {
   const lowerQuestion = question.toLowerCase();
 
-  // Disambiguate before generic word match: "slanted rectangle" describes a parallelogram, not a rectangle
+  // Context-dependent phrases (check before generic keyword/pattern match)
   if (lowerQuestion.includes('slanted rectangle')) {
     return 'parallelogram';
+  }
+  if (lowerQuestion.includes('stretched circle')) {
+    return 'oval';
+  }
+  if (lowerQuestion.includes('4 equal sides') && lowerQuestion.includes('tilted')) {
+    return 'diamond';
   }
 
   // Check direct shape mentions; order matters so "parallelogram" wins over "rectangle" when both could match

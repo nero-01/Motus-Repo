@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Text, Card, Button, Switch, List, Divider, Surface, Avatar, Chip, Dialog, Portal } from 'react-native-paper';
 import { router } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
+import { ENV } from '../../../config/env';
 
 interface FamilyMember {
   id: string;
@@ -388,6 +390,18 @@ export default function SettingsScreen() {
 
         <Card style={styles.supportCard}>
           <Card.Content>
+            {ENV.PRIVACY_POLICY_URL ? (
+              <>
+                <List.Item
+                  title="Privacy Policy"
+                  description="View our privacy policy"
+                  left={(props) => <Text style={{ fontSize: 20, color: '#666' }}>📄</Text>}
+                  right={(props) => <Text style={{ fontSize: 16, color: '#666' }}>▶️</Text>}
+                  onPress={() => WebBrowser.openBrowserAsync(ENV.PRIVACY_POLICY_URL!)}
+                />
+                <Divider />
+              </>
+            ) : null}
             <List.Item
               title="Help & FAQ"
               description="Get help and find answers"

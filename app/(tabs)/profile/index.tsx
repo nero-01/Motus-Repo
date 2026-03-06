@@ -1,5 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
+import { ENV } from '../../../config/env';
 import { Text, Card, Button, Avatar, List, Divider, Chip } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 
@@ -279,6 +281,17 @@ export default function ProfileScreen() {
             left={() => <List.Icon icon="shield" />}
             onPress={() => Alert.alert('Coming Soon', 'Privacy settings will be available soon!')}
           />
+          {ENV.PRIVACY_POLICY_URL ? (
+            <>
+              <Divider />
+              <List.Item
+                title="Privacy Policy"
+                description="View our privacy policy"
+                left={() => <List.Icon icon="file-document-outline" />}
+                onPress={() => WebBrowser.openBrowserAsync(ENV.PRIVACY_POLICY_URL!)}
+              />
+            </>
+          ) : null}
           <Divider />
           <List.Item
             title="Help & Support"

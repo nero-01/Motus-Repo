@@ -24,7 +24,10 @@ This document tells you whether MotusTots is ready for the Play Store and how to
 1. **`eas.json`** – EAS Build profiles so you can build a production AAB.
 2. **`BETA_CHECKLIST.md`** – Logging, env, and version checks (already done).
 3. **`docs/PRIVACY_POLICY.md`** – Privacy policy text you must **publish online** and use as the **Privacy policy URL** in Play Console.
-4. **This file** – Step-by-step submission guide.
+4. **`I018_CHECKLIST.md`** – Tick list for I018 (store listing, policies, release).
+5. **This file** – Step-by-step submission guide.
+
+**In-app privacy link:** If you set `EXPO_PUBLIC_PRIVACY_POLICY_URL` (in EAS Secrets or `.env`) to your published privacy policy URL, the app will show a “Privacy Policy” link in Settings and Profile that opens it in the browser.
 
 ---
 
