@@ -114,7 +114,7 @@ export default function AnalyticsScreen() {
       setAnalyticsData(mockAnalytics);
       setChildStats(mockChildStats);
     } catch (error) {
-      console.error('Error loading analytics:', error);
+      if (__DEV__) console.error('Error loading analytics:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);

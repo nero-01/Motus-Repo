@@ -33,6 +33,9 @@ yarn-error.*
 .env*.local
 .env
 
+# Play Store (never commit service account key)
+play-store-service-account.json
+
 # typescript
 *.tsbuildinfo
 

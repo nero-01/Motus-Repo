@@ -61,7 +61,7 @@ export const getCalendarEvents = async (): Promise<CalendarEvent[]> => {
     if (error) throw error;
     return data || [];
   } catch (error) {
-    console.error('Error fetching calendar events:', error);
+    if (__DEV__) console.error('Error fetching calendar events:', error);
     throw error;
   }
 };
@@ -78,7 +78,7 @@ export const createEvent = async (eventData: CreateEventData): Promise<CalendarE
     if (error) throw error;
     return data;
   } catch (error) {
-    console.error('Error creating calendar event:', error);
+    if (__DEV__) console.error('Error creating calendar event:', error);
     throw error;
   }
 };
@@ -96,7 +96,7 @@ export const updateEvent = async (id: string, updates: Partial<CalendarEvent>): 
     if (error) throw error;
     return data;
   } catch (error) {
-    console.error('Error updating calendar event:', error);
+    if (__DEV__) console.error('Error updating calendar event:', error);
     throw error;
   }
 };
@@ -111,7 +111,7 @@ export const deleteEvent = async (id: string): Promise<void> => {
 
     if (error) throw error;
   } catch (error) {
-    console.error('Error deleting calendar event:', error);
+    if (__DEV__) console.error('Error deleting calendar event:', error);
     throw error;
   }
 };
@@ -140,7 +140,7 @@ export const getCustodySchedule = async (): Promise<CustodySchedule[]> => {
     if (error) throw error;
     return data || [];
   } catch (error) {
-    console.error('Error fetching custody schedule:', error);
+    if (__DEV__) console.error('Error fetching custody schedule:', error);
     throw error;
   }
 };
@@ -157,7 +157,7 @@ export const createCustodySchedule = async (scheduleData: Omit<CustodySchedule, 
     if (error) throw error;
     return data;
   } catch (error) {
-    console.error('Error creating custody schedule:', error);
+    if (__DEV__) console.error('Error creating custody schedule:', error);
     throw error;
   }
 };
@@ -175,7 +175,7 @@ export const updateCustodySchedule = async (id: string, updates: Partial<Custody
     if (error) throw error;
     return data;
   } catch (error) {
-    console.error('Error updating custody schedule:', error);
+    if (__DEV__) console.error('Error updating custody schedule:', error);
     throw error;
   }
 };
@@ -190,7 +190,7 @@ export const deleteCustodySchedule = async (id: string): Promise<void> => {
 
     if (error) throw error;
   } catch (error) {
-    console.error('Error deleting custody schedule:', error);
+    if (__DEV__) console.error('Error deleting custody schedule:', error);
     throw error;
   }
 };
@@ -221,7 +221,7 @@ export const getEventsByDateRange = async (startDate: string, endDate: string): 
     if (error) throw error;
     return data || [];
   } catch (error) {
-    console.error('Error fetching events by date range:', error);
+    if (__DEV__) console.error('Error fetching events by date range:', error);
     throw error;
   }
 };
@@ -251,7 +251,7 @@ export const getEventsByChild = async (childId: string): Promise<CalendarEvent[]
     if (error) throw error;
     return data || [];
   } catch (error) {
-    console.error('Error fetching events by child:', error);
+    if (__DEV__) console.error('Error fetching events by child:', error);
     throw error;
   }
 };
@@ -281,7 +281,7 @@ export const getCustodyScheduleByChild = async (childId: string): Promise<Custod
     if (error) throw error;
     return data || [];
   } catch (error) {
-    console.error('Error fetching custody schedule by child:', error);
+    if (__DEV__) console.error('Error fetching custody schedule by child:', error);
     throw error;
   }
 };
@@ -316,7 +316,7 @@ export const checkScheduleConflicts = async (startDate: string, endDate: string,
     if (error) throw error;
     return data || [];
   } catch (error) {
-    console.error('Error checking schedule conflicts:', error);
+    if (__DEV__) console.error('Error checking schedule conflicts:', error);
     throw error;
   }
 }; 

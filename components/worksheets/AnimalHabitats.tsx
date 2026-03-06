@@ -1,4 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { playSuccessSound, playFailSound } from '../../utils/worksheetSounds';
+
+function shuffle<T>(arr: T[]): T[] {
+  const out = [...arr];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
 import {
   View,
   Text,
@@ -10,7 +20,15 @@ import {
 
 const { width: screenWidth } = Dimensions.get('window');
 
+/** Question count by level (1–10). */
+function getAnimalHabitatsQuestionCount(level: number): number {
+  if (level <= 2) return 3;
+  if (level <= 5) return 5;
+  return 7;
+}
+
 interface AnimalHabitatsProps {
+  level?: number;
   onComplete: (accuracy: number) => void;
   onNext: () => void;
 }
@@ -41,7 +59,7 @@ const animalHabitats: AnimalHabitatPair[] = [
   { animal: 'Deer', habitat: 'Forest', animalEmoji: '🦌', habitatEmoji: '🌲' },
 ];
 
-export default function AnimalHabitats({ onComplete, onNext }: AnimalHabitatsProps) {
+export default function AnimalHabitats({ level = 1, onComplete, onNext }: AnimalHabitatsProps) {
   const [selectedAnimals, setSelectedAnimals] = useState<AnimalHabitatPair[]>([]);
   const [currentQuestionNumber, setCurrentQuestionNumber] = useState(0);
   const [selectedHabitat, setSelectedHabitat] = useState<string | null>(null);
@@ -50,18 +68,20 @@ export default function AnimalHabitats({ onComplete, onNext }: AnimalHabitatsPro
   const [correctAnswers, setCorrectAnswers] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Select 5 random animals for this worksheet session
+  const questionCount = getAnimalHabitatsQuestionCount(level);
+
+  // Select N random animals in random order each time the worksheet loads
   useEffect(() => {
-    const shuffled = [...animalHabitats].sort(() => Math.random() - 0.5);
-    setSelectedAnimals(shuffled.slice(0, 5));
+    const shuffled = shuffle([...animalHabitats]);
+    setSelectedAnimals(shuffled.slice(0, questionCount));
     setIsLoading(false);
-  }, []);
+  }, [questionCount]);
 
   // Don't render until animals are selected
   if (isLoading || selectedAnimals.length === 0) {
     return (
       <View style={styles.container}>
-        <Text>Loading...</Text>
+        <Text style={styles.loadingText}>Getting ready... 🐾</Text>
       </View>
     );
   }
@@ -90,6 +110,8 @@ export default function AnimalHabitats({ onComplete, onNext }: AnimalHabitatsPro
     setHasAnswered(true);
     
     const isCorrect = habitat === currentPair.habitat;
+    if (isCorrect) playSuccessSound();
+    else playFailSound();
     setAccuracy(isCorrect ? 100 : 0);
     
     // Track correct answers
@@ -111,15 +133,14 @@ export default function AnimalHabitats({ onComplete, onNext }: AnimalHabitatsPro
   };
 
   const handleNext = () => {
-    if (currentQuestionNumber < 4) { // 5 questions total (0-4)
+    if (currentQuestionNumber < questionCount - 1) {
       setCurrentQuestionNumber(currentQuestionNumber + 1);
       setSelectedHabitat(null);
       setHasAnswered(false);
       setAccuracy(0);
-      onNext(); // Call the education screen's onNext to update question counter
+      onNext();
     } else {
-      // All questions completed
-      const finalAccuracy = Math.round((100 * correctAnswers) / 5);
+      const finalAccuracy = Math.round((100 * correctAnswers) / questionCount);
       onComplete(finalAccuracy);
     }
   };
@@ -132,11 +153,11 @@ export default function AnimalHabitats({ onComplete, onNext }: AnimalHabitatsPro
   return (
     <View style={styles.container}>
       <Text style={styles.progress}>
-        Question {currentQuestionNumber + 1} of 5
+        Question {currentQuestionNumber + 1} of {questionCount}
       </Text>
 
       <Text style={styles.question}>
-        Where does a {currentPair.animal} live?
+        Where does the {currentPair.animal.toLowerCase()} live? {currentPair.animalEmoji}
       </Text>
 
       {/* Animal Display */}
@@ -217,29 +238,37 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     alignItems: 'center',
-    padding: 20,
+    padding: 12,
+  },
+  loadingText: {
+    fontSize: 22,
+    color: '#555',
+    marginTop: 40,
+    fontWeight: '600',
   },
   progress: {
     fontSize: 14,
-    color: '#666',
-    marginBottom: 20,
+    color: '#555',
+    marginBottom: 8,
+    fontWeight: '600',
   },
   question: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 12,
     textAlign: 'center',
+    color: '#333',
   },
   animalContainer: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 16,
   },
   animalEmoji: {
-    fontSize: 80,
-    marginBottom: 10,
+    fontSize: 56,
+    marginBottom: 6,
   },
   animalName: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
   },
@@ -248,17 +277,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    gap: 15,
+    gap: 8,
   },
   habitatButton: {
-    width: '45%',
+    width: '47%',
     backgroundColor: '#f8f9fa',
-    padding: 20,
-    borderRadius: 15,
+    padding: 10,
+    borderRadius: 12,
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#e9ecef',
-    minHeight: 100,
+    minHeight: 72,
     justifyContent: 'center',
   },
   habitatButtonSelected: {
@@ -274,11 +303,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8d7da',
   },
   habitatEmoji: {
-    fontSize: 40,
-    marginBottom: 8,
+    fontSize: 28,
+    marginBottom: 4,
   },
   habitatText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#333',
     textAlign: 'center',
@@ -316,13 +345,13 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   feedbackText: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 5,
+    marginBottom: 8,
   },
   feedbackSubtext: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 18,
+    color: '#555',
     textAlign: 'center',
   },
   correctAnswerContainer: {

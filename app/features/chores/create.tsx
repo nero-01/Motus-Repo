@@ -87,7 +87,7 @@ export default function CreateChoreScreen() {
         { text: 'OK', onPress: () => router.back() }
       ]);
     } catch (error) {
-      console.error('Error creating chore:', error);
+      if (__DEV__) console.error('Error creating chore:', error);
       Alert.alert('Error', 'Failed to create chore. Please try again.');
     } finally {
       setLoading(false);

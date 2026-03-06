@@ -39,12 +39,12 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
   error: null,
 
   loadFamilies: async (userId: string) => {
-    console.log('Loading families for user:', userId);
+    if (__DEV__) console.log('Loading families for user:', userId);
     set({ isLoading: true, error: null });
-    
+
     try {
       const currentFamily = await getCurrentFamily();
-      console.log('Loaded current family:', currentFamily?.id || 'null');
+      if (__DEV__) console.log('Loaded current family:', currentFamily?.id || 'null');
       
       if (currentFamily) {
         set({ currentFamily, families: [currentFamily], isLoading: false });
@@ -52,22 +52,21 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
         // Load family members and children for the current family
         try {
           await get().loadFamilyMembers(currentFamily.id).catch(error => {
-            console.error('Error loading family members:', error);
+            if (__DEV__) console.warn('Error loading family members:', error);
           });
         } catch (error) {
-          console.error('Error calling loadFamilyMembers:', error);
+          if (__DEV__) console.warn('Error calling loadFamilyMembers:', error);
         }
-        
+
         try {
           await get().loadChildren(currentFamily.id).catch(error => {
-            console.error('Error loading children:', error);
+            if (__DEV__) console.warn('Error loading children:', error);
           });
         } catch (error) {
-          console.error('Error calling loadChildren:', error);
+          if (__DEV__) console.warn('Error calling loadChildren:', error);
         }
       } else {
-        // Create mock family for demo purposes
-        console.log('No family found, creating mock family for demo');
+        if (__DEV__) console.log('No family found, creating mock family for demo');
         const mockFamily = createMockFamily(userId);
         const mockChildren = getMockChildren();
         
@@ -79,7 +78,7 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
         });
       }
     } catch (error) {
-      console.error('Error loading families:', error);
+      if (__DEV__) console.warn('Error loading families:', error);
       set({ 
         error: 'Failed to load families', 
         isLoading: false 
@@ -88,25 +87,24 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
   },
 
   setCurrentFamily: (family: Family | null) => {
-    console.log('Setting current family:', family?.id || 'null');
+    if (__DEV__) console.log('Setting current family:', family?.id || 'null');
     set({ currentFamily: family });
-    
-    // Load family members and children for the new current family
+
     if (family) {
       try {
         get().loadFamilyMembers(family.id).catch(error => {
-          console.error('Error loading family members after setCurrentFamily:', error);
+          if (__DEV__) console.warn('Error loading family members after setCurrentFamily:', error);
         });
       } catch (error) {
-        console.error('Error calling loadFamilyMembers in setCurrentFamily:', error);
+        if (__DEV__) console.warn('Error calling loadFamilyMembers in setCurrentFamily:', error);
       }
-      
+
       try {
         get().loadChildren(family.id).catch(error => {
-          console.error('Error loading children after setCurrentFamily:', error);
+          if (__DEV__) console.warn('Error loading children after setCurrentFamily:', error);
         });
       } catch (error) {
-        console.error('Error calling loadChildren in setCurrentFamily:', error);
+        if (__DEV__) console.warn('Error calling loadChildren in setCurrentFamily:', error);
       }
     } else {
       set({ familyMembers: [], children: [] });
@@ -114,15 +112,15 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
   },
 
   loadFamilyMembers: async (familyId: string) => {
-    console.log('Loading family members for family:', familyId);
+    if (__DEV__) console.log('Loading family members for family:', familyId);
     set({ isLoading: true, error: null });
-    
+
     try {
       const familyMembers = await getFamilyMembers(familyId);
-      console.log('Loaded family members:', familyMembers.length);
+      if (__DEV__) console.log('Loaded family members:', familyMembers.length);
       set({ familyMembers, isLoading: false });
     } catch (error) {
-      console.error('Error loading family members:', error);
+      if (__DEV__) console.warn('Error loading family members:', error);
       set({ 
         error: 'Failed to load family members', 
         isLoading: false 
@@ -131,15 +129,15 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
   },
 
   loadChildren: async (familyId: string) => {
-    console.log('Loading children for family:', familyId);
+    if (__DEV__) console.log('Loading children for family:', familyId);
     set({ isLoading: true, error: null });
     
     try {
       const children = await getFamilyChildren(familyId);
-      console.log('Loaded children:', children.length);
+      if (__DEV__) console.log('Loaded children:', children.length);
       set({ children, isLoading: false });
     } catch (error) {
-      console.error('Error loading children:', error);
+      if (__DEV__) console.warn('Error loading children:', error);
       set({ 
         error: 'Failed to load children', 
         isLoading: false 
@@ -151,7 +149,7 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
     set({ isLoading: true, error: null });
     
     try {
-      console.log('Family store: Adding child:', child);
+      if (__DEV__) console.log('Family store: Adding child:', child);
       const childData = {
         family_id: child.family_id,
         name: child.name,
@@ -159,7 +157,7 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
         avatar_data: child.avatar_data || undefined,
       };
       const newChild = await addChild(childData);
-      console.log('Family store: Child added successfully:', newChild);
+      if (__DEV__) console.log('Family store: Child added successfully:', newChild);
       
       if (newChild) {
         set(state => ({
@@ -170,7 +168,7 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
         set({ isLoading: false });
       }
     } catch (error) {
-      console.error('Family store: Error adding child:', error);
+      if (__DEV__) console.warn('Family store: Error adding child:', error);
       set({ 
         error: 'Failed to add child', 
         isLoading: false 
@@ -185,7 +183,7 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
   },
 
   reset: () => {
-    console.log('Resetting family store');
+    if (__DEV__) console.log('Resetting family store');
     set({
       families: [],
       currentFamily: null,

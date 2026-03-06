@@ -70,7 +70,7 @@ export default function RewardsScreen() {
       );
       setChildBalances(balances.filter(Boolean) as ChildReward[]);
     } catch (error) {
-      console.error('Error loading rewards:', error);
+      if (__DEV__) console.error('Error loading rewards:', error);
       Alert.alert('Error', 'Failed to load rewards');
     } finally {
       setIsLoading(false);
@@ -108,7 +108,7 @@ export default function RewardsScreen() {
       loadRewards();
       Alert.alert('Success', 'Reward created successfully!');
     } catch (error) {
-      console.error('Error creating reward:', error);
+      if (__DEV__) console.error('Error creating reward:', error);
       Alert.alert('Error', 'Failed to create reward');
     }
   };
@@ -130,7 +130,7 @@ export default function RewardsScreen() {
       loadRewards();
       Alert.alert('Success', 'Reward redeemed successfully!');
     } catch (error) {
-      console.error('Error redeeming reward:', error);
+      if (__DEV__) console.error('Error redeeming reward:', error);
       Alert.alert('Error', 'Failed to redeem reward');
     }
   };
@@ -164,7 +164,7 @@ export default function RewardsScreen() {
       loadRewards();
       Alert.alert('Success', `Demerit applied to ${demeritData.selectedChildren.length} child(ren)`);
     } catch (error) {
-      console.error('Error applying demerit:', error);
+      if (__DEV__) console.error('Error applying demerit:', error);
       Alert.alert('Error', 'Failed to apply demerit');
     }
   };

@@ -8,6 +8,7 @@ import {
   Dimensions,
   PanResponder,
 } from 'react-native';
+import { playSuccessSound, playFailSound } from '../../utils/worksheetSounds';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -130,8 +131,12 @@ export default function LetterTracing({ letter, onComplete, onNext }: LetterTrac
       Alert.alert('Start Tracing', 'Please trace the letter first!');
       return;
     }
-    
-    // Call the onComplete function with the accuracy
+    const threshold = 60;
+    if (accuracy >= threshold) {
+      playSuccessSound();
+    } else {
+      playFailSound();
+    }
     onComplete(accuracy);
   };
 
@@ -358,17 +363,19 @@ export default function LetterTracing({ letter, onComplete, onNext }: LetterTrac
   return (
     <View style={styles.container}>
       <Text style={styles.instruction}>
-        Trace the letter "{letter}" below
+        Trace the letter "{letter}" with your finger 👆
       </Text>
       
       <View style={styles.tracingArea} {...panResponder.panHandlers}>
-        {/* Letter template */}
-        {renderLetterTemplate()}
+        {/* Letter template - scaled up for kid-friendly size */}
+        <View style={styles.letterTemplateWrap}>
+          {renderLetterTemplate()}
+        </View>
         
         {/* Start indicator */}
         {!hasStarted && (
           <View style={styles.startIndicator}>
-            <Text style={styles.startIndicatorText}>Start here</Text>
+            <Text style={styles.startIndicatorText}>Start here!</Text>
           </View>
         )}
         
@@ -377,26 +384,23 @@ export default function LetterTracing({ letter, onComplete, onNext }: LetterTrac
       </View>
 
       <View style={styles.controls}>
-        <TouchableOpacity style={styles.resetButton} onPress={resetTracing}>
-          <Text style={styles.resetButtonText}>Reset</Text>
+        <TouchableOpacity style={styles.resetButton} onPress={resetTracing} activeOpacity={0.7}>
+          <Text style={styles.resetButtonText}>Try again</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
-          <Text style={styles.skipButtonText}>Skip</Text>
+        <TouchableOpacity style={styles.skipButton} onPress={handleSkip} activeOpacity={0.7}>
+          <Text style={styles.skipButtonText}>Next letter</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.completeButton} onPress={handleComplete}>
-          <Text style={styles.completeButtonText}>Complete</Text>
+        <TouchableOpacity style={styles.completeButton} onPress={handleComplete} activeOpacity={0.7}>
+          <Text style={styles.completeButtonText}>I'm done! ✓</Text>
         </TouchableOpacity>
       </View>
 
-      {hasStarted && (
+      {hasStarted && accuracy > 0 && (
         <View style={styles.feedback}>
           <Text style={styles.feedbackText}>
-            Accuracy: {accuracy}%
-          </Text>
-          <Text style={styles.feedbackText}>
-            Points: {userPath.length}
+            Great job! 🌟
           </Text>
         </View>
       )}
@@ -411,76 +415,96 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   instruction: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 24,
     textAlign: 'center',
+    color: '#333',
   },
   tracingArea: {
+    width: 260,
+    height: 260,
+    borderWidth: 3,
+    borderColor: '#ddd',
+    borderRadius: 16,
+    backgroundColor: 'white',
+    marginBottom: 24,
+    position: 'relative',
+  },
+  letterTemplateWrap: {
+    position: 'absolute',
+    left: 30,
+    top: 30,
     width: 200,
     height: 200,
-    borderWidth: 2,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    backgroundColor: 'white',
-    marginBottom: 20,
-    position: 'relative',
   },
   controls: {
     flexDirection: 'row',
-    gap: 15,
+    gap: 16,
     marginBottom: 20,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
   },
   resetButton: {
     backgroundColor: '#FF6B6B',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderRadius: 24,
+    minHeight: 48,
+    justifyContent: 'center',
   },
   resetButtonText: {
     color: 'white',
     fontWeight: 'bold',
+    fontSize: 18,
   },
   skipButton: {
     backgroundColor: '#FFA500',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderRadius: 24,
+    minHeight: 48,
+    justifyContent: 'center',
   },
   skipButtonText: {
     color: 'white',
     fontWeight: 'bold',
+    fontSize: 18,
   },
   completeButton: {
     backgroundColor: '#4CAF50',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingHorizontal: 28,
+    paddingVertical: 16,
+    borderRadius: 24,
+    minHeight: 48,
+    justifyContent: 'center',
   },
   completeButtonText: {
     color: 'white',
     fontWeight: 'bold',
+    fontSize: 18,
   },
   feedback: {
     alignItems: 'center',
   },
   feedbackText: {
-    fontSize: 16,
-    marginBottom: 5,
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#2E7D32',
   },
   startIndicator: {
     position: 'absolute',
     top: '50%',
     left: '50%',
-    transform: [{ translateX: -50 }, { translateY: -10 }],
+    transform: [{ translateX: -55 }, { translateY: -14 }],
     backgroundColor: '#007AFF',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 5,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
   },
   startIndicatorText: {
     color: 'white',
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: 'bold',
   },
 }); 

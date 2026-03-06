@@ -59,7 +59,7 @@ export default function ChildrenManagementScreen() {
       
       setChildren(childrenWithAvatars);
     } catch (error) {
-      console.error('Error loading children:', error);
+      if (__DEV__) console.error('Error loading children:', error);
       setToast({
         visible: true,
         message: 'Failed to load children',
@@ -113,7 +113,7 @@ export default function ChildrenManagementScreen() {
                 });
               }
             } catch (error) {
-              console.error('Error deleting child:', error);
+              if (__DEV__) console.error('Error deleting child:', error);
               setToast({
                 visible: true,
                 message: 'Failed to delete child',
@@ -195,7 +195,7 @@ export default function ChildrenManagementScreen() {
 
       setModalVisible(false);
     } catch (error) {
-      console.error('Error saving child:', error);
+      if (__DEV__) console.error('Error saving child:', error);
       setToast({
         visible: true,
         message: 'Failed to save child',

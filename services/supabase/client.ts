@@ -7,8 +7,8 @@ import { ENV } from '../../config/env';
 //   hasKey: !!ENV.SUPABASE_ANON_KEY,
 // });
 
-if (!ENV.SUPABASE_URL || !ENV.SUPABASE_ANON_KEY) {
-  console.error('Missing Supabase configuration. Please check your environment variables.');
+if (__DEV__ && (!ENV.SUPABASE_URL || !ENV.SUPABASE_ANON_KEY)) {
+  console.warn('Missing Supabase configuration. Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY.');
 }
 
 export const supabase = createClient(
@@ -32,29 +32,21 @@ supabase.auth.onAuthStateChange((event, session) => {
 // Test connection function
 export const testSupabaseConnection = async () => {
   try {
-    console.log('Testing Supabase connection...');
-    console.log('URL:', ENV.SUPABASE_URL);
-    console.log('Key exists:', !!ENV.SUPABASE_ANON_KEY);
-    
-    // First test if we can access the auth system
+    if (__DEV__) console.log('Testing Supabase connection...');
     const { data: { user }, error: authError } = await supabase.auth.getUser();
-    console.log('Auth test result:', { user: user?.id, authError });
-    
-    // Then test if we can access the families table
+    if (__DEV__) console.log('Auth test result:', { user: user?.id, authError });
     const { data, error } = await supabase
       .from('families')
       .select('count')
       .limit(1);
-    
     if (error) {
-      console.error('Supabase connection test failed:', error);
+      if (__DEV__) console.warn('Supabase connection test failed:', error);
       return { success: false, error, authError };
     }
-    
-    console.log('Supabase connection test successful');
+    if (__DEV__) console.log('Supabase connection test successful');
     return { success: true, data, authError };
   } catch (error) {
-    console.error('Supabase connection test exception:', error);
+    if (__DEV__) console.warn('Supabase connection test exception:', error);
     return { success: false, error };
   }
 };
@@ -62,8 +54,7 @@ export const testSupabaseConnection = async () => {
 // Test database schema function
 export const testDatabaseSchema = async () => {
   try {
-    console.log('Testing database schema...');
-    
+    if (__DEV__) console.log('Testing database schema...');
     const requiredTables = [
       'users',
       'families', 
@@ -102,8 +93,7 @@ export const testDatabaseSchema = async () => {
       }
     }
     
-    console.log('Database schema test results:', results);
-    
+    if (__DEV__) console.log('Database schema test results:', results);
     const missingTables = Object.entries(results)
       .filter(([table, result]) => !result.exists)
       .map(([table]) => table);
@@ -118,7 +108,7 @@ export const testDatabaseSchema = async () => {
     
     return { success: true, results };
   } catch (error) {
-    console.error('Database schema test exception:', error);
+    if (__DEV__) console.error('Database schema test exception:', error);
     return { success: false, error };
   }
 };

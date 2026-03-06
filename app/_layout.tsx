@@ -3,11 +3,15 @@ import { PaperProvider } from 'react-native-paper';
 import { theme } from '../styles/theme';
 import ErrorBoundary from '../components/ui/ErrorBoundary';
 
+// Notification handler is set in the Reminders tab when it mounts, so we never
+// touch expo-notifications at app startup. That avoids "native module not found"
+// or similar errors in Expo Go on first launch.
+
 export default function RootLayout() {
   return (
     <ErrorBoundary
       onError={(error, errorInfo) => {
-        console.error('Global error caught:', error, errorInfo);
+        if (__DEV__) console.error('Global error caught:', error, errorInfo);
       }}
     >
       <PaperProvider theme={theme}>

@@ -16,8 +16,8 @@ export default function WorksheetsScreen() {
       case 'letter_tracing':
         return (
           <LetterTracing
-            onComplete={(accuracy) => {
-              console.log('Letter Tracing completed with accuracy:', accuracy);
+            letter="A"
+            onComplete={() => {
               // Handle completion
             }}
             onNext={() => {
@@ -30,8 +30,7 @@ export default function WorksheetsScreen() {
       case 'color_mixing':
         return (
           <ColorMixing
-            onComplete={(accuracy) => {
-              console.log('Color Mixing completed with accuracy:', accuracy);
+            onComplete={() => {
               // Handle completion
             }}
             onNext={() => {
@@ -44,8 +43,7 @@ export default function WorksheetsScreen() {
       case 'animal_habitats':
         return (
           <AnimalHabitats
-            onComplete={(accuracy) => {
-              console.log('Animal Habitats completed with accuracy:', accuracy);
+            onComplete={() => {
               // Handle completion
             }}
             onNext={() => {
@@ -58,8 +56,7 @@ export default function WorksheetsScreen() {
       case 'community_helpers':
         return (
           <CommunityHelpers
-            onComplete={(accuracy) => {
-              console.log('Community Helpers completed with accuracy:', accuracy);
+            onComplete={() => {
               // Handle completion
             }}
             onNext={() => {

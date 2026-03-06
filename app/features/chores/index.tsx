@@ -52,7 +52,7 @@ export default React.memo(function ChoresScreen() {
       const data = await Promise.race([choresPromise, timeoutPromise]) as any;
       setChores(data || []);
     } catch (err) {
-      console.error('Error loading chores:', err);
+      if (__DEV__) console.error('Error loading chores:', err);
       setError('Failed to load chores. Using demo data.');
       // Fallback to mock data for demo
       setChores([
@@ -179,7 +179,7 @@ export default React.memo(function ChoresScreen() {
       Alert.alert('Success', 'Chore completed! Points earned!');
       loadChores(); // Refresh the list
     } catch (err) {
-      console.error('Error completing chore:', err);
+      if (__DEV__) console.error('Error completing chore:', err);
       Alert.alert('Error', 'Failed to complete chore. Please try again.');
     }
   }, [user?.id, loadChores]);
@@ -199,7 +199,7 @@ export default React.memo(function ChoresScreen() {
       Alert.alert('Success', 'Chore assigned successfully!');
       loadChores(); // Refresh the list
     } catch (err) {
-      console.error('Error assigning chore:', err);
+      if (__DEV__) console.error('Error assigning chore:', err);
       Alert.alert('Error', 'Failed to assign chore. Please try again.');
     }
   }, [selectedChore, selectedChildId, user?.id, loadChores]);

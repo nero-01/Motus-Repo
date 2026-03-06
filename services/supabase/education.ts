@@ -83,21 +83,51 @@ export async function getWorksheets({
     // Check cache first
     const cachedData = getCachedData(cacheKey);
     if (cachedData) {
-      console.log('Returning cached worksheets data');
+      if (__DEV__) console.log('Returning cached worksheets data');
       return cachedData;
     }
 
-    // Force mock data for now to see our updated Animal Habitats
-    console.log('Forcing mock data to show updated Animal Habitats');
-    const mockData = getMockWorksheets();
-    console.log('Mock data Animal Habitats pairs:', mockData.find(w => w.title === 'Animal Habitats')?.content.pairs?.length);
-    setCachedData(cacheKey, mockData);
-    return mockData;
+    // Try to fetch from Supabase first
+    if (__DEV__) console.log('Fetching worksheets from Supabase...');
+    let query = supabase.from('worksheets').select('*').eq('is_active', true);
+    
+    // Apply filters
+    if (category) {
+      query = query.eq('category', category);
+    }
+    if (difficulty) {
+      query = query.eq('difficulty', difficulty);
+    }
+    if (ageMin && ageMax) {
+      // Parse age ranges like "3-5" and filter
+      query = query.gte('age_min', ageMin).lte('age_max', ageMax);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      if (__DEV__) console.error('Error fetching worksheets from Supabase:', error);
+      // Fall back to mock data if Supabase fails
+      const mockData = getMockWorksheets();
+      setCachedData(cacheKey, mockData);
+      return mockData;
+    }
+
+    if (data && data.length > 0) {
+      if (__DEV__) console.log(`Fetched ${data.length} worksheets from Supabase`);
+      setCachedData(cacheKey, data);
+      return data;
+    } else {
+      if (__DEV__) console.log('No worksheets found in Supabase, using mock data');
+      const mockData = getMockWorksheets();
+      setCachedData(cacheKey, mockData);
+      return mockData;
+    }
 
   } catch (error) {
-    console.error('Error fetching worksheets, using mock data:', error);
+    if (__DEV__) console.error('Error fetching worksheets, using mock data:', error);
     const mockData = getMockWorksheets();
-    console.log('Error fallback - Mock data Animal Habitats pairs:', mockData.find(w => w.title === 'Animal Habitats')?.content.pairs?.length);
+    if (__DEV__) console.log('Error fallback - Mock data Animal Habitats pairs:', mockData.find(w => w.title === 'Animal Habitats')?.content.pairs?.length);
     const cacheKey = `worksheets_${category || 'all'}_${difficulty || 'all'}_${ageMin || 'all'}_${ageMax || 'all'}`;
     setCachedData(cacheKey, mockData);
     return mockData;
@@ -126,7 +156,7 @@ export async function getWorksheetById(worksheetId: string) {
     const data = await Promise.race([queryPromise, timeoutPromise]) as any;
     return data;
   } catch (error) {
-    console.error('Exception in getWorksheetById, using mock data:', error);
+    if (__DEV__) console.error('Exception in getWorksheetById, using mock data:', error);
     return getMockWorksheetById(worksheetId);
   }
 }
@@ -209,14 +239,14 @@ export async function saveProgress({
         });
       
       const data = await Promise.race([upsertPromise, timeoutPromise]) as any;
-      console.log('Progress saved successfully:', data);
+      if (__DEV__) console.log('Progress saved successfully:', data);
       return data;
     } catch (error) {
       attempt++;
-      console.error(`Error saving progress (attempt ${attempt}/${maxRetries}):`, error);
+      if (__DEV__) console.error(`Error saving progress (attempt ${attempt}/${maxRetries}):`, error);
       
       if (attempt === maxRetries) {
-        console.error('Max retries reached, returning mock success');
+        if (__DEV__) console.error('Max retries reached, returning mock success');
         return { success: true, mock: true, error: 'max_retries_reached' };
       }
       
@@ -322,13 +352,13 @@ export async function getWorksheetsByFamily(familyId: string): Promise<Worksheet
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching worksheets:', error);
+      if (__DEV__) console.error('Error fetching worksheets:', error);
       throw error;
     }
 
     return data || [];
   } catch (error) {
-    console.error('Exception in getWorksheetsByFamily:', error);
+    if (__DEV__) console.error('Exception in getWorksheetsByFamily:', error);
     throw error;
   }
 }
@@ -336,7 +366,7 @@ export async function getWorksheetsByFamily(familyId: string): Promise<Worksheet
 // Create a new worksheet
 export async function createWorksheet(worksheet: Omit<Worksheet, 'id' | 'created_at'>): Promise<Worksheet> {
   try {
-    console.log('Creating worksheet:', worksheet);
+    if (__DEV__) console.log('Creating worksheet:', worksheet);
     
     const { data, error } = await supabase
       .from('worksheets')
@@ -345,14 +375,14 @@ export async function createWorksheet(worksheet: Omit<Worksheet, 'id' | 'created
       .single();
 
     if (error) {
-      console.error('Error creating worksheet:', error);
+      if (__DEV__) console.error('Error creating worksheet:', error);
       throw error;
     }
 
-    console.log('Worksheet created successfully:', data);
+    if (__DEV__) console.log('Worksheet created successfully:', data);
     return data;
   } catch (error) {
-    console.error('Exception in createWorksheet:', error);
+    if (__DEV__) console.error('Exception in createWorksheet:', error);
     throw error;
   }
 }
@@ -368,13 +398,13 @@ export async function updateWorksheet(worksheetId: string, updates: Partial<Work
       .single();
 
     if (error) {
-      console.error('Error updating worksheet:', error);
+      if (__DEV__) console.error('Error updating worksheet:', error);
       throw error;
     }
 
     return data;
   } catch (error) {
-    console.error('Exception in updateWorksheet:', error);
+    if (__DEV__) console.error('Exception in updateWorksheet:', error);
     throw error;
   }
 }
@@ -388,11 +418,11 @@ export async function deleteWorksheet(worksheetId: string): Promise<void> {
       .eq('id', worksheetId);
 
     if (error) {
-      console.error('Error deleting worksheet:', error);
+      if (__DEV__) console.error('Error deleting worksheet:', error);
       throw error;
     }
   } catch (error) {
-    console.error('Exception in deleteWorksheet:', error);
+    if (__DEV__) console.error('Exception in deleteWorksheet:', error);
     throw error;
   }
 }
@@ -415,13 +445,13 @@ export async function getCompletedWorksheetsForChild(childId: string, familyId: 
       .order('completed_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching completed worksheets:', error);
+      if (__DEV__) console.error('Error fetching completed worksheets:', error);
       throw error;
     }
 
     return data || [];
   } catch (error) {
-    console.error('Exception in getCompletedWorksheetsForChild:', error);
+    if (__DEV__) console.error('Exception in getCompletedWorksheetsForChild:', error);
     throw error;
   }
 }
@@ -449,7 +479,7 @@ export async function getChildLearningStats(childId: string, familyId: string, d
       .gte('completed_at', cutoffDate.toISOString());
 
     if (error) {
-      console.error('Error fetching learning stats:', error);
+      if (__DEV__) console.error('Error fetching learning stats:', error);
       throw error;
     }
 
@@ -474,7 +504,7 @@ export async function getChildLearningStats(childId: string, familyId: string, d
       subjects,
     };
   } catch (error) {
-    console.error('Exception in getChildLearningStats:', error);
+    if (__DEV__) console.error('Exception in getChildLearningStats:', error);
     throw error;
   }
 }

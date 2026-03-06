@@ -306,7 +306,7 @@ export const createSharedExpense = async (expense: Omit<SharedExpense, 'id' | 'c
     if (error) throw error;
     return data;
   } catch (error) {
-    console.error('Error creating shared expense (table may not exist):', error);
+    if (__DEV__) console.error('Error creating shared expense (table may not exist):', error);
     // Return mock data when table doesn't exist
     return {
       id: 'mock-expense-1',
@@ -340,7 +340,7 @@ export const getSharedExpensesByFamily = async (familyId: string): Promise<Share
     if (error) throw error;
     return data || [];
   } catch (error) {
-    console.error('Error loading shared expenses (table may not exist):', error);
+    if (__DEV__) console.error('Error loading shared expenses (table may not exist):', error);
     // Return mock data when table doesn't exist
     return [
       {
@@ -398,7 +398,7 @@ export const updateSharedExpense = async (expenseId: string, updates: Partial<Sh
     if (error) throw error;
     return data;
   } catch (error) {
-    console.error('Error updating shared expense (table may not exist):', error);
+    if (__DEV__) console.error('Error updating shared expense (table may not exist):', error);
     // Return mock updated data when table doesn't exist
     return {
       id: expenseId,
@@ -430,7 +430,7 @@ export const deleteSharedExpense = async (expenseId: string): Promise<void> => {
 
     if (error) throw error;
   } catch (error) {
-    console.error('Error deleting shared expense (table may not exist):', error);
+    if (__DEV__) console.error('Error deleting shared expense (table may not exist):', error);
     // Silently succeed when table doesn't exist
   }
 };
@@ -448,7 +448,7 @@ export const markExpenseAsPaid = async (expenseId: string, paymentDate?: string)
 
     if (error) throw error;
   } catch (error) {
-    console.error('Error marking expense as paid (table may not exist):', error);
+    if (__DEV__) console.error('Error marking expense as paid (table may not exist):', error);
     // Silently succeed when table doesn't exist
   }
 };
@@ -550,7 +550,7 @@ export const getExpenseSummary = async (familyId: string, startDate?: string, en
       monthlyBreakdown,
     };
   } catch (error) {
-    console.error('Error loading expense summary (table may not exist):', error);
+    if (__DEV__) console.error('Error loading expense summary (table may not exist):', error);
     // Return mock data when table doesn't exist
     return {
       totalExpenses: 1200,
@@ -646,7 +646,7 @@ export const getPendingExpenses = async (familyId: string): Promise<SharedExpens
     if (error) throw error;
     return data || [];
   } catch (error) {
-    console.error('Error loading pending expenses (table may not exist):', error);
+    if (__DEV__) console.error('Error loading pending expenses (table may not exist):', error);
     // Return mock data when table doesn't exist
     return [
       {

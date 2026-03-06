@@ -16,7 +16,7 @@ export default function ProfileScreen() {
           text: 'Sign Out',
           style: 'destructive',
           onPress: () => {
-            console.log('Signing out...');
+            if (__DEV__) console.log('Signing out...');
             router.replace('/(auth)/login');
           },
         },

@@ -88,7 +88,7 @@ export default function MealPlanningScreen() {
       }
 
     } catch (err) {
-      console.error('Error loading meal planning data:', err);
+      if (__DEV__) console.error('Error loading meal planning data:', err);
       setError('Failed to load meal plans. Please try again.');
       setWeekMeals(createMockWeekMeals());
     } finally {
@@ -128,7 +128,7 @@ export default function MealPlanningScreen() {
 
       setWeekMeals(organizedMeals);
     } catch (err) {
-      console.error('Error loading meal plan details:', err);
+      if (__DEV__) console.error('Error loading meal plan details:', err);
       setWeekMeals(createMockWeekMeals());
     }
   };

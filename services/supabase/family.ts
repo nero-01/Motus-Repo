@@ -60,18 +60,18 @@ export async function getCurrentFamily(): Promise<Family | null> {
       .limit(1);
 
     if (error) {
-      console.error('Error fetching family members:', error);
+      if (__DEV__) console.error('Error fetching family members:', error);
       return null;
     }
 
     if (!familyMembers || familyMembers.length === 0) {
-      console.log('No family members found for user');
+      if (__DEV__) console.log('No family members found for user');
       return null;
     }
 
     return familyMembers[0]?.families as unknown as Family || null;
   } catch (error) {
-    console.error('Error getting current family:', error);
+    if (__DEV__) console.error('Error getting current family:', error);
     return null;
   }
 }
@@ -88,7 +88,7 @@ export async function getFamilyChildren(familyId: string): Promise<Child[]> {
     if (error) throw error;
     return data || [];
   } catch (error) {
-    console.error('Error getting family children:', error);
+    if (__DEV__) console.error('Error getting family children:', error);
     return [];
   }
 }
@@ -113,7 +113,7 @@ export async function addChild(childData: {
     if (error) throw error;
     return data;
   } catch (error) {
-    console.error('Error adding child:', error);
+    if (__DEV__) console.error('Error adding child:', error);
     return null;
   }
 }
@@ -145,7 +145,7 @@ export async function updateChild(
     if (error) throw error;
     return data;
   } catch (error) {
-    console.error('Error updating child:', error);
+    if (__DEV__) console.error('Error updating child:', error);
     return null;
   }
 }
@@ -161,7 +161,7 @@ export async function deleteChild(childId: string): Promise<boolean> {
     if (error) throw error;
     return true;
   } catch (error) {
-    console.error('Error deleting child:', error);
+    if (__DEV__) console.error('Error deleting child:', error);
     return false;
   }
 }
@@ -187,7 +187,7 @@ export async function getFamilyMembers(familyId: string): Promise<FamilyMember[]
     if (error) throw error;
     return data || [];
   } catch (error) {
-    console.error('Error getting family members:', error);
+    if (__DEV__) console.error('Error getting family members:', error);
     return [];
   }
 }
@@ -217,7 +217,7 @@ export async function addFamilyMember(memberData: {
     if (error) throw error;
     return data;
   } catch (error) {
-    console.error('Error adding family member:', error);
+    if (__DEV__) console.error('Error adding family member:', error);
     return null;
   }
 }
@@ -236,7 +236,7 @@ export async function updateFamilyMemberRole(
     if (error) throw error;
     return true;
   } catch (error) {
-    console.error('Error updating family member role:', error);
+    if (__DEV__) console.error('Error updating family member role:', error);
     return false;
   }
 }
@@ -252,7 +252,7 @@ export async function removeFamilyMember(memberId: string): Promise<boolean> {
     if (error) throw error;
     return true;
   } catch (error) {
-    console.error('Error removing family member:', error);
+    if (__DEV__) console.error('Error removing family member:', error);
     return false;
   }
 }
@@ -264,7 +264,7 @@ export function parseAvatarData(avatarUrl?: string): Avatar | null {
   try {
     return JSON.parse(avatarUrl);
   } catch (error) {
-    console.error('Error parsing avatar data:', error);
+    if (__DEV__) console.error('Error parsing avatar data:', error);
     return null;
   }
 }

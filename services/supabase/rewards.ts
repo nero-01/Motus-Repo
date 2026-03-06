@@ -43,7 +43,7 @@ const isMockMode = () => {
 export async function getChildRewardBalance(childId: string, familyId: string): Promise<ChildReward | null> {
   try {
     if (isMockMode()) {
-      console.log('Mock getChildRewardBalance for child:', childId);
+      if (__DEV__) console.log('Mock getChildRewardBalance for child:', childId);
       await new Promise(resolve => setTimeout(resolve, 300));
       return {
         id: `mock-balance-${Date.now()}`,
@@ -65,13 +65,13 @@ export async function getChildRewardBalance(childId: string, familyId: string): 
       .single();
 
     if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
-      console.error('Error fetching child reward balance:', error);
+      if (__DEV__) console.error('Error fetching child reward balance:', error);
       throw error;
     }
 
     return data;
   } catch (error) {
-    console.error('Exception in getChildRewardBalance:', error);
+    if (__DEV__) console.error('Exception in getChildRewardBalance:', error);
     throw error;
   }
 }
@@ -91,10 +91,10 @@ export async function addPointsToChild({
   awardedBy: string;
 }): Promise<void> {
   try {
-    console.log('Adding points to child:', { childId, familyId, points, reason, awardedBy });
+    if (__DEV__) console.log('Adding points to child:', { childId, familyId, points, reason, awardedBy });
 
     if (isMockMode()) {
-      console.log('Mock points added:', { childId, points, reason });
+      if (__DEV__) console.log('Mock points added:', { childId, points, reason });
       // Simulate network delay
       await new Promise(resolve => setTimeout(resolve, 500));
       return;
@@ -112,7 +112,7 @@ export async function addPointsToChild({
       });
 
     if (logError) {
-      console.error('Error adding to points log:', logError);
+      if (__DEV__) console.error('Error adding to points log:', logError);
       throw logError;
     }
 
@@ -130,13 +130,13 @@ export async function addPointsToChild({
       });
 
     if (balanceError) {
-      console.error('Error updating child reward balance:', balanceError);
+      if (__DEV__) console.error('Error updating child reward balance:', balanceError);
       throw balanceError;
     }
 
-    console.log('Points added successfully');
+    if (__DEV__) console.log('Points added successfully');
   } catch (error) {
-    console.error('Exception in addPointsToChild:', error);
+    if (__DEV__) console.error('Exception in addPointsToChild:', error);
     throw error;
   }
 }
@@ -156,10 +156,10 @@ export async function deductPointsFromChild({
   deductedBy: string;
 }): Promise<void> {
   try {
-    console.log('Deducting points from child:', { childId, familyId, points, reason, deductedBy });
+    if (__DEV__) console.log('Deducting points from child:', { childId, familyId, points, reason, deductedBy });
 
     if (isMockMode()) {
-      console.log('Mock demerit applied:', { childId, points, reason });
+      if (__DEV__) console.log('Mock demerit applied:', { childId, points, reason });
       // Simulate network delay
       await new Promise(resolve => setTimeout(resolve, 500));
       return;
@@ -177,7 +177,7 @@ export async function deductPointsFromChild({
       });
 
     if (logError) {
-      console.error('Error adding demerit to points log:', logError);
+      if (__DEV__) console.error('Error adding demerit to points log:', logError);
       throw logError;
     }
 
@@ -199,13 +199,13 @@ export async function deductPointsFromChild({
       });
 
     if (balanceError) {
-      console.error('Error updating child reward balance for demerit:', balanceError);
+      if (__DEV__) console.error('Error updating child reward balance for demerit:', balanceError);
       throw balanceError;
     }
 
-    console.log('Points deducted successfully');
+    if (__DEV__) console.log('Points deducted successfully');
   } catch (error) {
-    console.error('Exception in deductPointsFromChild:', error);
+    if (__DEV__) console.error('Exception in deductPointsFromChild:', error);
     throw error;
   }
 }
@@ -214,7 +214,7 @@ export async function deductPointsFromChild({
 export async function getPointsHistory(childId: string, familyId: string, days: number = 30): Promise<PointsLog[]> {
   try {
     if (isMockMode()) {
-      console.log('Mock getPointsHistory for child:', childId);
+      if (__DEV__) console.log('Mock getPointsHistory for child:', childId);
       await new Promise(resolve => setTimeout(resolve, 300));
       return [
         {
@@ -250,13 +250,13 @@ export async function getPointsHistory(childId: string, familyId: string, days: 
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching points history:', error);
+      if (__DEV__) console.error('Error fetching points history:', error);
       throw error;
     }
 
     return data || [];
   } catch (error) {
-    console.error('Exception in getPointsHistory:', error);
+    if (__DEV__) console.error('Exception in getPointsHistory:', error);
     throw error;
   }
 }
@@ -265,7 +265,7 @@ export async function getPointsHistory(childId: string, familyId: string, days: 
 export async function getFamilyRewards(familyId: string): Promise<Reward[]> {
   try {
     if (isMockMode()) {
-      console.log('Mock getFamilyRewards for family:', familyId);
+      if (__DEV__) console.log('Mock getFamilyRewards for family:', familyId);
       await new Promise(resolve => setTimeout(resolve, 500));
       return [
         {
@@ -320,7 +320,7 @@ export async function getFamilyRewards(familyId: string): Promise<Reward[]> {
     const data = await Promise.race([queryPromise, timeoutPromise]) as any;
     return data || [];
   } catch (error) {
-    console.error('Exception in getFamilyRewards, using mock data:', error);
+    if (__DEV__) console.error('Exception in getFamilyRewards, using mock data:', error);
     // Return mock data when database fails
     return [
       {
@@ -360,10 +360,10 @@ export async function getFamilyRewards(familyId: string): Promise<Reward[]> {
 // Create a new reward
 export async function createReward(reward: Omit<Reward, 'id' | 'created_at'>): Promise<Reward> {
   try {
-    console.log('Creating reward:', reward);
+    if (__DEV__) console.log('Creating reward:', reward);
     
     if (isMockMode()) {
-      console.log('Mock createReward');
+      if (__DEV__) console.log('Mock createReward');
       await new Promise(resolve => setTimeout(resolve, 500));
       return {
         id: `mock-reward-${Date.now()}`,
@@ -379,14 +379,14 @@ export async function createReward(reward: Omit<Reward, 'id' | 'created_at'>): P
       .single();
 
     if (error) {
-      console.error('Error creating reward:', error);
+      if (__DEV__) console.error('Error creating reward:', error);
       throw error;
     }
 
-    console.log('Reward created successfully:', data);
+    if (__DEV__) console.log('Reward created successfully:', data);
     return data;
   } catch (error) {
-    console.error('Exception in createReward:', error);
+    if (__DEV__) console.error('Exception in createReward:', error);
     throw error;
   }
 }
@@ -402,13 +402,13 @@ export async function updateReward(rewardId: string, updates: Partial<Reward>): 
       .single();
 
     if (error) {
-      console.error('Error updating reward:', error);
+      if (__DEV__) console.error('Error updating reward:', error);
       throw error;
     }
 
     return data;
   } catch (error) {
-    console.error('Exception in updateReward:', error);
+    if (__DEV__) console.error('Exception in updateReward:', error);
     throw error;
   }
 }
@@ -422,11 +422,11 @@ export async function deleteReward(rewardId: string): Promise<void> {
       .eq('id', rewardId);
 
     if (error) {
-      console.error('Error deleting reward:', error);
+      if (__DEV__) console.error('Error deleting reward:', error);
       throw error;
     }
   } catch (error) {
-    console.error('Exception in deleteReward:', error);
+    if (__DEV__) console.error('Exception in deleteReward:', error);
     throw error;
   }
 }
@@ -446,7 +446,7 @@ export async function redeemReward({
   notes?: string;
 }): Promise<ChildReward> {
   try {
-    console.log('Redeeming reward:', { childId, rewardId, familyId, pointsSpent, notes });
+    if (__DEV__) console.log('Redeeming reward:', { childId, rewardId, familyId, pointsSpent, notes });
     
     const { data, error } = await supabase
       .from('child_rewards')
@@ -464,14 +464,14 @@ export async function redeemReward({
       .single();
 
     if (error) {
-      console.error('Error redeeming reward:', error);
+      if (__DEV__) console.error('Error redeeming reward:', error);
       throw error;
     }
 
-    console.log('Reward redeemed successfully:', data);
+    if (__DEV__) console.log('Reward redeemed successfully:', data);
     return data;
   } catch (error) {
-    console.error('Exception in redeemReward:', error);
+    if (__DEV__) console.error('Exception in redeemReward:', error);
     throw error;
   }
 }
@@ -491,13 +491,13 @@ export async function getChildRedemptions(childId: string, familyId: string): Pr
       .order('redeemed_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching child redemptions:', error);
+      if (__DEV__) console.error('Error fetching child redemptions:', error);
       throw error;
     }
 
     return data || [];
   } catch (error) {
-    console.error('Exception in getChildRedemptions:', error);
+    if (__DEV__) console.error('Exception in getChildRedemptions:', error);
     throw error;
   }
 }
@@ -506,7 +506,7 @@ export async function getChildRedemptions(childId: string, familyId: string): Pr
 export async function getPendingRedemptions(familyId: string): Promise<ChildReward[]> {
   try {
     if (isMockMode()) {
-      console.log('Mock getPendingRedemptions for family:', familyId);
+      if (__DEV__) console.log('Mock getPendingRedemptions for family:', familyId);
       await new Promise(resolve => setTimeout(resolve, 300));
       return [];
     }
@@ -531,7 +531,7 @@ export async function getPendingRedemptions(familyId: string): Promise<ChildRewa
     const data = await Promise.race([queryPromise, timeoutPromise]) as any;
     return data || [];
   } catch (error) {
-    console.error('Exception in getPendingRedemptions, using mock data:', error);
+    if (__DEV__) console.error('Exception in getPendingRedemptions, using mock data:', error);
     // Return empty array when database fails
     return [];
   }

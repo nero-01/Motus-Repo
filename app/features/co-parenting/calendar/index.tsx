@@ -12,9 +12,7 @@ import {
   TextInput, 
   SegmentedButtons, 
   ActivityIndicator, 
-  IconButton,
   Avatar,
-  ProgressBar,
 } from 'react-native-paper';
 import { router } from 'expo-router';
 import { useFamilyStore } from '../../../../stores/familyStore';
@@ -92,7 +90,7 @@ export default function CoParentingCalendarScreen() {
       setPendingExpenses(pendingCount);
 
     } catch (error) {
-      console.error('Error loading calendar data:', error);
+      if (__DEV__) console.error('Error loading calendar data:', error);
       Alert.alert('Error', 'Failed to load calendar data');
     } finally {
       setIsLoading(false);
@@ -131,7 +129,7 @@ export default function CoParentingCalendarScreen() {
       setShowAddDialog(false);
       loadCalendarData();
     } catch (error) {
-      console.error('Error creating event:', error);
+      if (__DEV__) console.error('Error creating event:', error);
       Alert.alert('Error', 'Failed to create event');
     }
   };
@@ -142,7 +140,7 @@ export default function CoParentingCalendarScreen() {
       Alert.alert('Success', 'Event deleted successfully');
       loadCalendarData();
     } catch (error) {
-      console.error('Error deleting event:', error);
+      if (__DEV__) console.error('Error deleting event:', error);
       Alert.alert('Error', 'Failed to delete event');
     }
   };
@@ -208,19 +206,19 @@ export default function CoParentingCalendarScreen() {
   };
 
   const handleCreateEvent = () => {
-    router.push('/co-parenting/calendar/create');
+    setShowAddDialog(true);
   };
 
   const handleCreateCustodySchedule = () => {
-    router.push('/co-parenting/calendar/custody');
+    Alert.alert('Coming soon', 'Custody schedule creation will be available in a future update.');
   };
 
   const handleViewMessages = () => {
-    router.push('/co-parenting/messages');
+    router.push('/features/co-parenting/messages');
   };
 
   const handleViewExpenses = () => {
-    router.push('/co-parenting/expenses');
+    router.push('/features/co-parenting/expenses');
   };
 
   if (isLoading) {
@@ -570,6 +568,39 @@ export default function CoParentingCalendarScreen() {
         onPress={handleCreateEvent}
         label="Add Event"
       />
+
+      <Portal>
+        <Dialog visible={showAddDialog} onDismiss={() => setShowAddDialog(false)}>
+          <Dialog.Title>Add Event</Dialog.Title>
+          <Dialog.Content>
+            <TextInput
+              label="Title"
+              value={newEvent.title}
+              onChangeText={(t) => setNewEvent((n) => ({ ...n, title: t }))}
+              mode="outlined"
+              style={{ marginBottom: 12 }}
+            />
+            <TextInput
+              label="Start date (YYYY-MM-DD)"
+              value={newEvent.start_date}
+              onChangeText={(t) => setNewEvent((n) => ({ ...n, start_date: t }))}
+              mode="outlined"
+              style={{ marginBottom: 12 }}
+            />
+            <TextInput
+              label="Description"
+              value={newEvent.description}
+              onChangeText={(t) => setNewEvent((n) => ({ ...n, description: t }))}
+              mode="outlined"
+              multiline
+            />
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setShowAddDialog(false)}>Cancel</Button>
+            <Button onPress={handleAddEvent}>Add</Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
     </View>
   );
 }

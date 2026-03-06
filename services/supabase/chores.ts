@@ -65,7 +65,7 @@ export async function getChoresByFamily(familyId: string): Promise<ChoreWithAssi
     const data = await Promise.race([queryPromise, timeoutPromise]) as any;
     return data || [];
   } catch (error) {
-    console.error('Exception in getChoresByFamily, using mock data:', error);
+    if (__DEV__) console.error('Exception in getChoresByFamily, using mock data:', error);
     // Return mock data when database fails
     return [
       {
@@ -114,7 +114,7 @@ export async function getChoresByFamily(familyId: string): Promise<ChoreWithAssi
 // Create a new chore
 export async function createChore(chore: Omit<Chore, 'id' | 'created_at'>): Promise<Chore> {
   try {
-    console.log('Creating chore:', chore);
+    if (__DEV__) console.log('Creating chore:', chore);
     
     const { data, error } = await supabase
       .from('chores')
@@ -123,14 +123,14 @@ export async function createChore(chore: Omit<Chore, 'id' | 'created_at'>): Prom
       .single();
 
     if (error) {
-      console.error('Error creating chore:', error);
+      if (__DEV__) console.error('Error creating chore:', error);
       throw error;
     }
 
-    console.log('Chore created successfully:', data);
+    if (__DEV__) console.log('Chore created successfully:', data);
     return data;
   } catch (error) {
-    console.error('Exception in createChore:', error);
+    if (__DEV__) console.error('Exception in createChore:', error);
     throw error;
   }
 }
@@ -146,13 +146,13 @@ export async function updateChore(choreId: string, updates: Partial<Chore>): Pro
       .single();
 
     if (error) {
-      console.error('Error updating chore:', error);
+      if (__DEV__) console.error('Error updating chore:', error);
       throw error;
     }
 
     return data;
   } catch (error) {
-    console.error('Exception in updateChore:', error);
+    if (__DEV__) console.error('Exception in updateChore:', error);
     throw error;
   }
 }
@@ -166,11 +166,11 @@ export async function deleteChore(choreId: string): Promise<void> {
       .eq('id', choreId);
 
     if (error) {
-      console.error('Error deleting chore:', error);
+      if (__DEV__) console.error('Error deleting chore:', error);
       throw error;
     }
   } catch (error) {
-    console.error('Exception in deleteChore:', error);
+    if (__DEV__) console.error('Exception in deleteChore:', error);
     throw error;
   }
 }
@@ -183,7 +183,7 @@ export async function assignChore({ choreId, childId, assignedBy, dueDate }: {
   dueDate?: string;
 }): Promise<ChoreAssignment> {
   try {
-    console.log('Assigning chore:', { choreId, childId, assignedBy, dueDate });
+    if (__DEV__) console.log('Assigning chore:', { choreId, childId, assignedBy, dueDate });
     
     const { data, error } = await supabase
       .from('chore_assignments')
@@ -197,14 +197,14 @@ export async function assignChore({ choreId, childId, assignedBy, dueDate }: {
       .single();
 
     if (error) {
-      console.error('Error assigning chore:', error);
+      if (__DEV__) console.error('Error assigning chore:', error);
       throw error;
     }
 
-    console.log('Chore assigned successfully:', data);
+    if (__DEV__) console.log('Chore assigned successfully:', data);
     return data;
   } catch (error) {
-    console.error('Exception in assignChore:', error);
+    if (__DEV__) console.error('Exception in assignChore:', error);
     throw error;
   }
 }
@@ -217,7 +217,7 @@ export async function completeChore({ choreId, childId, completedBy, notes }: {
   notes?: string;
 }): Promise<ChoreAssignment> {
   try {
-    console.log('Completing chore:', { choreId, childId, completedBy, notes });
+    if (__DEV__) console.log('Completing chore:', { choreId, childId, completedBy, notes });
     
     // First, get the chore to calculate points
     const { data: chore, error: choreError } = await supabase
@@ -227,7 +227,7 @@ export async function completeChore({ choreId, childId, completedBy, notes }: {
       .single();
 
     if (choreError) {
-      console.error('Error fetching chore for completion:', choreError);
+      if (__DEV__) console.error('Error fetching chore for completion:', choreError);
       throw choreError;
     }
 
@@ -245,7 +245,7 @@ export async function completeChore({ choreId, childId, completedBy, notes }: {
       .single();
 
     if (error) {
-      console.error('Error completing chore:', error);
+      if (__DEV__) console.error('Error completing chore:', error);
       throw error;
     }
 
@@ -258,10 +258,10 @@ export async function completeChore({ choreId, childId, completedBy, notes }: {
       awardedBy: completedBy,
     });
 
-    console.log('Chore completed successfully:', data);
+    if (__DEV__) console.log('Chore completed successfully:', data);
     return data;
   } catch (error) {
-    console.error('Exception in completeChore:', error);
+    if (__DEV__) console.error('Exception in completeChore:', error);
     throw error;
   }
 }
@@ -279,13 +279,13 @@ export async function getChoreAssignmentsForChild(childId: string): Promise<Chor
       .order('assigned_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching chore assignments:', error);
+      if (__DEV__) console.error('Error fetching chore assignments:', error);
       throw error;
     }
 
     return data || [];
   } catch (error) {
-    console.error('Exception in getChoreAssignmentsForChild:', error);
+    if (__DEV__) console.error('Exception in getChoreAssignmentsForChild:', error);
     throw error;
   }
 }
@@ -304,13 +304,13 @@ export async function getPendingChoresForChild(childId: string): Promise<ChoreAs
       .order('due_date', { ascending: true });
 
     if (error) {
-      console.error('Error fetching pending chores:', error);
+      if (__DEV__) console.error('Error fetching pending chores:', error);
       throw error;
     }
 
     return data || [];
   } catch (error) {
-    console.error('Exception in getPendingChoresForChild:', error);
+    if (__DEV__) console.error('Exception in getPendingChoresForChild:', error);
     throw error;
   }
 }
@@ -333,13 +333,13 @@ export async function getCompletedChoresForChild(childId: string, days: number =
       .order('completed_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching completed chores:', error);
+      if (__DEV__) console.error('Error fetching completed chores:', error);
       throw error;
     }
 
     return data || [];
   } catch (error) {
-    console.error('Exception in getCompletedChoresForChild:', error);
+    if (__DEV__) console.error('Exception in getCompletedChoresForChild:', error);
     throw error;
   }
 }
@@ -375,7 +375,7 @@ async function addPointsToChild({ childId, familyId, points, reason, awardedBy }
         onConflict: 'child_id,family_id'
       });
   } catch (error) {
-    console.error('Error adding points to child:', error);
+    if (__DEV__) console.error('Error adding points to child:', error);
     throw error;
   }
 } 

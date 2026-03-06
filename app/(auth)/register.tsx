@@ -32,7 +32,7 @@ export default function RegisterScreen() {
         name: fullName,
       });
     } catch (err) {
-      console.error('Registration error:', err);
+      if (__DEV__) console.error('Registration error:', err);
     }
   };
 

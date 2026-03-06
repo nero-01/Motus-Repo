@@ -6,7 +6,6 @@ import {
   RefreshControl,
   Text,
   TouchableOpacity,
-  FlatList,
   Alert,
 } from 'react-native';
 import { ActivityIndicator, Chip, Searchbar, FAB } from 'react-native-paper';
@@ -27,7 +26,7 @@ export default function ActivitiesScreen() {
   const loadData = async () => {
     try {
       setLoading(true);
-      console.log('Activities: Loading data...');
+      if (__DEV__) console.log('Activities: Loading data...');
       
       const [activitiesData, statsData] = await Promise.all([
         ActivityService.getActivities(),
@@ -37,10 +36,10 @@ export default function ActivitiesScreen() {
       setActivities(activitiesData);
       setFilteredActivities(activitiesData);
       setStats(statsData);
-      console.log('Activities: Data loaded successfully');
+      if (__DEV__) console.log('Activities: Data loaded successfully');
     } catch (error) {
-      console.error('Activities: Error loading data:', error);
-      Alert.alert('Error', 'Failed to load activities. Please try again.');
+      if (__DEV__) console.warn('Activities: Error loading data:', error);
+      Alert.alert('Something went wrong', 'We couldn’t load activities. Pull to refresh or try again in a moment.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -60,10 +59,11 @@ export default function ActivitiesScreen() {
 
     // Apply search filter
     if (searchQuery) {
+      const q = searchQuery.toLowerCase();
       filtered = filtered.filter(activity =>
-        activity.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        activity.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        activity.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+        activity.title.toLowerCase().includes(q) ||
+        activity.description.toLowerCase().includes(q) ||
+        (activity.tags ?? []).some(tag => tag.toLowerCase().includes(q))
       );
     }
 
@@ -123,8 +123,8 @@ export default function ActivitiesScreen() {
         )
       );
     } catch (error) {
-      console.error('Error toggling favorite:', error);
-      Alert.alert('Error', 'Failed to update favorite status.');
+      if (__DEV__) console.warn('Error toggling favorite:', error);
+      Alert.alert('Something went wrong', 'We couldn’t update your favorite. Please try again.');
     }
   };
 
@@ -135,26 +135,27 @@ export default function ActivitiesScreen() {
         'Activity Started!',
         `You've started: ${activity.title}`,
         [
-          { 
-            text: 'Continue', 
+          {
+            text: 'Continue',
             onPress: () => {
-              // Here you would typically navigate to the activity session
-              // For now, we'll just show a success message
               Alert.alert('Great!', 'Activity session is now active. Track your progress!');
-            }
-          }
+            },
+          },
         ]
       );
     } catch (error) {
-      console.error('Error starting activity:', error);
-      Alert.alert('Error', 'Failed to start activity session.');
+      if (__DEV__) console.warn('Error starting activity:', error);
+      Alert.alert('Something went wrong', 'We couldn’t start the activity. Please try again.');
     }
   };
 
-  const renderActivityCard = ({ item: activity }: { item: Activity }) => (
+  const renderActivityCard = (activity: Activity) => (
     <TouchableOpacity
       style={styles.activityCard}
       onPress={() => handleActivityPress(activity)}
+      activeOpacity={0.85}
+      accessibilityLabel={`${activity.title}. ${activity.duration} minutes, ${activity.difficulty}`}
+      accessibilityRole="button"
     >
       <View style={styles.activityHeader}>
         <View style={styles.activityInfo}>
@@ -166,6 +167,9 @@ export default function ActivitiesScreen() {
         <TouchableOpacity
           style={styles.favoriteButton}
           onPress={() => handleToggleFavorite(activity.id)}
+          activeOpacity={0.7}
+          accessibilityLabel={activity.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+          accessibilityRole="button"
         >
           <Text style={[styles.favoriteIcon, activity.isFavorite && styles.favoriteActive]}>
             {activity.isFavorite ? '❤️' : '🤍'}
@@ -186,8 +190,8 @@ export default function ActivitiesScreen() {
       </View>
 
       <View style={styles.activityTags}>
-        {activity.tags.slice(0, 3).map((tag, index) => (
-          <Chip key={index} compact style={styles.tagChip}>
+        {(activity.tags ?? []).slice(0, 3).map((tag, index) => (
+          <Chip key={`${activity.id}-tag-${index}`} compact style={styles.tagChip}>
             {tag}
           </Chip>
         ))}
@@ -197,6 +201,9 @@ export default function ActivitiesScreen() {
         <TouchableOpacity
           style={[styles.actionButton, styles.startButton]}
           onPress={() => handleStartActivity(activity)}
+          activeOpacity={0.85}
+          accessibilityLabel={`Start activity: ${activity.title}`}
+          accessibilityRole="button"
         >
           <Text style={styles.startButtonText}>Start Activity</Text>
         </TouchableOpacity>
@@ -268,7 +275,7 @@ export default function ActivitiesScreen() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#006A60" />
-        <Text style={styles.loadingText}>Loading activities...</Text>
+        <Text style={styles.loadingText}>Loading activities…</Text>
       </View>
     );
   }
@@ -284,6 +291,8 @@ export default function ActivitiesScreen() {
 
       <ScrollView
         style={styles.content}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={true}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -310,21 +319,21 @@ export default function ActivitiesScreen() {
           </Text>
 
           {filteredActivities.length > 0 ? (
-            <FlatList
-              data={filteredActivities}
-              renderItem={renderActivityCard}
-              keyExtractor={(item) => item.id}
-              scrollEnabled={false}
-              contentContainerStyle={styles.activitiesList}
-            />
+            <View style={styles.activitiesList}>
+              {filteredActivities.map((activity) => (
+                <View key={activity.id}>
+                  {renderActivityCard(activity)}
+                </View>
+              ))}
+            </View>
           ) : (
             <View style={styles.emptyState}>
               <Text style={styles.emptyIcon}>🎨</Text>
               <Text style={styles.emptyTitle}>No activities found</Text>
               <Text style={styles.emptyText}>
-                {searchQuery 
-                  ? 'Try adjusting your search terms'
-                  : 'Start by exploring different categories'
+                {searchQuery
+                  ? 'Try different keywords or clear the search'
+                  : 'Switch tabs or filters to see more'
                 }
               </Text>
             </View>
@@ -364,6 +373,9 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 100,
   },
   loadingContainer: {
     flex: 1,
@@ -426,7 +438,7 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   activitiesList: {
-    gap: 16,
+    gap: 12,
   },
   activityCard: {
     backgroundColor: '#ffffff',

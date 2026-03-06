@@ -28,12 +28,13 @@ const createMockUser = (email: string, firstName: string, lastName: string): Use
 
 // Check if we're in mock mode (no valid Supabase URL or explicitly set)
 const isMockMode = () => {
-  console.log('Mock mode check:', {
-    forceMock: ENV.FORCE_MOCK,
-    supabaseUrl: ENV.SUPABASE_URL,
-    isDefaultUrl: ENV.SUPABASE_URL === 'https://your-project.supabase.co'
-  });
-  
+  if (__DEV__) {
+    console.log('Mock mode check:', {
+      forceMock: ENV.FORCE_MOCK,
+      supabaseUrl: ENV.SUPABASE_URL ? 'set' : 'missing',
+      isDefaultUrl: ENV.SUPABASE_URL === 'https://your-project.supabase.co'
+    });
+  }
   return ENV.FORCE_MOCK || !ENV.SUPABASE_URL || ENV.SUPABASE_URL === 'https://your-project.supabase.co';
 };
 
@@ -41,12 +42,11 @@ export const authService = {
   // Sign up with email and password
   async signUp(email: string, password: string, firstName: string, lastName: string): Promise<AuthResponse> {
     try {
-      console.log('Starting signup process...');
-      console.log('Mock mode:', isMockMode());
-      
+      if (__DEV__) console.log('Starting signup process...');
+      if (__DEV__) console.log('Mock mode:', isMockMode());
+
       if (isMockMode()) {
-        // Mock signup for testing
-        console.log('Mock signup:', { email, firstName, lastName });
+        if (__DEV__) console.log('Mock signup:', { email, firstName: '***', lastName: '***' });
         const mockUser = createMockUser(email, firstName, lastName);
         
         // Simulate network delay
@@ -55,7 +55,7 @@ export const authService = {
         return { user: mockUser, error: null };
       }
 
-      console.log('Attempting Supabase signup...');
+      if (__DEV__) console.log('Attempting Supabase signup...');
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -68,17 +68,14 @@ export const authService = {
       });
 
       if (error) {
-        console.error('Supabase signup error:', error);
+        if (__DEV__) console.warn('Supabase signup error:', error);
         return { user: null, error };
       }
 
-      // The user profile will be created automatically by the database trigger
-      // No need to manually insert into users table
-      console.log('User signed up successfully:', data.user?.id);
-
+      if (__DEV__) console.log('User signed up successfully');
       return { user: data.user, error: null };
     } catch (error) {
-      console.error('Signup exception:', error);
+      if (__DEV__) console.warn('Signup exception:', error);
       return { user: null, error: error as AuthError };
     }
   },
@@ -86,12 +83,11 @@ export const authService = {
   // Sign in with email and password
   async signIn(email: string, password: string): Promise<AuthResponse> {
     try {
-      console.log('Starting signin process...');
-      console.log('Mock mode:', isMockMode());
-      
+      if (__DEV__) console.log('Starting signin process...');
+      if (__DEV__) console.log('Mock mode:', isMockMode());
+
       if (isMockMode()) {
-        // Mock signin for testing
-        console.log('Mock signin:', { email });
+        if (__DEV__) console.log('Mock signin');
         
         // Simulate network delay
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -102,21 +98,17 @@ export const authService = {
         return { user: mockUser, error: null };
       }
 
-      console.log('Attempting Supabase signin...');
+      if (__DEV__) console.log('Attempting Supabase signin...');
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) {
-        console.error('Supabase signin error:', error);
-      } else {
-        console.log('Signin successful:', data.user?.id);
-      }
-
+      if (error && __DEV__) console.warn('Supabase signin error:', error);
+      if (!error && __DEV__) console.log('Signin successful');
       return { user: data.user, error };
     } catch (error) {
-      console.error('Signin exception:', error);
+      if (__DEV__) console.warn('Signin exception:', error);
       return { user: null, error: error as AuthError };
     }
   },
@@ -125,8 +117,7 @@ export const authService = {
   async signOut(): Promise<{ error: AuthError | null }> {
     try {
       if (isMockMode()) {
-        // Mock signout for testing
-        console.log('Mock signout');
+        if (__DEV__) console.log('Mock signout');
         
         await new Promise(resolve => setTimeout(resolve, 500));
         return { error: null };
@@ -143,8 +134,7 @@ export const authService = {
   async getCurrentUser(): Promise<{ user: User | null; error: AuthError | null }> {
     try {
       if (isMockMode()) {
-        // Mock get current user for testing
-        console.log('Mock get current user');
+        if (__DEV__) console.log('Mock get current user');
         
         return { user: null, error: null };
       }
@@ -160,8 +150,7 @@ export const authService = {
   async resetPassword(email: string): Promise<{ error: AuthError | null }> {
     try {
       if (isMockMode()) {
-        // Mock password reset for testing
-        console.log('Mock password reset for:', email);
+        if (__DEV__) console.log('Mock password reset for:', email);
         await new Promise(resolve => setTimeout(resolve, 1000));
         return { error: null };
       }
@@ -177,8 +166,7 @@ export const authService = {
   async updatePassword(password: string): Promise<{ error: AuthError | null }> {
     try {
       if (isMockMode()) {
-        // Mock password update for testing
-        console.log('Mock password update');
+        if (__DEV__) console.log('Mock password update');
         await new Promise(resolve => setTimeout(resolve, 1000));
         return { error: null };
       }
@@ -195,12 +183,11 @@ export const authService = {
   // Listen to auth state changes
   onAuthStateChange(callback: (user: User | null) => void) {
     if (isMockMode()) {
-      // Mock auth state change listener
-      console.log('Mock auth state change listener set up');
+      if (__DEV__) console.log('Mock auth state change listener set up');
       return {
         data: {
           subscription: {
-            unsubscribe: () => console.log('Mock auth listener unsubscribed')
+            unsubscribe: () => { if (__DEV__) console.log('Mock auth listener unsubscribed'); }
           }
         }
       };

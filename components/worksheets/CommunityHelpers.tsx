@@ -1,4 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { playSuccessSound, playFailSound } from '../../utils/worksheetSounds';
+
+function shuffle<T>(arr: T[]): T[] {
+  const out = [...arr];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
 import {
   View,
   Text,
@@ -9,7 +19,15 @@ import {
 
 const { width: screenWidth } = Dimensions.get('window');
 
+/** Question count by level (1–10). */
+function getCommunityHelpersQuestionCount(level: number): number {
+  if (level <= 2) return 3;
+  if (level <= 5) return 5;
+  return 7;
+}
+
 interface CommunityHelpersProps {
+  level?: number;
   onComplete: (accuracy: number) => void;
   onNext: () => void;
 }
@@ -40,7 +58,7 @@ const communityHelpers: HelperToolPair[] = [
   { helper: 'Electrician', tool: 'Light Bulb', helperEmoji: '⚡', toolEmoji: '💡' },
 ];
 
-export default function CommunityHelpers({ onComplete, onNext }: CommunityHelpersProps) {
+export default function CommunityHelpers({ level = 1, onComplete, onNext }: CommunityHelpersProps) {
   const [selectedPairs, setSelectedPairs] = useState<HelperToolPair[]>([]);
   const [currentQuestionNumber, setCurrentQuestionNumber] = useState(0);
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
@@ -51,30 +69,31 @@ export default function CommunityHelpers({ onComplete, onNext }: CommunityHelper
   const [feedback, setFeedback] = useState<'correct' | 'incorrect' | null>(null);
   const [questionTools, setQuestionTools] = useState<string[][]>([]);
 
-  // Select 5 random pairs for this worksheet session
+  const questionCount = getCommunityHelpersQuestionCount(level);
+
+  // Select N random pairs in random order each time the worksheet loads
   useEffect(() => {
-    const shuffled = [...communityHelpers].sort(() => Math.random() - 0.5);
-    const selected = shuffled.slice(0, 5);
+    const shuffled = shuffle([...communityHelpers]);
+    const selected = shuffled.slice(0, questionCount);
     setSelectedPairs(selected);
-    
-    // Generate tool options for each question
+
     const allTools = [...new Set(communityHelpers.map(pair => pair.tool))];
     const toolsForQuestions = selected.map(pair => {
       const correctTool = pair.tool;
       const otherTools = allTools.filter(tool => tool !== correctTool);
-      const shuffledOtherTools = otherTools.sort(() => Math.random() - 0.5).slice(0, 3);
-      return [correctTool, ...shuffledOtherTools].sort(() => Math.random() - 0.5);
+      const shuffledOtherTools = shuffle([...otherTools]).slice(0, 3);
+      return shuffle([correctTool, ...shuffledOtherTools]);
     });
-    
+
     setQuestionTools(toolsForQuestions);
     setIsLoading(false);
-  }, []);
+  }, [questionCount]);
 
   // Don't render until pairs are selected
   if (isLoading || selectedPairs.length === 0 || questionTools.length === 0) {
     return (
       <View style={styles.container}>
-        <Text>Loading...</Text>
+        <Text style={styles.loadingText}>Getting ready... 👷</Text>
       </View>
     );
   }
@@ -98,6 +117,8 @@ export default function CommunityHelpers({ onComplete, onNext }: CommunityHelper
     setHasAnswered(true);
     
     const isCorrect = tool === currentPair.tool;
+    if (isCorrect) playSuccessSound();
+    else playFailSound();
     
     if (isCorrect) {
       setCorrectAnswers(prev => prev + 1);
@@ -146,11 +167,11 @@ export default function CommunityHelpers({ onComplete, onNext }: CommunityHelper
   return (
     <View style={styles.container}>
       <Text style={styles.progress}>
-        Question {currentQuestionNumber + 1} of 5
+        Question {currentQuestionNumber + 1} of {questionCount}
       </Text>
 
       <Text style={styles.question}>
-        What does a {currentPair.helper} use?
+        What does a {currentPair.helper} use? {currentPair.helperEmoji}
       </Text>
 
       {/* Helper Display */}
@@ -240,34 +261,43 @@ export default function CommunityHelpers({ onComplete, onNext }: CommunityHelper
 
 const styles = StyleSheet.create({
   container: {
-    flex: 0.9,
+    flex: 1,
     alignItems: 'center',
     padding: 12,
     paddingBottom: 16,
   },
+  loadingText: {
+    fontSize: 18,
+    color: '#555',
+    marginTop: 40,
+    fontWeight: '600',
+  },
   progress: {
     fontSize: 14,
-    color: '#666',
-    marginBottom: 12,
+    color: '#555',
+    marginBottom: 8,
+    fontWeight: '600',
   },
   question: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
+    color: '#333',
   },
   helperContainer: {
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   helperEmoji: {
-    fontSize: 60,
-    marginBottom: 8,
+    fontSize: 48,
+    marginBottom: 6,
   },
   helperName: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     textAlign: 'center',
+    color: '#333',
   },
   toolsContainer: {
     width: '100%',
@@ -276,12 +306,13 @@ const styles = StyleSheet.create({
   toolButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f0f0f0',
-    padding: 14,
+    backgroundColor: '#f8f9fa',
+    padding: 10,
     marginBottom: 8,
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: '#e9ecef',
+    minHeight: 48,
   },
   toolButtonSelected: {
     borderColor: '#007AFF',
@@ -297,11 +328,12 @@ const styles = StyleSheet.create({
   },
   toolEmoji: {
     fontSize: 24,
-    marginRight: 12,
+    marginRight: 10,
   },
   toolText: {
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
   },
   toolTextSelected: {
     color: '#007AFF',
@@ -358,18 +390,16 @@ const styles = StyleSheet.create({
   feedbackText: {
     fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: 12,
     textAlign: 'center',
-    color: '#000',
-    backgroundColor: 'yellow',
-    padding: 5,
+    color: '#333',
   },
   feedbackSubtext: {
-    fontSize: 16,
-    color: '#000',
-    marginTop: 8,
+    fontSize: 18,
+    color: '#555',
+    marginTop: 10,
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 24,
   },
   correctPairDisplay: {
     flexDirection: 'row',

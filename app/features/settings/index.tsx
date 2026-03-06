@@ -238,7 +238,6 @@ export default function SettingsScreen() {
                     value={member.isActive} 
                     onValueChange={() => {
                       // TODO: Toggle member status
-                      console.log('Toggle member status');
                     }}
                   />
                 </View>
@@ -325,7 +324,6 @@ export default function SettingsScreen() {
                     compact
                     onPress={() => {
                       // TODO: Show selection dialog
-                      console.log('Show selection dialog');
                     }}
                   >
                     Change
@@ -349,7 +347,6 @@ export default function SettingsScreen() {
               right={(props) => <Text style={{ fontSize: 16, color: '#666' }}>▶️</Text>}
               onPress={() => {
                 // TODO: Navigate to edit profile
-                console.log('Edit profile');
               }}
             />
             <Divider />
@@ -360,7 +357,6 @@ export default function SettingsScreen() {
               right={(props) => <Text style={{ fontSize: 16, color: '#666' }}>▶️</Text>}
               onPress={() => {
                 // TODO: Navigate to change password
-                console.log('Change password');
               }}
             />
             <Divider />
@@ -371,7 +367,6 @@ export default function SettingsScreen() {
               right={(props) => <Text style={{ fontSize: 16, color: '#666' }}>▶️</Text>}
               onPress={() => {
                 // TODO: Navigate to privacy settings
-                console.log('Privacy settings');
               }}
             />
             <Divider />
@@ -382,7 +377,6 @@ export default function SettingsScreen() {
               right={(props) => <Text style={{ fontSize: 16, color: '#666' }}>▶️</Text>}
               onPress={() => {
                 // TODO: Export data
-                console.log('Export data');
               }}
             />
           </Card.Content>
@@ -401,7 +395,6 @@ export default function SettingsScreen() {
               right={(props) => <Text style={{ fontSize: 16, color: '#666' }}>▶️</Text>}
               onPress={() => {
                 // TODO: Navigate to help
-                console.log('Help & FAQ');
               }}
             />
             <Divider />
@@ -412,7 +405,6 @@ export default function SettingsScreen() {
               right={(props) => <Text style={{ fontSize: 16, color: '#666' }}>▶️</Text>}
               onPress={() => {
                 // TODO: Contact support
-                console.log('Contact support');
               }}
             />
             <Divider />
@@ -423,7 +415,6 @@ export default function SettingsScreen() {
               right={(props) => <Text style={{ fontSize: 16, color: '#666' }}>▶️</Text>}
               onPress={() => {
                 // TODO: Show about info
-                console.log('About MotusTots');
               }}
             />
           </Card.Content>
