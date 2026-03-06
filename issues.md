@@ -10,6 +10,7 @@ This file lists known issues and incomplete work across the app so you can track
 - **Priority**: `P0` = blocking / critical, `P1` = important, `P2` = nice-to-have.
 - **Area**: Feature or module affected.
 - **Fix**: Short action to resolve.
+- **When working on an issue:** Add a comment on the corresponding GitHub Issue (I001→#1 … I019→#19) so others know it’s in progress.
 
 ---
 
