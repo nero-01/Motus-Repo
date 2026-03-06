@@ -81,6 +81,29 @@ To scan weekly planner images and build reminders from text:
 3. Restrict the key to “Cloud Vision API” (and optionally to your app’s bundle ID) for security
 4. Add to `.env`: `EXPO_PUBLIC_GOOGLE_VISION_API_KEY=your_vision_api_key_here`
 
+#### Production builds (EAS) – required environment variables (I019)
+For **production** builds, the app does not use fallback values from `config/env.ts`. You must set these in **EAS Secrets** (or in your CI) so every production build gets the correct config:
+
+| Variable | Required | Notes |
+|----------|----------|--------|
+| `EXPO_PUBLIC_APP_ENV` | Yes | Set to `production` for production builds. (Already set in `eas.json` for the production profile.) |
+| `EXPO_PUBLIC_SUPABASE_URL` | Yes | Your production Supabase project URL. |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Yes | Your production Supabase anon (public) key. |
+| `EXPO_PUBLIC_GOOGLE_VISION_API_KEY` | Optional | Only if you use Reminders “Read from image”; leave unset otherwise. |
+
+**How to set EAS Secrets:**
+
+1. Install EAS CLI: `npm install -g eas-cli`
+2. Log in: `eas login`
+3. Open [Expo dashboard](https://expo.dev) → your project → **Secrets** (or run `eas secret:list` to see existing secrets).
+4. Add each variable:
+   - `EXPO_PUBLIC_APP_ENV` = `production`
+   - `EXPO_PUBLIC_SUPABASE_URL` = your Supabase URL
+   - `EXPO_PUBLIC_SUPABASE_ANON_KEY` = your Supabase anon key
+   - (Optional) `EXPO_PUBLIC_GOOGLE_VISION_API_KEY` = your Vision API key
+
+Secrets are injected at build time. Never commit production keys to the repo. See also **PLAY_STORE_READINESS.md** and **BETA_CHECKLIST.md**.
+
 ## 📱 Features Overview
 
 ### 🔐 Authentication
@@ -147,9 +170,12 @@ npx expo build:ios
 
 ### EAS Build (Recommended)
 ```bash
-npm install -g @expo/eas-cli
-eas build --platform all
+npm install -g eas-cli
+eas login
+eas build --platform android --profile production
 ```
+
+**Production builds:** Set **EAS Secrets** for `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` (and optionally `EXPO_PUBLIC_GOOGLE_VISION_API_KEY`) before running a production build. See **Production builds (EAS) – required environment variables** in the Configuration section above.
 
 ## 🐛 Troubleshooting
 

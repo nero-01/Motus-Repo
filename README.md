@@ -99,7 +99,10 @@ motustots/
    - Run the database schema from `database_schema.sql`
    - Update your environment variables with Supabase URL and keys
 
-5. **Start the development server**
+5. **Production builds (EAS)**  
+   For production builds, set `EXPO_PUBLIC_APP_ENV`, `EXPO_PUBLIC_SUPABASE_URL`, and `EXPO_PUBLIC_SUPABASE_ANON_KEY` in **EAS Secrets** — see **SETUP_GUIDE.md** (section: Production builds – required environment variables).
+
+6. **Start the development server**
    ```bash
    npm run dev
    ```
