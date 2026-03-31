@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   ScrollView,
@@ -22,7 +22,8 @@ import {
   Portal,
   Dialog,
 } from 'react-native-paper';
-import { router } from 'expo-router';
+import { getChildProgress, saveProgress } from '../../../services/supabase/education';
+import { useFamilyStore } from '../../../src/modules/family/store/familyStore';
 import LetterTracing from '../../../components/worksheets/LetterTracing';
 import ColorMixing from '../../../components/worksheets/ColorMixing';
 import AnimalHabitats from '../../../components/worksheets/AnimalHabitats';
@@ -51,7 +52,12 @@ interface EducationStats {
   currentLevel: number;
 }
 
+const INTERACTIVE_TYPES = ['letter_tracing', 'color_mixing', 'animal_habitats', 'community_helpers'] as const;
+
 export default function EducationScreen() {
+  const currentFamily = useFamilyStore((s) => s.currentFamily);
+  const selectedChildId = useFamilyStore((s) => s.selectedChildId);
+
   const [worksheets, setWorksheets] = useState<Worksheet[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -61,6 +67,30 @@ export default function EducationScreen() {
   const [stats, setStats] = useState<EducationStats | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedWorksheet, setSelectedWorksheet] = useState<Worksheet | null>(null);
+  const [playingWorksheet, setPlayingWorksheet] = useState<Worksheet | null>(null);
+  const [completedWorksheetIds, setCompletedWorksheetIds] = useState<Record<string, boolean>>({});
+
+  const refreshCompletedWorksheetIds = useCallback(async () => {
+    const childId = selectedChildId ?? currentFamily?.children?.[0]?.id;
+    if (!childId) {
+      setCompletedWorksheetIds({});
+      return;
+    }
+    try {
+      const rows = await getChildProgress(childId);
+      const next: Record<string, boolean> = {};
+      (rows as { worksheet_id: string }[] | null)?.forEach((r) => {
+        next[r.worksheet_id] = true;
+      });
+      setCompletedWorksheetIds(next);
+    } catch {
+      setCompletedWorksheetIds({});
+    }
+  }, [selectedChildId, currentFamily?.children, currentFamily?.id]);
+
+  useEffect(() => {
+    void refreshCompletedWorksheetIds();
+  }, [refreshCompletedWorksheetIds]);
 
   const categories = [
     { value: 'all', label: 'All' },
@@ -87,9 +117,10 @@ export default function EducationScreen() {
       // Simulate loading
       await new Promise(resolve => setTimeout(resolve, 1000));
       
+      // ids align with services/supabase/education getMockWorksheets for worksheet_progress FK
       const mockWorksheets: Worksheet[] = [
         {
-          id: '1',
+          id: '3',
           title: 'Letter Tracing - ABC',
           description: 'Practice tracing uppercase and lowercase letters',
           category: 'writing',
@@ -99,11 +130,11 @@ export default function EducationScreen() {
           type: 'letter_tracing',
           content: {
             letters: ['A', 'B', 'C', 'D', 'E'],
-            instructions: 'Trace each letter carefully'
-          }
+            instructions: 'Trace each letter carefully',
+          },
         },
         {
-          id: '2',
+          id: '5',
           title: 'Color Mixing Fun',
           description: 'Learn about primary and secondary colors',
           category: 'art',
@@ -113,11 +144,11 @@ export default function EducationScreen() {
           type: 'color_mixing',
           content: {
             colors: ['red', 'blue', 'yellow'],
-            instructions: 'Mix colors to create new ones'
-          }
+            instructions: 'Mix colors to create new ones',
+          },
         },
         {
-          id: '3',
+          id: '4',
           title: 'Animal Habitats',
           description: 'Learn where different animals live',
           category: 'science',
@@ -127,11 +158,11 @@ export default function EducationScreen() {
           type: 'animal_habitats',
           content: {
             animals: ['lion', 'fish', 'bird', 'bear'],
-            instructions: 'Match animals to their habitats'
-          }
+            instructions: 'Match animals to their habitats',
+          },
         },
         {
-          id: '4',
+          id: '6',
           title: 'Community Helpers',
           description: 'Learn about people who help our community',
           category: 'social_studies',
@@ -141,11 +172,11 @@ export default function EducationScreen() {
           type: 'community_helpers',
           content: {
             helpers: ['doctor', 'teacher', 'firefighter', 'police'],
-            instructions: 'Match helpers to their tools'
-          }
+            instructions: 'Match helpers to their tools',
+          },
         },
         {
-          id: '5',
+          id: '1',
           title: 'Simple Addition',
           description: 'Practice adding numbers 1-10',
           category: 'math',
@@ -155,11 +186,11 @@ export default function EducationScreen() {
           type: 'math',
           content: {
             problems: ['1+2', '3+4', '5+1', '2+3'],
-            instructions: 'Solve the addition problems'
-          }
+            instructions: 'Solve the addition problems',
+          },
         },
         {
-          id: '6',
+          id: '2',
           title: 'Sight Words',
           description: 'Learn common sight words',
           category: 'reading',
@@ -169,9 +200,9 @@ export default function EducationScreen() {
           type: 'reading',
           content: {
             words: ['the', 'and', 'is', 'in', 'it'],
-            instructions: 'Read and recognize these words'
-          }
-        }
+            instructions: 'Read and recognize these words',
+          },
+        },
       ];
 
       const mockStats: EducationStats = {
@@ -253,24 +284,47 @@ export default function EducationScreen() {
 
   const startWorksheet = () => {
     if (!selectedWorksheet) return;
-    
     closeWorksheetModal();
-    
-    // For now, show an alert that the worksheet is starting
-    Alert.alert(
-      'Worksheet Starting',
-      `Starting ${selectedWorksheet.title}...`,
-      [
-        {
-          text: 'OK',
-          onPress: () => {
-            // In a real app, this would navigate to the actual worksheet
-            console.log('Starting worksheet:', selectedWorksheet.title);
-          }
-        }
-      ]
-    );
+    if ((INTERACTIVE_TYPES as readonly string[]).includes(selectedWorksheet.type)) {
+      setPlayingWorksheet(selectedWorksheet);
+      return;
+    }
+    Alert.alert('Coming soon', `${selectedWorksheet.title} is not available in the app yet.`);
   };
+
+  const openQuickWorksheet = (type: string) => {
+    const w = worksheets.find((x) => x.type === type);
+    if (w) setPlayingWorksheet(w);
+  };
+
+  const closeWorksheetPlayer = () => {
+    setPlayingWorksheet(null);
+    void refreshCompletedWorksheetIds();
+  };
+
+  const persistSessionScore = (worksheetId: string, worksheetType: string, accuracy: number) => {
+    const familyId = currentFamily?.id;
+    const childId = selectedChildId ?? currentFamily?.children?.[0]?.id;
+    if (!familyId || !childId) {
+      if (__DEV__) console.warn('Worksheet progress not saved: no family or child.');
+      return;
+    }
+    void saveProgress({
+      worksheet_id: worksheetId,
+      child_id: childId,
+      family_id: familyId,
+      score: Math.round(accuracy),
+      time_spent: 0,
+      mistakes: 0,
+      details: { source: 'education', type: worksheetType },
+      completed_at: new Date().toISOString(),
+    }).then(() => {
+      setCompletedWorksheetIds((prev) => ({ ...prev, [worksheetId]: true }));
+    });
+  };
+
+  const firstLetter = (ws: Worksheet) =>
+    (Array.isArray(ws.content?.letters) && ws.content!.letters[0]) || 'A';
 
   if (loading) {
     return (
@@ -279,6 +333,50 @@ export default function EducationScreen() {
         <Text style={styles.loadingText}>Loading worksheets...</Text>
       </View>
     );
+  }
+
+  if (playingWorksheet) {
+    const ws = playingWorksheet;
+    const onScore = (accuracy: number) => persistSessionScore(ws.id, ws.type, accuracy);
+    switch (ws.type) {
+      case 'letter_tracing':
+        return (
+          <View style={styles.fullScreenPlayer}>
+            <LetterTracing
+              letter={String(firstLetter(ws))}
+              onComplete={onScore}
+              onNext={closeWorksheetPlayer}
+            />
+          </View>
+        );
+      case 'color_mixing':
+        return (
+          <View style={styles.fullScreenPlayer}>
+            <ColorMixing onComplete={onScore} onNext={closeWorksheetPlayer} />
+          </View>
+        );
+      case 'animal_habitats':
+        return (
+          <View style={styles.fullScreenPlayer}>
+            <AnimalHabitats onComplete={onScore} onNext={closeWorksheetPlayer} />
+          </View>
+        );
+      case 'community_helpers':
+        return (
+          <View style={styles.fullScreenPlayer}>
+            <CommunityHelpers onComplete={onScore} onNext={closeWorksheetPlayer} />
+          </View>
+        );
+      default:
+        return (
+          <View style={[styles.fullScreenPlayer, styles.playerFallback]}>
+            <Text style={styles.fallbackText}>This worksheet type is not available yet.</Text>
+            <Button mode="contained" onPress={closeWorksheetPlayer} buttonColor="#006A60">
+              Close
+            </Button>
+          </View>
+        );
+    }
   }
 
   return (
@@ -373,7 +471,14 @@ export default function EducationScreen() {
                     </Text>
                   </View>
                   <View style={styles.worksheetInfo}>
-                    <Text style={styles.worksheetTitle}>{worksheet.title}</Text>
+                    <View style={styles.worksheetTitleRow}>
+                      <Text style={styles.worksheetTitle}>{worksheet.title}</Text>
+                      {completedWorksheetIds[worksheet.id] ? (
+                        <Chip compact mode="flat" icon="check" style={styles.doneChip} textStyle={styles.doneChipText}>
+                          Done
+                        </Chip>
+                      ) : null}
+                    </View>
                     <Text style={styles.worksheetDescription}>{worksheet.description}</Text>
                     <View style={styles.worksheetMeta}>
                       <Chip mode="outlined" style={styles.metaChip}>
@@ -409,7 +514,7 @@ export default function EducationScreen() {
           <View style={styles.quickAccessButtons}>
             <Button
               mode="contained"
-              onPress={() => Alert.alert('Letter Tracing', 'Letter tracing worksheet coming soon!')}
+              onPress={() => openQuickWorksheet('letter_tracing')}
               style={styles.quickButton}
               icon="pencil"
             >
@@ -418,7 +523,7 @@ export default function EducationScreen() {
             
             <Button
               mode="contained"
-              onPress={() => Alert.alert('Color Mixing', 'Color mixing worksheet coming soon!')}
+              onPress={() => openQuickWorksheet('color_mixing')}
               style={styles.quickButton}
               icon="palette"
             >
@@ -427,7 +532,7 @@ export default function EducationScreen() {
             
             <Button
               mode="contained"
-              onPress={() => Alert.alert('Animal Habitats', 'Animal habitats worksheet coming soon!')}
+              onPress={() => openQuickWorksheet('animal_habitats')}
               style={styles.quickButton}
               icon="paw"
             >
@@ -436,7 +541,7 @@ export default function EducationScreen() {
             
             <Button
               mode="contained"
-              onPress={() => Alert.alert('Community Helpers', 'Community helpers worksheet coming soon!')}
+              onPress={() => openQuickWorksheet('community_helpers')}
               style={styles.quickButton}
               icon="account-group"
             >
@@ -500,6 +605,36 @@ export default function EducationScreen() {
 }
 
 const styles = StyleSheet.create({
+  fullScreenPlayer: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  playerFallback: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+    gap: 16,
+  },
+  fallbackText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+  },
+  worksheetTitleRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  doneChip: {
+    backgroundColor: '#E8F5F3',
+    height: 28,
+  },
+  doneChipText: {
+    fontSize: 12,
+    color: '#006A60',
+  },
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',

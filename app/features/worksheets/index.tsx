@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text, Card, Button } from 'react-native-paper';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -6,19 +6,48 @@ import LetterTracing from '../../../components/worksheets/LetterTracing';
 import ColorMixing from '../../../components/worksheets/ColorMixing';
 import AnimalHabitats from '../../../components/worksheets/AnimalHabitats';
 import CommunityHelpers from '../../../components/worksheets/CommunityHelpers';
+import { saveProgress } from '../../../services/supabase/education';
+import { useFamilyStore } from '../../../src/modules/family/store/familyStore';
+import { WORKSHEET_TYPE_TO_CATALOG_ID } from '../../../utils/worksheetCatalog';
 
 export default function WorksheetsScreen() {
   const { type } = useLocalSearchParams<{ type: string }>();
   const [currentWorksheet, setCurrentWorksheet] = useState<string | null>(type || null);
+  const currentFamily = useFamilyStore((s) => s.currentFamily);
+  const selectedChildId = useFamilyStore((s) => s.selectedChildId);
+
+  const persistWorksheetScore = useCallback(
+    async (accuracy: number, sheetType: string) => {
+      const worksheet_id = WORKSHEET_TYPE_TO_CATALOG_ID[sheetType];
+      if (!worksheet_id) return;
+      const familyId = currentFamily?.id;
+      const childId = selectedChildId ?? currentFamily?.children?.[0]?.id;
+      if (!familyId || !childId) {
+        if (__DEV__) console.warn('Worksheet progress not saved: no family or child selected.');
+        return;
+      }
+      await saveProgress({
+        worksheet_id,
+        child_id: childId,
+        family_id: familyId,
+        score: Math.round(accuracy),
+        time_spent: 0,
+        mistakes: 0,
+        details: { source: 'features/worksheets', type: sheetType },
+        completed_at: new Date().toISOString(),
+      });
+    },
+    [currentFamily, selectedChildId]
+  );
 
   const renderWorksheet = () => {
     switch (currentWorksheet) {
       case 'letter_tracing':
         return (
           <LetterTracing
+            letter="A"
             onComplete={(accuracy) => {
-              console.log('Letter Tracing completed with accuracy:', accuracy);
-              // Handle completion
+              void persistWorksheetScore(accuracy, 'letter_tracing');
             }}
             onNext={() => {
               setCurrentWorksheet(null);
@@ -31,8 +60,7 @@ export default function WorksheetsScreen() {
         return (
           <ColorMixing
             onComplete={(accuracy) => {
-              console.log('Color Mixing completed with accuracy:', accuracy);
-              // Handle completion
+              void persistWorksheetScore(accuracy, 'color_mixing');
             }}
             onNext={() => {
               setCurrentWorksheet(null);
@@ -45,8 +73,7 @@ export default function WorksheetsScreen() {
         return (
           <AnimalHabitats
             onComplete={(accuracy) => {
-              console.log('Animal Habitats completed with accuracy:', accuracy);
-              // Handle completion
+              void persistWorksheetScore(accuracy, 'animal_habitats');
             }}
             onNext={() => {
               setCurrentWorksheet(null);
@@ -59,8 +86,7 @@ export default function WorksheetsScreen() {
         return (
           <CommunityHelpers
             onComplete={(accuracy) => {
-              console.log('Community Helpers completed with accuracy:', accuracy);
-              // Handle completion
+              void persistWorksheetScore(accuracy, 'community_helpers');
             }}
             onNext={() => {
               setCurrentWorksheet(null);

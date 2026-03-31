@@ -159,19 +159,21 @@ export async function getWorksheetProgress(worksheetId: string, childId: string)
   return data;
 }
 
-// Save progress for a worksheet
+// Save progress for a worksheet (upserts worksheet_progress; requires family_id for RLS / reporting)
 export async function saveProgress({
   worksheet_id,
   child_id,
+  family_id,
   score,
   time_spent,
   mistakes,
   level = 1,
   details,
-  completed_at
+  completed_at,
 }: {
   worksheet_id: string;
   child_id: string;
+  family_id: string;
   score: number;
   time_spent: number;
   mistakes: number;
@@ -180,53 +182,48 @@ export async function saveProgress({
   completed_at: string;
 }) {
   const maxRetries = 3;
-  let attempt = 0;
 
-  while (attempt < maxRetries) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      // Add timeout to prevent hanging
-      const timeoutPromise = new Promise((_, reject) => 
+      const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Database timeout')), 5000)
       );
 
       const upsertPromise = supabase
-        .from('progress')
-        .upsert({
-          worksheet_id,
-          child_id,
-          score,
-          time_spent,
-          mistakes,
-          level,
-          details: details || {},
-          completed_at,
-        }, {
-          onConflict: 'worksheet_id,child_id'
-        })
+        .from('worksheet_progress')
+        .upsert(
+          {
+            worksheet_id,
+            child_id,
+            family_id,
+            score,
+            time_spent,
+            mistakes,
+            level,
+            details: details || {},
+            completed_at,
+          },
+          { onConflict: 'worksheet_id,child_id' }
+        )
         .then(({ data, error }) => {
           if (error) throw error;
           return data;
         });
-      
-      const data = await Promise.race([upsertPromise, timeoutPromise]) as any;
-      console.log('Progress saved successfully:', data);
+
+      const data = await Promise.race([upsertPromise, timeoutPromise]);
+      clearCache();
+      if (__DEV__) console.log('Worksheet progress saved:', data);
       return data;
     } catch (error) {
-      attempt++;
-      console.error(`Error saving progress (attempt ${attempt}/${maxRetries}):`, error);
-      
+      console.error(`Error saving worksheet progress (attempt ${attempt}/${maxRetries}):`, error);
       if (attempt === maxRetries) {
-        console.error('Max retries reached, returning mock success');
         return { success: true, mock: true, error: 'max_retries_reached' };
       }
-      
-      // Wait before retrying (exponential backoff)
-      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+      await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
     }
   }
-  
-  // Clear cache when progress is saved to ensure fresh data
-  clearCache();
+
+  return { success: true, mock: true, error: 'unknown' };
 }
 
 // Get educational statistics for a child
