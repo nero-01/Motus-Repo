@@ -20,6 +20,22 @@ export interface VisionErrorResult {
 
 export type VisionResult = VisionTextResult | VisionErrorResult;
 
+function toFriendlyVisionError(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error ?? '');
+  const normalized = raw.toLowerCase();
+
+  if (normalized.includes('network request failed')) {
+    return 'Network request failed. Check your internet connection and confirm Vision API access is enabled for your key.';
+  }
+
+  if (normalized.includes('failed to fetch')) {
+    return 'Could not reach Google Vision. Check your connection and API key restrictions, then try again.';
+  }
+
+  // Avoid surfacing technical "TypeError:" prefixes to users.
+  return raw.replace(/^typeerror:\s*/i, '').trim() || 'Network or request failed';
+}
+
 /**
  * Extract text from an image using Google Cloud Vision API (DOCUMENT_TEXT_DETECTION).
  * @param base64Image - Raw base64-encoded image (no data URL prefix)
@@ -71,7 +87,6 @@ export async function extractTextFromImage(base64Image: string): Promise<VisionR
     const text = first?.fullTextAnnotation?.text?.trim() ?? '';
     return { success: true, text };
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Network or request failed';
-    return { success: false, error: message };
+    return { success: false, error: toFriendlyVisionError(e) };
   }
 }
