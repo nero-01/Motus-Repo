@@ -68,7 +68,8 @@
     "tailwind-merge": "^2.0.0",
     "zod": "^3.22.0",
     "zustand": "^5.0.5",
-    "expo-linear-gradient": "~14.0.2"
+    "expo-linear-gradient": "~14.0.2",
+    "expo-image-manipulator": "~14.0.8"
   },
   "devDependencies": {
     "@storybook/addon-essentials": "^7.5.0",
