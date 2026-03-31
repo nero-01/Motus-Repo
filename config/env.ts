@@ -19,7 +19,7 @@ export const ENV = {
   GOOGLE_CLIENT_ID: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '',
   GOOGLE_CLIENT_SECRET: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_SECRET || '',
 
-  // Google Cloud Vision API (planner OCR)
+  // Google Cloud Vision API (planner OCR). Requires Vision API enabled + billing on the GCP project.
   GOOGLE_VISION_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_VISION_API_KEY || '',
 
   // App Configuration

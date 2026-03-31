@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { AuthState, LoginCredentials, RegisterCredentials } from './types'
+import { AuthState, LoginCredentials, RegisterCredentials, User } from './types'
 import { supabase } from '@/components/providers'
 
 interface AuthStore extends AuthState {
@@ -33,7 +33,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       if (error) throw error
       
       set({ 
-        user: data.user,
+        user: data.user as User | null,
         session: data.session,
         loading: false 
       })
@@ -60,7 +60,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       if (error) throw error
       
       set({ 
-        user: data.user,
+        user: data.user as User | null,
         session: data.session,
         loading: false 
       })

@@ -90,7 +90,31 @@ function friendlyVisionError(error: unknown): string {
   if (n.includes('failed to fetch')) {
     return 'Could not reach Google Vision. Check your connection and API key restrictions.';
   }
-  return raw.replace(/^typeerror:\s*/i, '').trim() || 'Scan request failed.';
+  return translateVisionApiMessage(raw.replace(/^typeerror:\s*/i, '').trim() || 'Scan request failed.');
+}
+
+/** Maps Google Cloud Vision / API error text to actionable copy (billing, enablement, key, quota). */
+function translateVisionApiMessage(message: string): string {
+  const m = message.toLowerCase();
+  if (m.includes('billing') || m.includes('billable')) {
+    return 'Planner scan needs Google Cloud billing enabled on the project that owns this API key. In Google Cloud Console: open Billing, link a billing account, then retry.';
+  }
+  if (m.includes('has not been used') || m.includes('not been enabled') || m.includes('api has not been')) {
+    return 'Enable the Cloud Vision API for your Google Cloud project (APIs & Services → Library), wait a few minutes, then retry.';
+  }
+  if (m.includes('not authorized to use this api') || m.includes('permission_denied') || m.includes('permission denied')) {
+    return 'Vision API access was denied. Enable Cloud Vision API, confirm billing if required, and check that this API key is allowed to call Vision.';
+  }
+  if (m.includes('api key not valid') || m.includes('invalid api key') || m.includes('bad request') && m.includes('key')) {
+    return 'The Vision API key is missing or invalid. Set EXPO_PUBLIC_GOOGLE_VISION_API_KEY and check key restrictions in Google Cloud.';
+  }
+  if (m.includes('quota') || m.includes('resource_exhausted') || m.includes('rate limit')) {
+    return 'Vision API quota exceeded or rate limited. Check quotas in Google Cloud Console or try again later.';
+  }
+  if (m.includes('403') || m.includes('forbidden')) {
+    return 'Vision API returned forbidden (403). Enable billing, enable Cloud Vision API, and verify API key restrictions.';
+  }
+  return message;
 }
 
 async function extractTextFromImage(base64Image: string): Promise<{ success: true; text: string } | { success: false; error: string }> {
@@ -114,7 +138,12 @@ async function extractTextFromImage(base64Image: string): Promise<{ success: tru
     });
     const data = await res.json();
     if (!res.ok) {
-      return { success: false, error: data?.error?.message || `HTTP ${res.status}` };
+      const raw = data?.error?.message || `HTTP ${res.status}`;
+      return { success: false, error: translateVisionApiMessage(String(raw)) };
+    }
+    const responseError = data?.responses?.[0]?.error?.message;
+    if (responseError) {
+      return { success: false, error: translateVisionApiMessage(String(responseError)) };
     }
     const text = data?.responses?.[0]?.fullTextAnnotation?.text?.trim() ?? '';
     return { success: true, text };

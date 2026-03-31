@@ -45,6 +45,7 @@ export function LoginForm() {
           Email address
         </label>
         <input
+          id="email"
           {...register('email')}
           type="email"
           className="input-field mt-1"
@@ -60,6 +61,7 @@ export function LoginForm() {
           Password
         </label>
         <input
+          id="password"
           {...register('password')}
           type="password"
           className="input-field mt-1"

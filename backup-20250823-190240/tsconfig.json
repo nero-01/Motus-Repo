@@ -1,96 +1,10 @@
 {
   "compilerOptions": {
-    "target": "es5",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "es6"
-    ],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
     "noEmit": true,
-    "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "preserve",
-    "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
-    "baseUrl": ".",
-    "paths": {
-      "@/*": [
-        "./*"
-      ],
-      "@/components/*": [
-        "./components/*"
-      ],
-      "@/lib/*": [
-        "./lib/*"
-      ],
-      "@/hooks/*": [
-        "./hooks/*"
-      ],
-      "@/types/*": [
-        "./types/*"
-      ],
-      "@/utils/*": [
-        "./utils/*"
-      ],
-      "@/modules/*": [
-        "./modules/*"
-      ],
-      "@/modules/auth/*": [
-        "./modules/auth/*"
-      ],
-      "@/modules/dashboard/*": [
-        "./modules/dashboard/*"
-      ],
-      "@/modules/activities/*": [
-        "./modules/activities/*"
-      ],
-      "@/modules/education/*": [
-        "./modules/education/*"
-      ],
-      "@/modules/reminders/*": [
-        "./modules/reminders/*"
-      ],
-      "@/modules/chores/*": [
-        "./modules/chores/*"
-      ],
-      "@/modules/rewards/*": [
-        "./modules/rewards/*"
-      ],
-      "@/modules/routines/*": [
-        "./modules/routines/*"
-      ],
-      "@/modules/coparenting/*": [
-        "./modules/coparenting/*"
-      ],
-      "@/modules/planners/*": [
-        "./modules/planners/*"
-      ],
-      "@/modules/analytics/*": [
-        "./modules/analytics/*"
-      ],
-      "@/modules/settings/*": [
-        "./modules/settings/*"
-      ]
-    }
+    "skipLibCheck": true,
+    "strict": false,
+    "types": []
   },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts"
-  ],
-  "exclude": [
-    "node_modules"
-  ],
-  "extends": "expo/tsconfig.base"
+  "include": ["tsconfig.placeholder.ts"],
+  "exclude": ["node_modules"]
 }

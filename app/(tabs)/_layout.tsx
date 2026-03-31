@@ -1,7 +1,11 @@
 import { Tabs } from 'expo-router';
 import { Text } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
+  const insets = useSafeAreaInsets();
+  const tabBarExtraBottom = Math.max(insets.bottom, 12);
+
   return (
     <Tabs
       screenOptions={{
@@ -9,9 +13,9 @@ export default function TabLayout() {
         tabBarInactiveTintColor: '#666',
         headerShown: true,
         tabBarStyle: {
-          height: 65,
-          paddingBottom: 10,
           paddingTop: 8,
+          paddingBottom: tabBarExtraBottom,
+          minHeight: 52 + tabBarExtraBottom,
           backgroundColor: '#ffffff',
           borderTopWidth: 1,
           borderTopColor: '#e0e0e0',

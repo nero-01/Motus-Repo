@@ -143,14 +143,14 @@ npm test
 npm run test:watch
 
 # Run Storybook
-npm run storybook
+npm run storybook:dev
 ```
 
 ## 📚 Storybook
 
 Component documentation and development:
 ```bash
-npm run storybook
+npm run storybook:dev
 ```
 
 ## 🚀 Deployment
