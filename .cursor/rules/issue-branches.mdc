@@ -1,0 +1,32 @@
+---
+description: Keep issue branches current with main to avoid reverted shared UI and duplicate drift
+alwaysApply: true
+---
+
+# Issue branches and shared code
+
+## Problem to avoid
+
+Long-lived or isolated issue branches (e.g. `nero-01/issue5`) that **never merged** updates from `main` can miss changes to **shared files** (`app/(tabs)/_layout.tsx`, `app/_layout.tsx`, navigation, theme). The branch then looks “reverted” compared to other work.
+
+## Before starting work on an issue
+
+1. **If creating a new branch**, base it on latest default branch:
+   - `git fetch origin`
+   - `git checkout main` (or the repo’s real default, e.g. `master`)
+   - `git pull origin main`
+   - `git checkout -b nero-01/issueNN`
+
+2. **If continuing an existing issue branch**, sync it before editing:
+   - `git fetch origin`
+   - `git merge origin/main` (or `git rebase origin/main` if the team prefers rebase and the branch is not shared)
+
+3. **Before implementing**, if the user just switched branches, **check** whether `main` has commits this branch lacks (`git log HEAD..origin/main --oneline`). If yes, **merge or rebase first** unless the user explicitly wants an old base.
+
+## After cross-cutting changes
+
+If a PR touches **tab bar**, **root layout**, **global navigation**, or **env entrypoints**, call out that **other open issue branches** should merge `main` after that PR lands.
+
+## GitHub issues
+
+When an issue is completed, still **post a comment** on the GitHub issue with branch/commit/PR as the project expects.
