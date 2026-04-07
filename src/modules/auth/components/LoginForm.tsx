@@ -5,7 +5,7 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
-import { Text, TextInput, Button, HelperText, Divider } from 'react-native-paper';
+import { Text, TextInput, Button, HelperText } from 'react-native-paper';
 import { router } from 'expo-router';
 import { useAuthStore } from '../store/authStore';
 import { SocialAuthService } from '../services/socialAuthService';
@@ -109,11 +109,13 @@ export default function LoginForm() {
             {SocialAuthService.socialProviders.map(renderSocialButton)}
           </View>
 
-          <Divider style={styles.divider}>
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
             <Text variant="bodyMedium" style={styles.dividerText}>
               or continue with email
             </Text>
-          </Divider>
+            <View style={styles.dividerLine} />
+          </View>
 
           {/* Email/Password Form */}
           <View style={styles.form}>
@@ -226,12 +228,18 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 8,
   },
-  divider: {
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginVertical: 24,
+  },
+  dividerLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: '#ccc',
   },
   dividerText: {
     color: '#666',
-    backgroundColor: '#f5f5f5',
     paddingHorizontal: 16,
   },
   form: {
