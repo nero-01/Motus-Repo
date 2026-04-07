@@ -1,4 +1,5 @@
 import { supabase } from './client';
+import { ENV } from '../../config/env';
 
 // Simple in-memory cache for worksheets
 const worksheetCache = new Map<string, any>();
@@ -73,34 +74,56 @@ export async function getWorksheets({
   ageMin?: number;
   ageMax?: number;
 } = {}) {
+  const cacheKey = `worksheets_${category || 'all'}_${difficulty || 'all'}_${ageMin || 'all'}_${ageMax || 'all'}`;
+
+  if (ENV.FORCE_MOCK) {
+    const mockData = getMockWorksheets();
+    setCachedData(cacheKey, mockData);
+    return mockData;
+  }
+
   try {
-    // Clear cache to force fresh data
-    clearCache();
-    
-    // Create cache key based on filters
-    const cacheKey = `worksheets_${category || 'all'}_${difficulty || 'all'}_${ageMin || 'all'}_${ageMax || 'all'}`;
-    
-    // Check cache first
     const cachedData = getCachedData(cacheKey);
     if (cachedData) {
-      console.log('Returning cached worksheets data');
       return cachedData;
     }
 
-    // Force mock data for now to see our updated Animal Habitats
-    console.log('Forcing mock data to show updated Animal Habitats');
-    const mockData = getMockWorksheets();
-    console.log('Mock data Animal Habitats pairs:', mockData.find(w => w.title === 'Animal Habitats')?.content.pairs?.length);
-    setCachedData(cacheKey, mockData);
-    return mockData;
+    let query = supabase
+      .from('worksheets')
+      .select('*')
+      .eq('is_active', true);
 
+    if (category) {
+      query = query.eq('category', category);
+    }
+    if (difficulty != null && !Number.isNaN(difficulty)) {
+      query = query.eq('difficulty', difficulty);
+    }
+    if (ageMin != null && ageMax != null) {
+      query = query.lte('age_min', ageMax).gte('age_max', ageMin);
+    } else if (ageMin != null) {
+      query = query.gte('age_max', ageMin);
+    } else if (ageMax != null) {
+      query = query.lte('age_min', ageMax);
+    }
+
+    const { data, error } = await query.order('difficulty', { ascending: true });
+
+    if (error) {
+      throw error;
+    }
+
+    const list = (data || []) as Worksheet[];
+    setCachedData(cacheKey, list);
+    return list;
   } catch (error) {
-    console.error('Error fetching worksheets, using mock data:', error);
-    const mockData = getMockWorksheets();
-    console.log('Error fallback - Mock data Animal Habitats pairs:', mockData.find(w => w.title === 'Animal Habitats')?.content.pairs?.length);
-    const cacheKey = `worksheets_${category || 'all'}_${difficulty || 'all'}_${ageMin || 'all'}_${ageMax || 'all'}`;
-    setCachedData(cacheKey, mockData);
-    return mockData;
+    console.error('Error fetching worksheets:', error);
+    if (ENV.FORCE_MOCK) {
+      const mockData = getMockWorksheets();
+      setCachedData(cacheKey, mockData);
+      return mockData;
+    }
+    return [];
   }
 }
 
@@ -126,8 +149,11 @@ export async function getWorksheetById(worksheetId: string) {
     const data = await Promise.race([queryPromise, timeoutPromise]) as any;
     return data;
   } catch (error) {
-    console.error('Exception in getWorksheetById, using mock data:', error);
-    return getMockWorksheetById(worksheetId);
+    console.error('Exception in getWorksheetById:', error);
+    if (ENV.FORCE_MOCK) {
+      return getMockWorksheetById(worksheetId);
+    }
+    return null;
   }
 }
 
@@ -210,23 +236,23 @@ export async function saveProgress({
       
       const data = await Promise.race([upsertPromise, timeoutPromise]) as any;
       console.log('Progress saved successfully:', data);
+      clearCache();
       return data;
     } catch (error) {
       attempt++;
       console.error(`Error saving progress (attempt ${attempt}/${maxRetries}):`, error);
       
       if (attempt === maxRetries) {
-        console.error('Max retries reached, returning mock success');
-        return { success: true, mock: true, error: 'max_retries_reached' };
+        console.error('Max retries reached saving progress');
+        throw error instanceof Error ? error : new Error('Failed to save progress');
       }
       
       // Wait before retrying (exponential backoff)
       await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
     }
   }
-  
-  // Clear cache when progress is saved to ensure fresh data
-  clearCache();
+
+  throw new Error('Failed to save progress');
 }
 
 // Get educational statistics for a child

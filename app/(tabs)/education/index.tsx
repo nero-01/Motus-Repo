@@ -23,6 +23,12 @@ import {
   Dialog,
 } from 'react-native-paper';
 import { router } from 'expo-router';
+import {
+  getWorksheets,
+  getEducationStats,
+  type Worksheet as DbWorksheet,
+} from '../../../services/supabase/education';
+import { getCurrentFamily, getFamilyChildren } from '../../../services/supabase/family';
 import LetterTracing from '../../../components/worksheets/LetterTracing';
 import ColorMixing from '../../../components/worksheets/ColorMixing';
 import AnimalHabitats from '../../../components/worksheets/AnimalHabitats';
@@ -49,6 +55,30 @@ interface EducationStats {
   thisWeekWorksheets: number;
   thisWeekTimeSpent: number;
   currentLevel: number;
+}
+
+function mapDbWorksheetToUi(w: DbWorksheet): Worksheet {
+  const c = (w.content || {}) as Record<string, unknown>;
+  const est =
+    typeof c.estimated_time === 'number'
+      ? c.estimated_time
+      : typeof c.estimated_minutes === 'number'
+        ? c.estimated_minutes
+        : 10;
+  const ageRange =
+    w.age_min != null && w.age_max != null ? `${w.age_min}-${w.age_max}` : 'All ages';
+  return {
+    id: w.id,
+    title: w.title,
+    description: w.description ?? '',
+    category: w.category,
+    difficulty: w.difficulty,
+    age_range: ageRange,
+    estimated_time: est,
+    type: (typeof c.type === 'string' ? c.type : w.category) || 'generic',
+    content: w.content,
+    image_url: undefined,
+  };
 }
 
 export default function EducationScreen() {
@@ -82,113 +112,44 @@ export default function EducationScreen() {
   const loadData = async () => {
     try {
       setLoading(true);
-      console.log('Education: Loading data...');
-      
-      // Simulate loading
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const mockWorksheets: Worksheet[] = [
-        {
-          id: '1',
-          title: 'Letter Tracing - ABC',
-          description: 'Practice tracing uppercase and lowercase letters',
-          category: 'writing',
-          difficulty: 1,
-          age_range: '3-5',
-          estimated_time: 10,
-          type: 'letter_tracing',
-          content: {
-            letters: ['A', 'B', 'C', 'D', 'E'],
-            instructions: 'Trace each letter carefully'
-          }
-        },
-        {
-          id: '2',
-          title: 'Color Mixing Fun',
-          description: 'Learn about primary and secondary colors',
-          category: 'art',
-          difficulty: 1,
-          age_range: '4-6',
-          estimated_time: 15,
-          type: 'color_mixing',
-          content: {
-            colors: ['red', 'blue', 'yellow'],
-            instructions: 'Mix colors to create new ones'
-          }
-        },
-        {
-          id: '3',
-          title: 'Animal Habitats',
-          description: 'Learn where different animals live',
-          category: 'science',
-          difficulty: 2,
-          age_range: '5-7',
-          estimated_time: 12,
-          type: 'animal_habitats',
-          content: {
-            animals: ['lion', 'fish', 'bird', 'bear'],
-            instructions: 'Match animals to their habitats'
-          }
-        },
-        {
-          id: '4',
-          title: 'Community Helpers',
-          description: 'Learn about people who help our community',
-          category: 'social_studies',
-          difficulty: 2,
-          age_range: '4-6',
-          estimated_time: 10,
-          type: 'community_helpers',
-          content: {
-            helpers: ['doctor', 'teacher', 'firefighter', 'police'],
-            instructions: 'Match helpers to their tools'
-          }
-        },
-        {
-          id: '5',
-          title: 'Simple Addition',
-          description: 'Practice adding numbers 1-10',
-          category: 'math',
-          difficulty: 1,
-          age_range: '5-7',
-          estimated_time: 8,
-          type: 'math',
-          content: {
-            problems: ['1+2', '3+4', '5+1', '2+3'],
-            instructions: 'Solve the addition problems'
-          }
-        },
-        {
-          id: '6',
-          title: 'Sight Words',
-          description: 'Learn common sight words',
-          category: 'reading',
-          difficulty: 1,
-          age_range: '4-6',
-          estimated_time: 10,
-          type: 'reading',
-          content: {
-            words: ['the', 'and', 'is', 'in', 'it'],
-            instructions: 'Read and recognize these words'
-          }
+      const rows = await getWorksheets({});
+      const mapped = rows.map(mapDbWorksheetToUi);
+
+      const family = await getCurrentFamily();
+      const children = family ? await getFamilyChildren(family.id) : [];
+      const firstChild = children[0];
+
+      let edu: Awaited<ReturnType<typeof getEducationStats>> | null = null;
+      if (firstChild) {
+        try {
+          edu = await getEducationStats(firstChild.id);
+        } catch (e) {
+          console.error('Education: could not load child stats', e);
         }
-      ];
+      }
 
-      const mockStats: EducationStats = {
-        totalWorksheets: 6,
-        averageScore: 85,
-        totalTimeSpent: 45,
-        totalMistakes: 8,
-        thisWeekWorksheets: 3,
-        thisWeekTimeSpent: 25,
-        currentLevel: 2,
-      };
-
-      setWorksheets(mockWorksheets);
-      setStats(mockStats);
-      console.log('Education: Data loaded successfully');
+      setWorksheets(mapped);
+      setStats({
+        totalWorksheets: mapped.length,
+        averageScore: edu?.averageScore ?? 0,
+        totalTimeSpent: edu?.totalTimeSpent ?? 0,
+        totalMistakes: edu?.totalMistakes ?? 0,
+        thisWeekWorksheets: edu?.thisWeekWorksheets ?? 0,
+        thisWeekTimeSpent: edu?.thisWeekTimeSpent ?? 0,
+        currentLevel: edu?.currentLevel ?? 1,
+      });
     } catch (error) {
       console.error('Education: Error loading data:', error);
+      setWorksheets([]);
+      setStats({
+        totalWorksheets: 0,
+        averageScore: 0,
+        totalTimeSpent: 0,
+        totalMistakes: 0,
+        thisWeekWorksheets: 0,
+        thisWeekTimeSpent: 0,
+        currentLevel: 1,
+      });
     } finally {
       setLoading(false);
       setRefreshing(false);

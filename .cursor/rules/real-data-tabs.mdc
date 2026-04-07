@@ -1,0 +1,14 @@
+---
+description: Home and tab UIs must use Supabase services, not hardcoded mock rows
+globs: app/(tabs)/**/*.tsx,services/supabase/**/*.ts,config/env.ts
+---
+
+# Real data on tabs (I003 regression guard)
+
+- **Do not** populate Home, Education, or other primary tabs with hardcoded `mockStats`, `mockActivities`, `mockWorksheets`, or `setTimeout` “fake loading” that always ends in static demo data.
+- **Do** load through `services/supabase/*` (e.g. `dashboardService`, `getWorksheets`, `getCurrentFamily`) and map results in the screen or a thin mapper.
+- **`ENV.FORCE_MOCK`** in `config/env.ts` must stay **opt-in** (`process.env.EXPO_PUBLIC_FORCE_MOCK === 'true'` only). Never default it to `true` in code.
+- **Service fallbacks:** On error, prefer **empty results** (`[]`, zeroed stats) or **rethrow**. Do not return fabricated expenses, meal plans, or “success” payloads that look like real saves unless `FORCE_MOCK` is explicitly enabled for local fixtures.
+- **`familyStore`:** If the user has no family row in Supabase, keep `currentFamily` / `children` **null or empty**—do not inject `createMockFamily` / `getMockChildren` for production paths.
+
+When adding demos or Storybook-only mocks, isolate them under a test path or behind `FORCE_MOCK`, not in default tab code paths.

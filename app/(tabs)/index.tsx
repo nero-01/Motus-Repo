@@ -1,34 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, ActivityIndicator, Alert } from 'react-native';
-import { Text, Card, Button, Surface, Chip, Avatar, List, Divider } from 'react-native-paper';
-import { Link, router } from 'expo-router';
+import { Text, Card, Button } from 'react-native-paper';
+import { router } from 'expo-router';
 import { getGreeting } from '../../utils/greeting';
 import { useAuthStore } from '../../src/modules/auth/store/authStore';
-
-interface DashboardStats {
-  routinesCompleted: number;
-  routinesRemaining: number;
-  mealsPlanned: number;
-  worksheetsAvailable: number;
-  newMessages: number;
-  expensesToReview: number;
-  weeklyProgress: number;
-  streakDays: number;
-  activeRoutines: number;
-}
-
-interface RecentActivity {
-  id: string;
-  type: 'routine' | 'meal' | 'education' | 'message';
-  title: string;
-  description: string;
-  time: string;
-  icon: string;
-  color: string;
-}
+import {
+  dashboardService,
+  type DashboardStats,
+  type RecentActivity,
+} from '../../services/supabase/dashboard';
 
 export default function DashboardScreen() {
-  const { logout } = useAuthStore();
+  const { logout, user } = useAuthStore();
   const [stats, setStats] = useState<DashboardStats>({
     routinesCompleted: 0,
     routinesRemaining: 0,
@@ -39,73 +22,39 @@ export default function DashboardScreen() {
     weeklyProgress: 0,
     streakDays: 0,
     activeRoutines: 0,
+    childrenCount: 0,
   });
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const loadDashboardData = async () => {
+    const userId = user?.id;
     try {
       setIsLoading(true);
-      console.log('Dashboard: Loading data...');
-      
-      // Simulate loading
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const mockStats: DashboardStats = {
-        routinesCompleted: 3,
-        routinesRemaining: 2,
-        mealsPlanned: 4,
-        worksheetsAvailable: 6,
-        newMessages: 2,
-        expensesToReview: 1,
-        weeklyProgress: 75,
-        streakDays: 5,
-        activeRoutines: 3,
-      };
-      
-      const mockActivities: RecentActivity[] = [
-        {
-          id: '1',
-          type: 'routine',
-          title: 'Morning Routine Completed',
-          description: 'Emma finished her morning routine',
-          time: '2 hours ago',
-          icon: '☀️',
-          color: '#4CAF50',
-        },
-        {
-          id: '2',
-          type: 'meal',
-          title: 'Lunch Planned',
-          description: 'Added chicken sandwich to meal plan',
-          time: '4 hours ago',
-          icon: '🍽️',
-          color: '#FF9800',
-        },
-        {
-          id: '3',
-          type: 'education',
-          title: 'Math Worksheet Completed',
-          description: 'Emma finished addition worksheet',
-          time: '6 hours ago',
-          icon: '📚',
-          color: '#2196F3',
-        },
-        {
-          id: '4',
-          type: 'message',
-          title: 'New Message from Co-Parent',
-          description: 'Sarah sent a message about weekend plans',
-          time: '1 day ago',
-          icon: '💬',
-          color: '#9C27B0',
-        },
-      ];
-      
-      setStats(mockStats);
-      setRecentActivities(mockActivities);
-      console.log('Dashboard: Data loaded successfully');
+      if (!userId) {
+        setStats({
+          routinesCompleted: 0,
+          routinesRemaining: 0,
+          mealsPlanned: 0,
+          worksheetsAvailable: 0,
+          newMessages: 0,
+          expensesToReview: 0,
+          weeklyProgress: 0,
+          streakDays: 0,
+          activeRoutines: 0,
+          childrenCount: 0,
+        });
+        setRecentActivities([]);
+        return;
+      }
+
+      const [nextStats, activities] = await Promise.all([
+        dashboardService.getDashboardStats(userId),
+        dashboardService.getRecentActivities(userId, 10),
+      ]);
+      setStats(nextStats);
+      setRecentActivities(activities);
     } catch (error) {
       console.error('Dashboard: Error loading data:', error);
     } finally {
@@ -115,8 +64,8 @@ export default function DashboardScreen() {
   };
 
   useEffect(() => {
-    loadDashboardData();
-  }, []);
+    void loadDashboardData();
+  }, [user?.id]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -146,16 +95,6 @@ export default function DashboardScreen() {
     if (progress >= 80) return '#4CAF50';
     if (progress >= 60) return '#FF9800';
     return '#F44336';
-  };
-
-  const getActivityIcon = (type: string) => {
-    switch (type) {
-      case 'routine': return '🔄';
-      case 'meal': return '🍽️';
-      case 'education': return '📚';
-      case 'message': return '💬';
-      default: return '📋';
-    }
   };
 
   if (isLoading) {
@@ -292,7 +231,11 @@ export default function DashboardScreen() {
         <View style={styles.recentActivityContainer}>
           <Text style={styles.sectionTitle}>Recent Activity</Text>
           
-          {recentActivities.map((activity, index) => (
+          {recentActivities.length === 0 ? (
+            <Text style={styles.emptyFeed}>No recent activity yet. Complete a routine or worksheet to see it here.</Text>
+          ) : null}
+
+          {recentActivities.map((activity) => (
             <Card key={activity.id} style={styles.activityCard}>
               <Card.Content>
                 <View style={styles.activityHeader}>
@@ -316,8 +259,10 @@ export default function DashboardScreen() {
             <Text style={styles.cardTitle}>Family Overview</Text>
             <View style={styles.familyStats}>
               <View style={styles.familyStat}>
-                <Text style={styles.familyStatNumber}>1</Text>
-                <Text style={styles.familyStatLabel}>Child</Text>
+                <Text style={styles.familyStatNumber}>{stats.childrenCount}</Text>
+                <Text style={styles.familyStatLabel}>
+                  {stats.childrenCount === 1 ? 'Child' : 'Children'}
+                </Text>
               </View>
               <View style={styles.familyStat}>
                 <Text style={styles.familyStatNumber}>{stats.activeRoutines}</Text>
@@ -505,5 +450,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     marginTop: 4,
+  },
+  emptyFeed: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 12,
+    lineHeight: 20,
   },
 }); 
