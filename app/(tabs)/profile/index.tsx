@@ -263,21 +263,21 @@ export default function ProfileScreen() {
             title="Edit Profile"
             description="Update your personal information"
             left={() => <List.Icon icon="account-edit" />}
-            onPress={() => Alert.alert('Coming Soon', 'Profile editing will be available soon!')}
+            onPress={() => router.push('/features/settings/edit-profile')}
           />
           <Divider />
           <List.Item
             title="Change Password"
             description="Update your account password"
             left={() => <List.Icon icon="lock" />}
-            onPress={() => Alert.alert('Coming Soon', 'Password change will be available soon!')}
+            onPress={() => router.push('/features/settings/change-password')}
           />
           <Divider />
           <List.Item
             title="Privacy Settings"
             description="Manage your privacy preferences"
             left={() => <List.Icon icon="shield" />}
-            onPress={() => Alert.alert('Coming Soon', 'Privacy settings will be available soon!')}
+            onPress={() => router.push('/features/settings/privacy')}
           />
           <Divider />
           <List.Item

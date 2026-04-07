@@ -121,4 +121,14 @@ export class AuthService {
       throw new Error(error instanceof Error ? error.message : 'Profile update failed');
     }
   }
+
+  /** Requires an active session. Does not verify the old password (Supabase handles policy server-side). */
+  static async updatePassword(newPassword: string): Promise<void> {
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : 'Password update failed');
+    }
+  }
 }

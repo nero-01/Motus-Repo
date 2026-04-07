@@ -17,6 +17,27 @@ export default function SettingsLayout() {
           headerShown: true,
         }} 
       />
+      <Stack.Screen
+        name="edit-profile"
+        options={{
+          title: 'Edit profile',
+          headerShown: true,
+        }}
+      />
+      <Stack.Screen
+        name="change-password"
+        options={{
+          title: 'Change password',
+          headerShown: true,
+        }}
+      />
+      <Stack.Screen
+        name="privacy"
+        options={{
+          title: 'Privacy settings',
+          headerShown: true,
+        }}
+      />
     </Stack>
   );
 }
