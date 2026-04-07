@@ -34,15 +34,15 @@ if (!tabs.includes('MaterialCommunityIcons')) {
 if (!tabs.includes('useSafeAreaInsets')) {
   fail('app/(tabs)/_layout.tsx must use useSafeAreaInsets for tab bar padding.');
 }
-if (!tabs.includes('activities/index')) {
-  fail('app/(tabs)/_layout.tsx must register activities as activities/index.');
+if (!tabs.includes('name="activities"')) {
+  fail('app/(tabs)/_layout.tsx must register a tab screen name="activities".');
 }
 const pos = (needle) => tabs.indexOf(needle);
 const home = pos('name="index"');
-const edu = pos('name="education/index"');
-const rem = pos('name="reminders/index"');
-const act = pos('name="activities/index"');
-const more = pos('name="profile/index"');
+const edu = pos('name="education"');
+const rem = pos('name="reminders"');
+const act = pos('name="activities"');
+const more = pos('name="profile"');
 if (home < 0 || edu < 0 || rem < 0 || act < 0 || more < 0) {
   fail('app/(tabs)/_layout.tsx must define all tab screens (index, education, reminders, activities, profile).');
 }

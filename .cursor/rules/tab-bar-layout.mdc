@@ -9,7 +9,7 @@ globs: app/(tabs)/_layout.tsx,app/_layout.tsx
   - `tabBarActiveTintColor`: **`#006A60`** (not `#6200ee`).
   - Icons: **`@expo/vector-icons/MaterialCommunityIcons`** — not emoji inside `<Text>`.
   - **`useSafeAreaInsets()`** for `tabBarStyle.paddingBottom` and height.
-  - **Order:** `index` (Home) → `education/index` → `reminders/index` → `activities/index` (title **Activities**, `headerTitle: 'Activities'`) → `profile/index` (**More**, far right).
+  - **Order:** `index` (Home) → `education` → `reminders` → `activities` (title **Activities**) → `profile` (**More**, far right). Use **flat** files `education.tsx`, `reminders.tsx`, `activities.tsx`, `profile.tsx` under `(tabs)` so Expo route names match `Tabs.Screen` `name` (avoid `foo/index` mismatch warnings).
 
 - **`app/_layout.tsx`**
   - Wrap app in **`SafeAreaProvider`** (outside or around `PaperProvider` per current tree).

@@ -45,7 +45,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="education/index"
+        name="education"
         options={{
           title: 'Education',
           tabBarIcon: ({ color, size }) => (
@@ -54,7 +54,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="reminders/index"
+        name="reminders"
         options={{
           title: 'Reminders',
           tabBarIcon: ({ color, size }) => (
@@ -63,7 +63,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="activities/index"
+        name="activities"
         options={{
           title: 'Activities',
           headerTitle: 'Activities',
@@ -73,7 +73,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="profile/index"
+        name="profile"
         options={{
           title: 'More',
           headerTitle: 'More',
