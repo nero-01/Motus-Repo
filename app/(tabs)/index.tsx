@@ -252,7 +252,7 @@ export default function DashboardScreen() {
           <View style={styles.actionButtons}>
             <Button
               mode="contained"
-              onPress={() => router.push('/(tabs)/activities')}
+              onPress={() => router.push('/(tabs)/activities/index')}
               style={styles.actionButton}
               icon="plus"
             >
@@ -261,7 +261,7 @@ export default function DashboardScreen() {
             
             <Button
               mode="contained"
-              onPress={() => router.push('/(tabs)/education')}
+              onPress={() => router.push('/(tabs)/education/index')}
               style={styles.actionButton}
               icon="book"
             >
@@ -270,7 +270,7 @@ export default function DashboardScreen() {
             
             <Button
               mode="contained"
-              onPress={() => router.push('/(tabs)/reminders')}
+              onPress={() => router.push('/(tabs)/reminders/index')}
               style={styles.actionButton}
               icon="bell"
             >
@@ -279,7 +279,7 @@ export default function DashboardScreen() {
             
             <Button
               mode="contained"
-              onPress={() => router.push('/(tabs)/profile')}
+              onPress={() => router.push('/(tabs)/profile/index')}
               style={styles.actionButton}
               icon="account"
             >
