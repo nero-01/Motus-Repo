@@ -1,16 +1,25 @@
 import { Tabs } from 'expo-router';
-import { Text } from 'react-native';
+import { Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+
+const TAB_ACTIVE = '#006A60';
+const TAB_INACTIVE = '#888888';
 
 export default function TabLayout() {
+  const insets = useSafeAreaInsets();
+  const bottomInset = Platform.OS === 'ios' ? insets.bottom : Math.max(insets.bottom, 8);
+  const tabBarHeight = 56 + bottomInset;
+
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#6200ee',
-        tabBarInactiveTintColor: '#666',
+        tabBarActiveTintColor: TAB_ACTIVE,
+        tabBarInactiveTintColor: TAB_INACTIVE,
         headerShown: true,
         tabBarStyle: {
-          height: 65,
-          paddingBottom: 10,
+          height: tabBarHeight,
+          paddingBottom: bottomInset,
           paddingTop: 8,
           backgroundColor: '#ffffff',
           borderTopWidth: 1,
@@ -24,13 +33,14 @@ export default function TabLayout() {
         tabBarIconStyle: {
           marginBottom: 2,
         },
-      }}>
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>🏠</Text>
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="home-outline" size={size ?? 24} color={color} />
           ),
         }}
       />
@@ -38,8 +48,8 @@ export default function TabLayout() {
         name="activities"
         options={{
           title: 'Activities',
-          tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>⭐</Text>
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="star-outline" size={size ?? 24} color={color} />
           ),
         }}
       />
@@ -47,8 +57,8 @@ export default function TabLayout() {
         name="education/index"
         options={{
           title: 'Education',
-          tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>📚</Text>
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="book-open-outline" size={size ?? 24} color={color} />
           ),
         }}
       />
@@ -56,8 +66,8 @@ export default function TabLayout() {
         name="reminders/index"
         options={{
           title: 'Reminders',
-          tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>🔔</Text>
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="bell-outline" size={size ?? 24} color={color} />
           ),
         }}
       />
@@ -65,11 +75,11 @@ export default function TabLayout() {
         name="profile/index"
         options={{
           title: 'More',
-          tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>⋯</Text>
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="dots-horizontal" size={size ?? 24} color={color} />
           ),
         }}
       />
     </Tabs>
   );
-} 
+}
