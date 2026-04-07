@@ -45,15 +45,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="activities"
-        options={{
-          title: 'Activities',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="star-outline" size={size ?? 24} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="education/index"
         options={{
           title: 'Education',
@@ -72,9 +63,20 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="activities/index"
+        options={{
+          title: 'Activities',
+          headerTitle: 'Activities',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="star-outline" size={size ?? 24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="profile/index"
         options={{
           title: 'More',
+          headerTitle: 'More',
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="dots-horizontal" size={size ?? 24} color={color} />
           ),
