@@ -109,10 +109,11 @@ export default function TabLayout() {
           },
         };
       }}>
+      {/* Screen `name` must match expo-router route ids so tabs keep this order (not length-sorted leftovers). */}
       <Tabs.Screen name="index" />
-      <Tabs.Screen name="activities" />
       <Tabs.Screen name="education/index" />
       <Tabs.Screen name="reminders/index" />
+      <Tabs.Screen name="activities/index" />
       <Tabs.Screen name="profile/index" />
     </Tabs>
   );
