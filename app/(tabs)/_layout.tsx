@@ -1,6 +1,29 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import { Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const ICON_SIZE = 24;
+
+type TabIconProps = { focused: boolean; color: string; size?: number };
+
+function TabIcon({
+  focused,
+  color,
+  size = ICON_SIZE,
+  active,
+  inactive,
+}: TabIconProps & {
+  active: keyof typeof MaterialCommunityIcons.glyphMap;
+  inactive: keyof typeof MaterialCommunityIcons.glyphMap;
+}) {
+  return (
+    <MaterialCommunityIcons
+      name={focused ? active : inactive}
+      size={size}
+      color={color}
+    />
+  );
+}
 
 /** Small lift above the gesture / software nav bar, after safe area. */
 const TAB_BAR_EXTRA_BOTTOM_DP = 8;
@@ -13,8 +36,8 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#6200ee',
-        tabBarInactiveTintColor: '#666',
+        tabBarActiveTintColor: '#006A60',
+        tabBarInactiveTintColor: '#757575',
         headerShown: true,
         tabBarStyle: {
           height: tabBarHeight,
@@ -37,8 +60,8 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>🏠</Text>
+          tabBarIcon: (props) => (
+            <TabIcon {...props} active="home" inactive="home-outline" />
           ),
         }}
       />
@@ -46,8 +69,8 @@ export default function TabLayout() {
         name="activities"
         options={{
           title: 'Activities',
-          tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>⭐</Text>
+          tabBarIcon: (props) => (
+            <TabIcon {...props} active="star" inactive="star-outline" />
           ),
         }}
       />
@@ -55,8 +78,8 @@ export default function TabLayout() {
         name="education/index"
         options={{
           title: 'Education',
-          tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>📚</Text>
+          tabBarIcon: (props) => (
+            <TabIcon {...props} active="school" inactive="school-outline" />
           ),
         }}
       />
@@ -64,8 +87,8 @@ export default function TabLayout() {
         name="reminders/index"
         options={{
           title: 'Reminders',
-          tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>🔔</Text>
+          tabBarIcon: (props) => (
+            <TabIcon {...props} active="bell" inactive="bell-outline" />
           ),
         }}
       />
@@ -73,8 +96,12 @@ export default function TabLayout() {
         name="profile/index"
         options={{
           title: 'More',
-          tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>⋯</Text>
+          tabBarIcon: (props) => (
+            <TabIcon
+              {...props}
+              active="dots-horizontal"
+              inactive="dots-horizontal"
+            />
           ),
         }}
       />
