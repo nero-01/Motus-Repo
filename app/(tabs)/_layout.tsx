@@ -1,7 +1,17 @@
 import { Tabs } from 'expo-router';
 import { Text } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+/** Extra space above the system nav / gesture bar. 5 cm ≈ 63 dp/cm (Android dp definition). */
+const TAB_BAR_EXTRA_BOTTOM_CM = 5;
+const DP_PER_CM = 160 / 2.54;
+const TAB_BAR_EXTRA_BOTTOM_DP = Math.round(TAB_BAR_EXTRA_BOTTOM_CM * DP_PER_CM);
 
 export default function TabLayout() {
+  const insets = useSafeAreaInsets();
+  const bottomPad = insets.bottom + TAB_BAR_EXTRA_BOTTOM_DP;
+  const tabBarHeight = 52 + 8 + bottomPad;
+
   return (
     <Tabs
       screenOptions={{
@@ -9,8 +19,8 @@ export default function TabLayout() {
         tabBarInactiveTintColor: '#666',
         headerShown: true,
         tabBarStyle: {
-          height: 65,
-          paddingBottom: 10,
+          height: tabBarHeight,
+          paddingBottom: bottomPad,
           paddingTop: 8,
           backgroundColor: '#ffffff',
           borderTopWidth: 1,
@@ -72,4 +82,4 @@ export default function TabLayout() {
       />
     </Tabs>
   );
-} 
+}
