@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Text, Card, Button, Switch, List, Divider, Surface, Avatar, Chip, Dialog, Portal } from 'react-native-paper';
 import { router } from 'expo-router';
+import Constants from 'expo-constants';
 
 interface FamilyMember {
   id: string;
@@ -380,10 +381,7 @@ export default function SettingsScreen() {
               description="Download your family data"
               left={(props) => <Text style={{ fontSize: 20, color: '#666' }}>📥</Text>}
               right={(props) => <Text style={{ fontSize: 16, color: '#666' }}>▶️</Text>}
-              onPress={() => {
-                // TODO: Export data
-                console.log('Export data');
-              }}
+              onPress={() => router.push('/features/settings/export-data')}
             />
           </Card.Content>
         </Card>
@@ -399,10 +397,7 @@ export default function SettingsScreen() {
               description="Get help and find answers"
               left={(props) => <Text style={{ fontSize: 20, color: '#666' }}>❓</Text>}
               right={(props) => <Text style={{ fontSize: 16, color: '#666' }}>▶️</Text>}
-              onPress={() => {
-                // TODO: Navigate to help
-                console.log('Help & FAQ');
-              }}
+              onPress={() => router.push('/features/settings/help')}
             />
             <Divider />
             <List.Item
@@ -410,21 +405,15 @@ export default function SettingsScreen() {
               description="Get in touch with our team"
               left={(props) => <Text style={{ fontSize: 20, color: '#666' }}>💬</Text>}
               right={(props) => <Text style={{ fontSize: 16, color: '#666' }}>▶️</Text>}
-              onPress={() => {
-                // TODO: Contact support
-                console.log('Contact support');
-              }}
+              onPress={() => router.push('/features/settings/contact-support')}
             />
             <Divider />
             <List.Item
               title="About MotusTots"
-              description="Version 1.0.0"
+              description={`Version ${Constants.expoConfig?.version || Constants.nativeApplicationVersion || '1.0.0'}`}
               left={(props) => <Text style={{ fontSize: 20, color: '#666' }}>ℹ️</Text>}
               right={(props) => <Text style={{ fontSize: 16, color: '#666' }}>▶️</Text>}
-              onPress={() => {
-                // TODO: Show about info
-                console.log('About MotusTots');
-              }}
+              onPress={() => router.push('/features/settings/about')}
             />
           </Card.Content>
         </Card>
