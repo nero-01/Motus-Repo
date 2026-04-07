@@ -2,10 +2,8 @@ import { Tabs } from 'expo-router';
 import { Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-/** Extra space above the system nav / gesture bar. 5 cm ≈ 63 dp/cm (Android dp definition). */
-const TAB_BAR_EXTRA_BOTTOM_CM = 5;
-const DP_PER_CM = 160 / 2.54;
-const TAB_BAR_EXTRA_BOTTOM_DP = Math.round(TAB_BAR_EXTRA_BOTTOM_CM * DP_PER_CM);
+/** Small lift above the gesture / software nav bar, after safe area. */
+const TAB_BAR_EXTRA_BOTTOM_DP = 8;
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
