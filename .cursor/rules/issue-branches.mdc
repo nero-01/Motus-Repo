@@ -11,19 +11,21 @@ Long-lived or isolated issue branches (e.g. `nero-01/issue5`) that **never merge
 
 ## Before starting work on an issue
 
-0. **If you have uncommitted changes**, **commit or stash** before switching branches (Cursor issue checkout can replace files on disk). Prefer **`npm run checkout-issue -- nero-01/issueNN`** — it auto-stashes. See **`safe-issue-checkout`** rule and **`docs/BRANCHING.md`**.
+0. **PR-first:** Prefer **merging the previous issue’s PR into `main`** before moving on, so `main` always carries the latest shared app shell. Then the next branch (or **`npm run checkout-issue -- nero-01/issueNN`**) inherits that baseline when **`origin/main` is merged in** after checkout.
 
-1. **If creating a new branch**, base it on latest default branch:
+1. **If you have uncommitted changes**, commit or stash before switching; **`npm run checkout-issue`** can auto-stash. See **`safe-issue-checkout`** and **`docs/BRANCHING.md`**.
+
+2. **If creating a new branch**, base it on latest default branch:
    - `git fetch origin`
    - `git checkout main` (or the repo’s real default, e.g. `master`)
    - `git pull origin main`
    - `git checkout -b nero-01/issueNN`
 
-2. **If continuing an existing issue branch**, sync it before editing:
+3. **If continuing an existing issue branch**, sync it before editing (the checkout script does this merge automatically):
    - `git fetch origin`
    - `git merge origin/main` (or `git rebase origin/main` if the team prefers rebase and the branch is not shared)
 
-3. **Before implementing**, if the user just switched branches, **check** whether `main` has commits this branch lacks (`git log HEAD..origin/main --oneline`). If yes, **merge or rebase first** unless the user explicitly wants an old base.
+4. **Before implementing**, if the user just switched branches without the script, **check** whether `main` has commits this branch lacks (`git log HEAD..origin/main --oneline`). If yes, **merge `origin/main` first** unless the user explicitly wants an old base.
 
 ## After cross-cutting changes
 

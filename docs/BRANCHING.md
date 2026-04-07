@@ -2,21 +2,31 @@
 
 Use this so each issue branch includes the latest shared app shell (tabs, root layout, etc.) and you do not see “reverted” configs when switching branches.
 
-## Switching issues without losing your work
+## PR-first, then next issue (recommended)
 
-**Cursor / VS Code “checkout branch for issue”** replaces files on disk with the target branch. If you have **uncommitted** or **unsaved** changes, they can appear to “revert” or vanish.
+The problem is usually **not** lost uncommitted files — it’s checking out an **old issue branch** that never received what’s already on **`main`**. That branch still has **old tab bar / layout**, so it feels like something “reverted.”
 
-1. **Save everything** before switching branches (this repo enables **auto-save on focus change** in `.vscode/settings.json`).
-2. **Commit** your work, or **stash** first:  
-   `git stash push -u -m "wip before next issue"`  
-   Then after checkout: `git stash list` / `git stash pop`.
-3. **Easier:** from repo root run  
-   `npm run checkout-issue -- nero-01/issueNN`  
-   which runs `scripts/git-safe-branch.sh` (auto-stash if the tree is dirty, then creates or checks out the branch from `main`).
+1. **Finish the current issue with a PR merged into `main`** before you treat that work as done. That keeps one **current baseline** on `main`.
+2. For the **next** issue, use **`npm run checkout-issue -- nero-01/issueNN`**. The script checks out the branch (or creates it from `main`) and then **always merges `origin/main`** so your branch matches the latest merged workflow — including anything that just landed from the previous PR.
+3. **Cursor / VS Code “checkout branch for issue”** does **not** merge `main` for you. After an automatic checkout, run **`git fetch origin && git merge origin/main`** or use **`npm run checkout-issue`** instead.
 
-**Force checkout** is discouraged: `.vscode/settings.json` sets `git.allowForceCheckout` to **false** so the UI is less likely to wipe your tree without a deliberate override.
+There is **no repo hook** that can force “PR merged before Cursor checks out”; that ordering is **process** (merge PRs, then switch issues) plus **always merging `main` into the issue branch** when you land on it.
 
-## Start a **new** issue branch
+## `npm run checkout-issue -- nero-01/issueNN`
+
+Runs `scripts/git-safe-branch.sh`, which:
+
+- Optionally **stashes** a dirty working tree (including untracked).
+- Checks out an existing branch, tracks `origin/<branch>`, or **creates** the branch from updated `main`.
+- **Merges `origin/main` (or `origin/master`)** into the current branch so shared config stays aligned with `main`.
+
+If the merge conflicts, resolve and commit.
+
+## Switching issues and uncommitted edits
+
+If you have **uncommitted** changes, **commit** or **stash** before switching, or rely on the script’s auto-stash. Workspace **`.vscode/settings.json`** uses **auto-save on focus change** and discourages **force checkout**.
+
+## Start a **new** issue branch (manual)
 
 ```bash
 git fetch origin
@@ -27,9 +37,7 @@ git checkout -b nero-01/issueNN
 
 Replace `main` if your default branch is named differently.
 
-## Continue an **existing** issue branch (before you code)
-
-Merge the latest default branch in:
+## Continue an **existing** issue branch (manual)
 
 ```bash
 git fetch origin
@@ -58,8 +66,8 @@ git fetch origin
 git log HEAD..origin/main --oneline
 ```
 
-## Habit that prevents drift
+## Habits that prevent drift
 
 1. Merge finished issues to **`main` regularly** (small PRs).
-2. Always **branch new work from updated `main`**.
-3. **Merge `main` into long-lived branches** weekly or whenever global UI changes land.
+2. Always **branch new work from updated `main`**, or run **`checkout-issue`** so **`main` is merged in** after you switch.
+3. **Merge `main` into long-lived branches** whenever global UI changes land.

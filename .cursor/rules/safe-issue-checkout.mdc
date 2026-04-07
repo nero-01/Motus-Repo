@@ -1,41 +1,31 @@
 ---
-description: Never lose uncommitted work when switching GitHub issues / branches
+description: PR-first issue workflow; merge main into issue branch so shared config never looks reverted
 alwaysApply: true
 ---
 
-# Safe issue checkout (avoid “everything reverted”)
+# Issue workflow: merge `main`, don’t “load stale branch config”
 
-## What goes wrong
+## What the user wants
 
-Using **Cursor / VS Code “checkout branch for issue”** (or any `git checkout`) while the tree is **dirty** can:
+Switching to another **issue branch** should **not** feel like the app **reverted** (tab bar, root layout, etc.). That happens when the branch was created long ago and **never received** what’s already on **`main`**.
 
-- **Abort** the checkout (confusing), or
-- After a **forced** checkout / sync, **replace files on disk** with the other branch’s versions so local edits **look gone**.
+This is **not** mainly about uncommitted edits — it’s about **integrating the current product baseline** (`main`) into whatever issue branch you’re on.
 
-Unsaved editor buffers can also disappear when the file is reloaded from disk after a branch switch.
+## Team / process (PR before moving on)
+
+1. **Land the current issue with a PR merged into `main`** before treating that work as finished. Small, frequent merges keep `main` the single source of truth for shared UI.
+2. When starting the **next** issue, **don’t** rely on Cursor’s raw “checkout issue branch” alone if that remote branch predates `main`. Either:
+   - Run **`npm run checkout-issue -- nero-01/issueNN`** (merges **`origin/main`** right after checkout), or  
+   - Manually: `git fetch origin && git merge origin/main` on the issue branch.
+
+Cursor **cannot** open PRs or merge to `main` automatically — that stays a human/GitHub step before or alongside switching issues.
 
 ## Rules for the agent
 
-1. **Never** run `git checkout -f`, `git switch -f`, `git reset --hard`, or `git clean -fd` to switch issues unless the user **explicitly** asks to discard local changes.
-2. If the user is about to change branches or “start a new issue” and has uncommitted work, **tell them** to either:
-   - **Commit** (even a WIP commit), or
-   - **Stash**: `git stash push -u -m "wip before issue-NN"`, then checkout, then `git stash pop` when appropriate.
-3. Prefer the repo script **`bash scripts/git-safe-branch.sh nero-01/issueNN`**, which stashes if needed then checks out or creates the branch from `main`.
+1. After the user (or tool) checks out an **existing** issue branch, **assume it may be behind `main`**. Offer or run **`git fetch origin && git merge origin/main`** (or **`npm run sync-main`** if the repo defines it) unless they just did.
+2. **Never** use `git checkout -f` / `git reset --hard` / `git clean -fd` for routine issue switches unless the user explicitly wants to discard work.
+3. Prefer **`bash scripts/git-safe-branch.sh nero-01/issueNN`** for issue checkout: it **always merges `origin/main`** after switching, so shared config tracks the latest merged workflow.
 
-## Rules for humans (Cursor UI)
+## Optional: dirty tree
 
-Before **Start work / Checkout** for a new issue:
-
-1. **Save all files** (`Cmd/Ctrl+S` or rely on auto-save below).
-2. **Commit or stash** if you have local changes you care about.
-3. Or run: **`npm run checkout-issue -- nero-01/issueNN`** (stashes automatically).
-
-Workspace **`.vscode/settings.json`** sets **`git.allowForceCheckout": false`** and **`files.autoSave": "onFocusChange"`** to reduce accidental loss.
-
-## Recovering stashes
-
-```bash
-git stash list
-git stash show -p stash@{0}
-git stash pop   # or git stash apply
-```
+If `git status` is not clean, the script **stashes** (including untracked) before checkout. Recover with `git stash pop` when appropriate.

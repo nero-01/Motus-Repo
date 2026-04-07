@@ -12,7 +12,8 @@
     "test:watch": "jest --watch",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "checkout-issue": "bash scripts/git-safe-branch.sh"
+    "checkout-issue": "bash scripts/git-safe-branch.sh",
+    "sync-main": "git fetch origin && git merge origin/main -m \"merge: origin/main into current branch\""
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.0",
