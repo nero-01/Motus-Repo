@@ -68,9 +68,10 @@ export default function TabLayout() {
       <Tabs.Screen
         name="activities"
         options={{
-          title: 'Activities',
+          title: 'activities',
+          tabBarLabel: 'activities',
           tabBarIcon: (props) => (
-            <TabIcon {...props} active="star" inactive="star-outline" />
+            <TabIcon {...props} active="puzzle" inactive="puzzle-outline" />
           ),
         }}
       />
