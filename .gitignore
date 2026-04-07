@@ -36,8 +36,7 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-# IDE
-.vscode/
+# IDE (allow shared workspace settings; ignore the rest of .vscode/)
 .idea/
 *.swp
 *.swo
@@ -107,6 +106,7 @@ temp/
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
+!.vscode/settings.json
 .idea
 *.suo
 *.ntvs*

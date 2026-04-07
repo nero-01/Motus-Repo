@@ -11,7 +11,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "checkout-issue": "bash scripts/git-safe-branch.sh"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.0",

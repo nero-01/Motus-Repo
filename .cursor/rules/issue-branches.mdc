@@ -11,6 +11,8 @@ Long-lived or isolated issue branches (e.g. `nero-01/issue5`) that **never merge
 
 ## Before starting work on an issue
 
+0. **If you have uncommitted changes**, **commit or stash** before switching branches (Cursor issue checkout can replace files on disk). Prefer **`npm run checkout-issue -- nero-01/issueNN`** — it auto-stashes. See **`safe-issue-checkout`** rule and **`docs/BRANCHING.md`**.
+
 1. **If creating a new branch**, base it on latest default branch:
    - `git fetch origin`
    - `git checkout main` (or the repo’s real default, e.g. `master`)

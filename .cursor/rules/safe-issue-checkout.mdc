@@ -1,0 +1,41 @@
+---
+description: Never lose uncommitted work when switching GitHub issues / branches
+alwaysApply: true
+---
+
+# Safe issue checkout (avoid “everything reverted”)
+
+## What goes wrong
+
+Using **Cursor / VS Code “checkout branch for issue”** (or any `git checkout`) while the tree is **dirty** can:
+
+- **Abort** the checkout (confusing), or
+- After a **forced** checkout / sync, **replace files on disk** with the other branch’s versions so local edits **look gone**.
+
+Unsaved editor buffers can also disappear when the file is reloaded from disk after a branch switch.
+
+## Rules for the agent
+
+1. **Never** run `git checkout -f`, `git switch -f`, `git reset --hard`, or `git clean -fd` to switch issues unless the user **explicitly** asks to discard local changes.
+2. If the user is about to change branches or “start a new issue” and has uncommitted work, **tell them** to either:
+   - **Commit** (even a WIP commit), or
+   - **Stash**: `git stash push -u -m "wip before issue-NN"`, then checkout, then `git stash pop` when appropriate.
+3. Prefer the repo script **`bash scripts/git-safe-branch.sh nero-01/issueNN`**, which stashes if needed then checks out or creates the branch from `main`.
+
+## Rules for humans (Cursor UI)
+
+Before **Start work / Checkout** for a new issue:
+
+1. **Save all files** (`Cmd/Ctrl+S` or rely on auto-save below).
+2. **Commit or stash** if you have local changes you care about.
+3. Or run: **`npm run checkout-issue -- nero-01/issueNN`** (stashes automatically).
+
+Workspace **`.vscode/settings.json`** sets **`git.allowForceCheckout": false`** and **`files.autoSave": "onFocusChange"`** to reduce accidental loss.
+
+## Recovering stashes
+
+```bash
+git stash list
+git stash show -p stash@{0}
+git stash pop   # or git stash apply
+```

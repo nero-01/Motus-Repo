@@ -2,6 +2,20 @@
 
 Use this so each issue branch includes the latest shared app shell (tabs, root layout, etc.) and you do not see “reverted” configs when switching branches.
 
+## Switching issues without losing your work
+
+**Cursor / VS Code “checkout branch for issue”** replaces files on disk with the target branch. If you have **uncommitted** or **unsaved** changes, they can appear to “revert” or vanish.
+
+1. **Save everything** before switching branches (this repo enables **auto-save on focus change** in `.vscode/settings.json`).
+2. **Commit** your work, or **stash** first:  
+   `git stash push -u -m "wip before next issue"`  
+   Then after checkout: `git stash list` / `git stash pop`.
+3. **Easier:** from repo root run  
+   `npm run checkout-issue -- nero-01/issueNN`  
+   which runs `scripts/git-safe-branch.sh` (auto-stash if the tree is dirty, then creates or checks out the branch from `main`).
+
+**Force checkout** is discouraged: `.vscode/settings.json` sets `git.allowForceCheckout` to **false** so the UI is less likely to wipe your tree without a deliberate override.
+
 ## Start a **new** issue branch
 
 ```bash

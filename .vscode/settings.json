@@ -1,0 +1,6 @@
+{
+  "git.allowForceCheckout": false,
+  "git.confirmSync": true,
+  "git.supportUntrackedFiles": true,
+  "files.autoSave": "onFocusChange"
+}
