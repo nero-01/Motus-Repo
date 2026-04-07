@@ -1,0 +1,17 @@
+---
+description: Canonical MotusTots tab bar and root safe area — do not revert to Expo defaults
+globs: app/(tabs)/_layout.tsx,app/_layout.tsx
+---
+
+# Tab bar (source of truth)
+
+- **`app/(tabs)/_layout.tsx`**
+  - `tabBarActiveTintColor`: **`#006A60`** (not `#6200ee`).
+  - Icons: **`@expo/vector-icons/MaterialCommunityIcons`** — not emoji inside `<Text>`.
+  - **`useSafeAreaInsets()`** for `tabBarStyle.paddingBottom` and height.
+  - **Order:** `index` (Home) → `education/index` → `reminders/index` → `activities/index` (title **Activities**, `headerTitle: 'Activities'`) → `profile/index` (**More**, far right).
+
+- **`app/_layout.tsx`**
+  - Wrap app in **`SafeAreaProvider`** (outside or around `PaperProvider` per current tree).
+
+Automated check: **`npm run check:tab-bar`**.
