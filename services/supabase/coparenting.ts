@@ -341,45 +341,7 @@ export const getSharedExpensesByFamily = async (familyId: string): Promise<Share
     return data || [];
   } catch (error) {
     console.error('Error loading shared expenses (table may not exist):', error);
-    // Return mock data when table doesn't exist
-    return [
-      {
-        id: 'mock-expense-1',
-        family_id: familyId,
-        title: 'Childcare Expenses',
-        description: 'Monthly childcare costs',
-        amount: 800,
-        currency: 'USD',
-        category: 'childcare',
-        paid_by: 'parent-1',
-        split_percentage: 50,
-        due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        is_paid: false,
-        payment_date: undefined,
-        receipt_url: undefined,
-        created_by: 'parent-1',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-      {
-        id: 'mock-expense-2',
-        family_id: familyId,
-        title: 'School Supplies',
-        description: 'Back to school supplies',
-        amount: 150,
-        currency: 'USD',
-        category: 'education',
-        paid_by: 'parent-2',
-        split_percentage: 50,
-        due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-        is_paid: true,
-        payment_date: new Date().toISOString(),
-        receipt_url: undefined,
-        created_by: 'parent-2',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-    ];
+    return [];
   }
 };
 

@@ -7,8 +7,6 @@ import {
   getFamilyChildren,
   addChild,
   getFamilyMembers,
-  createMockFamily,
-  getMockChildren
 } from '../services/supabase/family';
 
 interface FamilyState {
@@ -66,16 +64,11 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
           console.error('Error calling loadChildren:', error);
         }
       } else {
-        // Create mock family for demo purposes
-        console.log('No family found, creating mock family for demo');
-        const mockFamily = createMockFamily(userId);
-        const mockChildren = getMockChildren();
-        
-        set({ 
-          currentFamily: mockFamily, 
-          families: [mockFamily], 
-          children: mockChildren,
-          isLoading: false 
+        set({
+          currentFamily: null,
+          families: [],
+          children: [],
+          isLoading: false,
         });
       }
     } catch (error) {

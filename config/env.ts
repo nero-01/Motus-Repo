@@ -23,8 +23,8 @@ export const ENV = {
   APP_ENV: process.env.EXPO_PUBLIC_APP_ENV || 'development',
   APP_VERSION: process.env.EXPO_PUBLIC_APP_VERSION || '1.0.0',
   
-  // Testing Configuration - Enable mock mode by default for reliable testing
-  FORCE_MOCK: process.env.EXPO_PUBLIC_FORCE_MOCK === 'true' || true, // Enable forced mock mode
+  // Explicit opt-in only — default false so tab screens use Supabase (see I003 / dashboard regressions).
+  FORCE_MOCK: process.env.EXPO_PUBLIC_FORCE_MOCK === 'true',
 };
 
 // console.log('ENV configuration:', {

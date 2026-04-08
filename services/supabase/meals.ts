@@ -190,30 +190,8 @@ export const getMealPlansByFamily = async (familyId: string): Promise<MealPlan[]
     const data = await Promise.race([queryPromise, timeoutPromise]) as any;
     return data || [];
   } catch (error) {
-    console.error('Exception in getMealPlansByFamily, using mock data:', error);
-    // Return mock data when database fails
-    return [
-      {
-        id: '1',
-        family_id: '00000000-0000-0000-0000-000000000000',
-        meal_id: '1',
-        planned_date: new Date().toISOString(),
-        meal_type: 'dinner' as const,
-        notes: 'Family dinner',
-        created_by: 'user',
-        created_at: new Date().toISOString(),
-      },
-      {
-        id: '2',
-        family_id: '00000000-0000-0000-0000-000000000000',
-        meal_id: '2',
-        planned_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        meal_type: 'lunch' as const,
-        notes: 'Quick lunch',
-        created_by: 'user',
-        created_at: new Date().toISOString(),
-      },
-    ];
+    console.error('Exception in getMealPlansByFamily:', error);
+    return [];
   }
 };
 
