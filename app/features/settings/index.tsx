@@ -1,16 +1,61 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { Text, Card, Button, Switch, List, Divider, Surface, Avatar, Chip, Dialog, Portal } from 'react-native-paper';
-import { router } from 'expo-router';
+import {
+  Text,
+  Card,
+  Button,
+  Switch,
+  List,
+  Divider,
+  Surface,
+  Avatar,
+  Chip,
+  Dialog,
+  Portal,
+  RadioButton,
+} from 'react-native-paper';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
+import { router, useFocusEffect } from 'expo-router';
+import {
+  getCurrentFamily,
+  getFamilyMembers,
+  getFamilyMemberActiveMap,
+  setFamilyMemberActivePreference,
+  type FamilyMember as SupabaseFamilyMember,
+} from '../../../services/supabase/family';
 
 interface FamilyMember {
   id: string;
   name: string;
   email: string;
-  role: 'parent' | 'co_parent' | 'child';
+  role: 'parent' | 'co_parent' | 'child' | 'member';
   avatar: string;
   isActive: boolean;
+}
+
+const PREFERENCES_STORAGE_KEY = 'motustots:settings:preferences';
+
+function formatMemberName(m: SupabaseFamilyMember): string {
+  const u = m.user;
+  if (!u) return 'Member';
+  const parts = [u.first_name, u.last_name].filter(Boolean);
+  if (parts.length) return parts.join(' ');
+  return u.email || 'Member';
+}
+
+function initialsFromName(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase() || '?';
+}
+
+function mapDbRoleToUi(role: string): FamilyMember['role'] {
+  if (role === 'co_parent') return 'co_parent';
+  if (role === 'member') return 'member';
+  return 'parent';
 }
 
 interface NotificationSetting {
@@ -31,40 +76,9 @@ interface AppPreference {
 }
 
 export default function SettingsScreen() {
-  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([
-    {
-      id: '1',
-      name: 'Sarah Johnson',
-      email: 'sarah@example.com',
-      role: 'parent',
-      avatar: 'S',
-      isActive: true
-    },
-    {
-      id: '2',
-      name: 'Mike Johnson',
-      email: 'mike@example.com',
-      role: 'co_parent',
-      avatar: 'M',
-      isActive: true
-    },
-    {
-      id: '3',
-      name: 'Emma Johnson',
-      email: '',
-      role: 'child',
-      avatar: 'E',
-      isActive: true
-    },
-    {
-      id: '4',
-      name: 'Liam Johnson',
-      email: '',
-      role: 'child',
-      avatar: 'L',
-      isActive: true
-    }
-  ]);
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
+  const [currentFamilyId, setCurrentFamilyId] = useState<string | null>(null);
+  const [membersLoading, setMembersLoading] = useState(true);
 
   const [notifications, setNotifications] = useState<NotificationSetting[]>([
     {
@@ -139,6 +153,82 @@ export default function SettingsScreen() {
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const [preferencePicker, setPreferencePicker] = useState<AppPreference | null>(null);
+  const [pickerDraft, setPickerDraft] = useState<string>('');
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(PREFERENCES_STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw) as { id: string; value: string | boolean }[];
+        if (!Array.isArray(parsed)) return;
+        setPreferences((prev) =>
+          prev.map((p) => {
+            const hit = parsed.find((x) => x.id === p.id);
+            return hit ? { ...p, value: hit.value } : p;
+          })
+        );
+      } catch {
+        /* ignore */
+      }
+    })();
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      let alive = true;
+      (async () => {
+        setMembersLoading(true);
+        try {
+          const family = await getCurrentFamily();
+          if (!alive) return;
+          if (!family) {
+            setCurrentFamilyId(null);
+            setFamilyMembers([]);
+            return;
+          }
+          setCurrentFamilyId(family.id);
+          const rows = await getFamilyMembers(family.id);
+          const activeMap = await getFamilyMemberActiveMap(family.id);
+          if (!alive) return;
+          const mapped: FamilyMember[] = rows.map((m) => ({
+            id: m.id,
+            name: formatMemberName(m),
+            email: m.user?.email ?? '',
+            role: mapDbRoleToUi(m.role),
+            avatar: initialsFromName(formatMemberName(m)),
+            isActive: activeMap[m.id] !== false,
+          }));
+          setFamilyMembers(mapped);
+        } catch (e) {
+          console.error('Settings: load family members', e);
+          if (alive) {
+            setFamilyMembers([]);
+            setCurrentFamilyId(null);
+          }
+        } finally {
+          if (alive) setMembersLoading(false);
+        }
+      })();
+      return () => {
+        alive = false;
+      };
+    }, [])
+  );
+
+  const persistPreferenceSnapshot = (next: AppPreference[]) => {
+    const snapshot = next.map((p) => ({ id: p.id, value: p.value }));
+    void AsyncStorage.setItem(PREFERENCES_STORAGE_KEY, JSON.stringify(snapshot));
+  };
+
+  const updatePreferences = (updater: (prev: AppPreference[]) => AppPreference[]) => {
+    setPreferences((prev) => {
+      const next = updater(prev);
+      persistPreferenceSnapshot(next);
+      return next;
+    });
+  };
 
   const toggleNotification = (id: string) => {
     setNotifications(prev => prev.map(notification =>
@@ -149,18 +239,35 @@ export default function SettingsScreen() {
   };
 
   const togglePreference = (id: string) => {
-    setPreferences(prev => prev.map(pref =>
-      pref.id === id 
-        ? { ...pref, value: !pref.value }
-        : pref
-    ));
+    updatePreferences((prev) =>
+      prev.map((pref) =>
+        pref.id === id && pref.type === 'toggle'
+          ? { ...pref, value: !pref.value }
+          : pref
+      )
+    );
+  };
+
+  const openPreferencePicker = (pref: AppPreference) => {
+    if (pref.type !== 'select' || !pref.options?.length) return;
+    setPreferencePicker(pref);
+    setPickerDraft(String(pref.value));
+  };
+
+  const applyPreferencePicker = () => {
+    if (!preferencePicker) return;
+    updatePreferences((prev) =>
+      prev.map((p) => (p.id === preferencePicker.id ? { ...p, value: pickerDraft } : p))
+    );
+    setPreferencePicker(null);
   };
 
   const getRoleColor = (role: string) => {
     const colors = {
       parent: '#2196F3',
       co_parent: '#4CAF50',
-      child: '#FF9800'
+      child: '#FF9800',
+      member: '#9E9E9E',
     };
     return colors[role as keyof typeof colors] || '#666';
   };
@@ -169,7 +276,8 @@ export default function SettingsScreen() {
     const icons = {
       parent: '👨‍👩‍👧‍👦',
       co_parent: '🤝',
-      child: '👶'
+      child: '👶',
+      member: '👤',
     };
     return icons[role as keyof typeof icons] || '👤';
   };
@@ -205,45 +313,73 @@ export default function SettingsScreen() {
         <Card style={styles.familyCard}>
           <Card.Content>
             <Text variant="titleMedium" style={styles.cardTitle}>
-              Family Members ({familyMembers.length})
+              Family Members ({membersLoading ? '…' : familyMembers.length})
             </Text>
             <Text variant="bodySmall" style={styles.cardSubtitle}>
-              Manage who has access to your family data
+              Manage who has access to your family data. Active is stored on this device until the
+              database supports member status.
             </Text>
             
             <View style={styles.membersList}>
-              {familyMembers.map((member) => (
-                <View key={member.id} style={styles.memberItem}>
-                  <View style={styles.memberInfo}>
-                    <Avatar.Text size={40} label={member.avatar} />
-                    <View style={styles.memberDetails}>
-                      <Text variant="titleMedium">{member.name}</Text>
-                      {member.email && (
-                        <Text variant="bodySmall" style={styles.memberEmail}>
-                          {member.email}
-                        </Text>
-                      )}
-                      <View style={styles.memberRole}>
-                        <Text style={styles.roleIcon}>{getRoleIcon(member.role)}</Text>
-                        <Chip 
-                          mode="outlined" 
-                          compact
-                          style={[styles.roleChip, { borderColor: getRoleColor(member.role) }]}
-                        >
-                          {member.role.replace('_', ' ')}
-                        </Chip>
+              {membersLoading ? (
+                <Text variant="bodyMedium" style={styles.hintText}>
+                  Loading members…
+                </Text>
+              ) : familyMembers.length === 0 ? (
+                <Text variant="bodyMedium" style={styles.hintText}>
+                  No family members loaded. Join or create a family to see members here.
+                </Text>
+              ) : (
+                familyMembers.map((member) => (
+                  <View key={member.id} style={styles.memberItem}>
+                    <View style={styles.memberInfo}>
+                      <Avatar.Text size={40} label={member.avatar} />
+                      <View style={styles.memberDetails}>
+                        <Text variant="titleMedium">{member.name}</Text>
+                        {member.email ? (
+                          <Text variant="bodySmall" style={styles.memberEmail}>
+                            {member.email}
+                          </Text>
+                        ) : null}
+                        <View style={styles.memberRole}>
+                          <Text style={styles.roleIcon}>{getRoleIcon(member.role)}</Text>
+                          <Chip
+                            mode="outlined"
+                            compact
+                            style={[styles.roleChip, { borderColor: getRoleColor(member.role) }]}
+                          >
+                            {member.role.replace('_', ' ')}
+                          </Chip>
+                        </View>
                       </View>
                     </View>
+                    <Switch
+                      value={member.isActive}
+                      onValueChange={async (next) => {
+                        if (!currentFamilyId) {
+                          Alert.alert('Family', 'No family loaded; cannot update member status.');
+                          return;
+                        }
+                        try {
+                          await setFamilyMemberActivePreference(
+                            currentFamilyId,
+                            member.id,
+                            next
+                          );
+                          setFamilyMembers((prev) =>
+                            prev.map((m) =>
+                              m.id === member.id ? { ...m, isActive: next } : m
+                            )
+                          );
+                        } catch (e) {
+                          console.error(e);
+                          Alert.alert('Error', 'Could not save member status.');
+                        }
+                      }}
+                    />
                   </View>
-                  <Switch 
-                    value={member.isActive} 
-                    onValueChange={() => {
-                      // TODO: Toggle member status
-                      console.log('Toggle member status');
-                    }}
-                  />
-                </View>
-              ))}
+                ))
+              )}
             </View>
             
             <Button 
@@ -321,13 +457,10 @@ export default function SettingsScreen() {
                   />
                 )}
                 {preference.type === 'select' && (
-                  <Button 
-                    mode="outlined" 
+                  <Button
+                    mode="outlined"
                     compact
-                    onPress={() => {
-                      // TODO: Show selection dialog
-                      console.log('Show selection dialog');
-                    }}
+                    onPress={() => openPreferencePicker(preference)}
                   >
                     Change
                   </Button>
@@ -467,6 +600,29 @@ export default function SettingsScreen() {
             <Button textColor="#D32F2F" onPress={handleDeleteAccount}>Delete</Button>
           </Dialog.Actions>
         </Dialog>
+
+        <Dialog
+          visible={!!preferencePicker}
+          onDismiss={() => setPreferencePicker(null)}
+        >
+          <Dialog.Title>{preferencePicker?.title ?? 'Choose'}</Dialog.Title>
+          <Dialog.ScrollArea style={styles.preferenceDialogScroll}>
+            <ScrollView keyboardShouldPersistTaps="handled">
+              <RadioButton.Group
+                value={pickerDraft}
+                onValueChange={setPickerDraft}
+              >
+                {preferencePicker?.options?.map((opt) => (
+                  <RadioButton.Item key={opt} label={opt} value={opt} />
+                ))}
+              </RadioButton.Group>
+            </ScrollView>
+          </Dialog.ScrollArea>
+          <Dialog.Actions>
+            <Button onPress={() => setPreferencePicker(null)}>Cancel</Button>
+            <Button onPress={applyPreferencePicker}>Save</Button>
+          </Dialog.Actions>
+        </Dialog>
       </Portal>
     </View>
   );
@@ -506,6 +662,13 @@ const styles = StyleSheet.create({
   },
   membersList: {
     marginBottom: 16,
+  },
+  hintText: {
+    opacity: 0.7,
+    paddingVertical: 8,
+  },
+  preferenceDialogScroll: {
+    maxHeight: 320,
   },
   memberItem: {
     flexDirection: 'row',
