@@ -112,7 +112,11 @@ export default function CoParentingCalendarScreen() {
   }, [currentFamily]);
 
   const loadCalendarData = async () => {
-    if (!currentFamily) return;
+    if (!currentFamily) {
+      setIsLoading(false);
+      setRefreshing(false);
+      return;
+    }
 
     try {
       setIsLoading(true);
@@ -308,6 +312,19 @@ export default function CoParentingCalendarScreen() {
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" />
         <Text style={styles.loadingText}>Loading calendar...</Text>
+      </View>
+    );
+  }
+
+  if (!currentFamily) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text variant="titleMedium" style={styles.loadingText}>
+          No family workspace
+        </Text>
+        <Text variant="bodyMedium" style={styles.noFamilyHint}>
+          Join or create a family first, then reopen the calendar from Co-Parenting.
+        </Text>
       </View>
     );
   }
@@ -912,6 +929,13 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     color: '#666',
+  },
+  noFamilyHint: {
+    marginTop: 12,
+    color: '#666',
+    textAlign: 'center',
+    paddingHorizontal: 32,
+    lineHeight: 22,
   },
   addDialogScroll: {
     maxHeight: 420,

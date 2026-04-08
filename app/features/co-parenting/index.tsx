@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   ScrollView,
@@ -19,7 +19,13 @@ import { useFamilyStore } from '../../../stores/familyStore';
 
 export default function CoParentingScreen() {
   const { user } = useAuthStore();
-  const { currentFamily, familyMembers } = useFamilyStore();
+  const { currentFamily, familyMembers, isLoading, error, loadFamilies } = useFamilyStore();
+
+  useEffect(() => {
+    if (user?.id) {
+      void loadFamilies(user.id);
+    }
+  }, [user?.id, loadFamilies]);
 
   const coParentingFeatures = [
     {
@@ -60,11 +66,38 @@ export default function CoParentingScreen() {
     router.push(route);
   };
 
-  if (!currentFamily) {
+  if (isLoading && !currentFamily) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" />
         <Text style={styles.loadingText}>Loading co-parenting features...</Text>
+      </View>
+    );
+  }
+
+  if (!currentFamily) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text variant="titleMedium" style={styles.noFamilyTitle}>
+          No family workspace yet
+        </Text>
+        <Text variant="bodyMedium" style={styles.noFamilyBody}>
+          Co-parenting tools need a family. Complete onboarding or join a family from Home, then come back here.
+        </Text>
+        {error ? (
+          <Text variant="bodySmall" style={styles.noFamilyError}>
+            {error}
+          </Text>
+        ) : null}
+        {user?.id ? (
+          <Button
+            mode="contained"
+            style={styles.retryButton}
+            onPress={() => void loadFamilies(user.id)}
+          >
+            Retry
+          </Button>
+        ) : null}
       </View>
     );
   }
@@ -367,6 +400,26 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     color: '#666',
+  },
+  noFamilyTitle: {
+    textAlign: 'center',
+    marginBottom: 12,
+    paddingHorizontal: 24,
+  },
+  noFamilyBody: {
+    textAlign: 'center',
+    color: '#666',
+    paddingHorizontal: 32,
+    lineHeight: 22,
+  },
+  noFamilyError: {
+    marginTop: 16,
+    color: '#c62828',
+    textAlign: 'center',
+    paddingHorizontal: 24,
+  },
+  retryButton: {
+    marginTop: 24,
   },
   fab: {
     position: 'absolute',
