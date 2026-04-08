@@ -304,7 +304,7 @@ export default function CoParentingCalendarScreen() {
   };
 
   const handleViewExpenses = () => {
-    router.push('/co-parenting/expenses');
+    router.push('/features/co-parenting/expenses');
   };
 
   if (isLoading) {
