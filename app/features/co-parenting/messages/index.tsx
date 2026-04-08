@@ -1,175 +1,297 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, FlatList } from 'react-native';
-import { Text, Card, Button, Chip, Surface, Avatar, FAB, TextInput, IconButton } from 'react-native-paper';
-import { router } from 'expo-router';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  View,
+  StyleSheet,
+  FlatList,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
+import {
+  Text,
+  Card,
+  Chip,
+  Surface,
+  Avatar,
+  FAB,
+  TextInput,
+  Portal,
+  Dialog,
+  Button,
+} from 'react-native-paper';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useFamilyStore } from '../../../../stores/familyStore';
+import { useAuthStore } from '../../../../stores/authStore';
+import type { FamilyMember } from '../../../../services/supabase/family';
+import {
+  getAllMessagesForFamily,
+  sendMessage as sendCoparentMessage,
+  markMessageAsRead,
+  type CoParentingMessage,
+} from '../../../../services/supabase/coparenting';
 
-interface Message {
-  id: string;
-  senderId: string;
-  senderName: string;
-  senderAvatar: string;
-  content: string;
-  timestamp: string;
-  isRead: boolean;
-  messageType: 'text' | 'image' | 'voice' | 'file';
-  attachments?: string[];
-}
-
-interface Conversation {
-  id: string;
+type ConversationRow = {
+  partnerId: string;
   coParentName: string;
   coParentAvatar: string;
   lastMessage: string;
   lastMessageTime: string;
   unreadCount: number;
-  isOnline: boolean;
+};
+
+function memberDisplayName(m: FamilyMember): string {
+  if (m.user) {
+    const name = `${m.user.first_name || ''} ${m.user.last_name || ''}`.trim();
+    return name || m.user.email || 'Member';
+  }
+  return 'Member';
+}
+
+function memberInitials(m: FamilyMember): string {
+  if (m.user) {
+    const fn = m.user.first_name?.[0] || '';
+    const ln = m.user.last_name?.[0] || '';
+    if (fn || ln) return `${fn}${ln}`.toUpperCase().slice(0, 2);
+    return (m.user.email?.[0] || '?').toUpperCase();
+  }
+  return '?';
+}
+
+function formatRelativeTime(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffM = Math.floor(diffMs / 60000);
+  if (diffM < 1) return 'Just now';
+  if (diffM < 60) return `${diffM}m ago`;
+  const diffH = Math.floor(diffM / 60);
+  if (diffH < 24) return `${diffH}h ago`;
+  const diffD = Math.floor(diffH / 24);
+  if (diffD < 7) return `${diffD}d ago`;
+  return d.toLocaleDateString();
+}
+
+function buildConversations(
+  rows: CoParentingMessage[],
+  myId: string,
+  members: FamilyMember[]
+): ConversationRow[] {
+  const byPartner = new Map<string, CoParentingMessage[]>();
+  for (const m of rows) {
+    if (!m.recipient_id) continue;
+    const other = m.sender_id === myId ? m.recipient_id : m.sender_id;
+    if (!other || other === myId) continue;
+    const list = byPartner.get(other) || [];
+    list.push(m);
+    byPartner.set(other, list);
+  }
+
+  const memberMap = new Map(members.map((x) => [x.user_id, x]));
+  const out: ConversationRow[] = [];
+  for (const [partnerId, msgs] of Array.from(byPartner.entries())) {
+    const sorted = [...msgs].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+    const last = sorted[0];
+    const unread = sorted.filter(
+      (x) => x.recipient_id === myId && !x.is_read && x.sender_id === partnerId
+    ).length;
+    const mem = memberMap.get(partnerId);
+    out.push({
+      partnerId,
+      coParentName: mem ? memberDisplayName(mem) : 'Co-parent',
+      coParentAvatar: mem ? memberInitials(mem) : '?',
+      lastMessage: last.content,
+      lastMessageTime: formatRelativeTime(last.created_at),
+      unreadCount: unread,
+    });
+  }
+  return out;
+}
+
+/** Sort by latest message time (partner b vs a) — uses last timestamps from rows. */
+function sortConversationRows(rows: CoParentingMessage[], list: ConversationRow[], myId: string): ConversationRow[] {
+  const latest = (partnerId: string) => {
+    let t = 0;
+    for (const r of rows) {
+      if (!r.recipient_id) continue;
+      const other = r.sender_id === myId ? r.recipient_id : r.sender_id;
+      if (other !== partnerId) continue;
+      const ts = new Date(r.created_at).getTime();
+      if (ts > t) t = ts;
+    }
+    return t;
+  };
+  return [...list].sort((a, b) => latest(b.partnerId) - latest(a.partnerId));
 }
 
 export default function MessagesScreen() {
-  const [conversations, setConversations] = useState<Conversation[]>([
-    {
-      id: '1',
-      coParentName: 'Sarah Johnson',
-      coParentAvatar: 'SJ',
-      lastMessage: 'Emma has a dentist appointment tomorrow at 2 PM',
-      lastMessageTime: '2 hours ago',
-      unreadCount: 3,
-      isOnline: true
-    },
-    {
-      id: '2',
-      coParentName: 'Mike Wilson',
-      coParentAvatar: 'MW',
-      lastMessage: 'Can you pick up the new school supplies?',
-      lastMessageTime: '1 day ago',
-      unreadCount: 0,
-      isOnline: false
-    }
-  ]);
+  const { user } = useAuthStore();
+  const { currentFamily, familyMembers, isLoading: familyLoading, error: familyError, loadFamilies } =
+    useFamilyStore();
+  const params = useLocalSearchParams<{ to?: string | string[] }>();
+  const toParam = params.to;
+  const toUserId = Array.isArray(toParam) ? toParam[0] : toParam;
 
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      senderId: 'coParent',
-      senderName: 'Sarah Johnson',
-      senderAvatar: 'SJ',
-      content: 'Hi! How was Emma\'s day at school?',
-      timestamp: '10:30 AM',
-      isRead: true,
-      messageType: 'text'
-    },
-    {
-      id: '2',
-      senderId: 'me',
-      senderName: 'John Doe',
-      senderAvatar: 'JD',
-      content: 'She had a great day! Her teacher said she was very helpful with the new student.',
-      timestamp: '10:32 AM',
-      isRead: true,
-      messageType: 'text'
-    },
-    {
-      id: '3',
-      senderId: 'coParent',
-      senderName: 'Sarah Johnson',
-      senderAvatar: 'SJ',
-      content: 'That\'s wonderful! She has a dentist appointment tomorrow at 2 PM. Can you bring her?',
-      timestamp: '10:35 AM',
-      isRead: true,
-      messageType: 'text'
-    },
-    {
-      id: '4',
-      senderId: 'me',
-      senderName: 'John Doe',
-      senderAvatar: 'JD',
-      content: 'Of course! I\'ll make sure to bring her. Should I pick her up from school?',
-      timestamp: '10:37 AM',
-      isRead: true,
-      messageType: 'text'
-    },
-    {
-      id: '5',
-      senderId: 'coParent',
-      senderName: 'Sarah Johnson',
-      senderAvatar: 'SJ',
-      content: 'Yes, please. Here\'s the appointment reminder.',
-      timestamp: '10:40 AM',
-      isRead: false,
-      messageType: 'file',
-      attachments: ['appointment_reminder.pdf']
-    }
-  ]);
-
+  const [allMessages, setAllMessages] = useState<CoParentingMessage[]>([]);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [selectedThreadUserId, setSelectedThreadUserId] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
-  const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const [newDialogVisible, setNewDialogVisible] = useState(false);
 
-  const sendMessage = () => {
-    if (newMessage.trim()) {
-      const message: Message = {
-        id: Date.now().toString(),
-        senderId: 'me',
-        senderName: 'John Doe',
-        senderAvatar: 'JD',
-        content: newMessage,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        isRead: false,
-        messageType: 'text'
-      };
-      setMessages(prev => [...prev, message]);
+  const loadMessages = useCallback(async () => {
+    if (!currentFamily?.id) return;
+    setLoadingMessages(true);
+    try {
+      const rows = await getAllMessagesForFamily(currentFamily.id);
+      setAllMessages(rows);
+    } catch (e) {
+      console.error(e);
+      Alert.alert('Error', 'Could not load messages.');
+    } finally {
+      setLoadingMessages(false);
+    }
+  }, [currentFamily?.id]);
+
+  useEffect(() => {
+    if (user?.id) {
+      void loadFamilies(user.id);
+    }
+  }, [user?.id, loadFamilies]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id && currentFamily?.id) {
+        void loadMessages();
+      }
+    }, [user?.id, currentFamily?.id, loadMessages])
+  );
+
+  useEffect(() => {
+    if (typeof toUserId === 'string' && toUserId.length > 0) {
+      setSelectedThreadUserId(toUserId);
+    }
+  }, [toUserId]);
+
+  const conversations = useMemo(() => {
+    if (!user?.id) return [];
+    const raw = buildConversations(allMessages, user.id, familyMembers);
+    return sortConversationRows(allMessages, raw, user.id);
+  }, [allMessages, familyMembers, user?.id]);
+
+  const threadMessages = useMemo(() => {
+    if (!user?.id || !selectedThreadUserId) return [];
+    const partner = selectedThreadUserId;
+    return allMessages.filter((m) => {
+      if (!m.recipient_id) return false;
+      return (
+        (m.sender_id === user.id && m.recipient_id === partner) ||
+        (m.sender_id === partner && m.recipient_id === user.id)
+      );
+    });
+  }, [allMessages, selectedThreadUserId, user?.id]);
+
+  const threadMessagesDisplay = useMemo(() => {
+    return [...threadMessages].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+  }, [threadMessages]);
+
+  const activePartnerMember = useMemo(
+    () => familyMembers.find((m) => m.user_id === selectedThreadUserId),
+    [familyMembers, selectedThreadUserId]
+  );
+
+  useEffect(() => {
+    if (!user?.id || !selectedThreadUserId) return;
+    const unread = threadMessages.filter(
+      (m) => m.recipient_id === user.id && !m.is_read && m.sender_id === selectedThreadUserId
+    );
+    if (unread.length === 0) return;
+    void (async () => {
+      try {
+        await Promise.all(unread.map((m) => markMessageAsRead(m.id)));
+        setAllMessages((prev) =>
+          prev.map((x) =>
+            unread.some((u) => u.id === x.id) ? { ...x, is_read: true } : x
+          )
+        );
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+  }, [selectedThreadUserId, threadMessages, user?.id]);
+
+  const send = async () => {
+    const text = newMessage.trim();
+    if (!text || !user?.id || !currentFamily?.id || !selectedThreadUserId) return;
+    setSending(true);
+    try {
+      const created = await sendCoparentMessage({
+        family_id: currentFamily.id,
+        sender_id: user.id,
+        recipient_id: selectedThreadUserId,
+        subject: null,
+        content: text,
+        message_type: 'general',
+        is_read: false,
+      });
+      setAllMessages((prev) => [...prev, created]);
       setNewMessage('');
+    } catch (e) {
+      console.error(e);
+      Alert.alert('Error', 'Could not send message.');
+    } finally {
+      setSending(false);
     }
   };
 
-  const renderMessage = ({ item }: { item: Message }) => {
-    const isMyMessage = item.senderId === 'me';
-    
+  const renderMessage = ({ item }: { item: CoParentingMessage }) => {
+    const isMyMessage = !!user && item.sender_id === user.id;
+    const senderMember = familyMembers.find((m) => m.user_id === item.sender_id);
+    const senderName = senderMember ? memberDisplayName(senderMember) : 'Co-parent';
+    const senderAvatar = senderMember ? memberInitials(senderMember) : '?';
+    const timeStr = new Date(item.created_at).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
     return (
       <View style={[styles.messageContainer, isMyMessage ? styles.myMessage : styles.theirMessage]}>
         {!isMyMessage && (
-          <Avatar.Text size={32} label={item.senderAvatar} style={styles.messageAvatar} />
+          <Avatar.Text size={32} label={senderAvatar} style={styles.messageAvatar} />
         )}
         <View style={[styles.messageBubble, isMyMessage ? styles.myBubble : styles.theirBubble]}>
           {!isMyMessage && (
             <Text variant="bodySmall" style={styles.senderName}>
-              {item.senderName}
+              {senderName}
             </Text>
           )}
-          <Text variant="bodyMedium" style={styles.messageContent}>
+          <Text
+            variant="bodyMedium"
+            style={isMyMessage ? styles.lightText : styles.darkText}
+          >
             {item.content}
           </Text>
-          {item.attachments && item.attachments.length > 0 && (
-            <View style={styles.attachmentsContainer}>
-              {item.attachments.map((attachment, index) => (
-                <Chip key={index} mode="outlined" compact style={styles.attachment}>
-                  📎 {attachment}
-                </Chip>
-              ))}
-            </View>
-          )}
           <Text variant="bodySmall" style={styles.messageTime}>
-            {item.timestamp}
+            {timeStr}
           </Text>
         </View>
       </View>
     );
   };
 
-  const renderConversation = ({ item }: { item: Conversation }) => (
-    <Card 
-      style={styles.conversationCard}
-      onPress={() => setSelectedConversation(item.id)}
-    >
+  const renderConversation = ({ item }: { item: ConversationRow }) => (
+    <Card style={styles.conversationCard} onPress={() => setSelectedThreadUserId(item.partnerId)}>
       <Card.Content>
         <View style={styles.conversationHeader}>
           <View style={styles.conversationInfo}>
             <View style={styles.avatarContainer}>
               <Avatar.Text size={50} label={item.coParentAvatar} />
-              {item.isOnline && <View style={styles.onlineIndicator} />}
             </View>
             <View style={styles.conversationDetails}>
               <Text variant="titleMedium">{item.coParentName}</Text>
-              <Text variant="bodySmall" style={styles.lastMessage}>
+              <Text variant="bodySmall" style={styles.lastMessage} numberOfLines={2}>
                 {item.lastMessage}
               </Text>
             </View>
@@ -189,57 +311,98 @@ export default function MessagesScreen() {
     </Card>
   );
 
-  if (selectedConversation) {
-    const conversation = conversations.find(c => c.id === selectedConversation);
-    
+  if (familyLoading && !currentFamily) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" />
+        <Text style={styles.loadingText}>Loading messages…</Text>
+      </View>
+    );
+  }
+
+  if (!currentFamily) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text variant="titleMedium" style={styles.noFamilyTitle}>
+          No family workspace yet
+        </Text>
+        <Text variant="bodyMedium" style={styles.noFamilyBody}>
+          Create a family from Home (Family setup card) or Settings → Family setup & members, then return here.
+        </Text>
+        {familyError ? (
+          <Text variant="bodySmall" style={styles.noFamilyError}>
+            {familyError}
+          </Text>
+        ) : null}
+        {user?.id ? (
+          <Button mode="contained" style={styles.retryButton} onPress={() => void loadFamilies(user.id)}>
+            Retry
+          </Button>
+        ) : null}
+      </View>
+    );
+  }
+
+  const otherMembers = familyMembers.filter((m) => m.user_id !== user?.id);
+
+  if (selectedThreadUserId) {
+    const title = activePartnerMember
+      ? memberDisplayName(activePartnerMember)
+      : 'Messages';
+    const avatar = activePartnerMember ? memberInitials(activePartnerMember) : '?';
+
     return (
       <View style={styles.container}>
         <Surface style={styles.chatHeader} elevation={1}>
-          <Text 
-            style={{ fontSize: 24, marginHorizontal: 8 }}
-            onPress={() => setSelectedConversation(null)}
+          <Text
+            style={styles.backButton}
+            onPress={() => {
+              setSelectedThreadUserId(null);
+              router.replace('/features/co-parenting/messages');
+            }}
           >
             ⬅️
           </Text>
           <View style={styles.chatHeaderInfo}>
-            <Avatar.Text size={40} label={conversation?.coParentAvatar || '?'} />
+            <Avatar.Text size={40} label={avatar} />
             <View style={styles.chatHeaderDetails}>
-              <Text variant="titleMedium">{conversation?.coParentName}</Text>
-              <Text variant="bodySmall" style={styles.onlineStatus}>
-                {conversation?.isOnline ? 'Online' : 'Offline'}
-              </Text>
+              <Text variant="titleMedium">{title}</Text>
             </View>
           </View>
-          <Text style={{ fontSize: 24, marginHorizontal: 8 }}>📞</Text>
-          <Text style={{ fontSize: 24, marginHorizontal: 8 }}>📹</Text>
         </Surface>
 
-        <FlatList
-          data={messages}
-          renderItem={renderMessage}
-          keyExtractor={item => item.id}
-          style={styles.messagesList}
-          inverted
-        />
+        {loadingMessages ? (
+          <View style={styles.threadLoading}>
+            <ActivityIndicator />
+          </View>
+        ) : (
+          <FlatList
+            data={threadMessagesDisplay}
+            renderItem={renderMessage}
+            keyExtractor={(item) => item.id}
+            style={styles.messagesList}
+            inverted
+            ListEmptyComponent={
+              <Text variant="bodyMedium" style={styles.emptyThread}>
+                No messages yet. Say hello below.
+              </Text>
+            }
+          />
+        )}
 
         <Surface style={styles.inputContainer} elevation={2}>
-          <Text style={{ fontSize: 24, marginHorizontal: 8 }}>📎</Text>
           <TextInput
             mode="outlined"
-            placeholder="Type a message..."
+            placeholder="Type a message…"
             value={newMessage}
             onChangeText={setNewMessage}
             style={styles.messageInput}
             multiline
+            editable={!sending}
           />
-          <Text style={{ fontSize: 24, marginHorizontal: 8 }}>🎤</Text>
-          <Text 
-            style={{ 
-              fontSize: 24, 
-              marginHorizontal: 8,
-              opacity: newMessage.trim() ? 1 : 0.3
-            }}
-            onPress={sendMessage}
+          <Text
+            style={[styles.sendButton, { opacity: newMessage.trim() && !sending ? 1 : 0.3 }]}
+            onPress={() => void send()}
           >
             📤
           </Text>
@@ -257,27 +420,98 @@ export default function MessagesScreen() {
         </Text>
       </Surface>
 
-      <FlatList
-        data={conversations}
-        renderItem={renderConversation}
-        keyExtractor={item => item.id}
-        style={styles.conversationsList}
-        contentContainerStyle={styles.conversationsContent}
-      />
+      {loadingMessages ? (
+        <View style={styles.threadLoading}>
+          <ActivityIndicator />
+        </View>
+      ) : (
+        <FlatList
+          data={conversations}
+          renderItem={renderConversation}
+          keyExtractor={(item) => item.partnerId}
+          style={styles.conversationsList}
+          contentContainerStyle={styles.conversationsContent}
+          ListEmptyComponent={
+            <Text variant="bodyMedium" style={styles.emptyList}>
+              No conversations yet. Tap + to message a co-parent.
+            </Text>
+          }
+        />
+      )}
 
       <FAB
         icon={() => <Text style={{ fontSize: 20 }}>➕</Text>}
         style={styles.fab}
         onPress={() => {
-          // TODO: Start new conversation
-          console.log('Start new conversation');
+          if (otherMembers.length === 0) {
+            Alert.alert('No co-parents', 'Add another parent to your family to start a conversation.');
+            return;
+          }
+          setNewDialogVisible(true);
         }}
       />
+
+      <Portal>
+        <Dialog visible={newDialogVisible} onDismiss={() => setNewDialogVisible(false)}>
+          <Dialog.Title>New conversation</Dialog.Title>
+          <Dialog.Content>
+            {otherMembers.map((m) => (
+              <Card
+                key={m.user_id}
+                style={styles.dialogRow}
+                onPress={() => {
+                  setNewDialogVisible(false);
+                  router.replace(
+                    `/features/co-parenting/messages?to=${encodeURIComponent(m.user_id)}`
+                  );
+                }}
+              >
+                <Card.Content style={styles.dialogRowInner}>
+                  <Avatar.Text size={40} label={memberInitials(m)} />
+                  <Text variant="titleSmall" style={styles.dialogName}>
+                    {memberDisplayName(m)}
+                  </Text>
+                </Card.Content>
+              </Card>
+            ))}
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setNewDialogVisible(false)}>Cancel</Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+    backgroundColor: '#f5f5f5',
+  },
+  loadingText: {
+    marginTop: 12,
+  },
+  noFamilyTitle: {
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  noFamilyBody: {
+    textAlign: 'center',
+    opacity: 0.8,
+    marginBottom: 16,
+  },
+  noFamilyError: {
+    color: '#c62828',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 8,
+  },
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
@@ -295,6 +529,22 @@ const styles = StyleSheet.create({
   },
   conversationsContent: {
     padding: 16,
+    flexGrow: 1,
+  },
+  emptyList: {
+    textAlign: 'center',
+    opacity: 0.6,
+    marginTop: 32,
+  },
+  emptyThread: {
+    textAlign: 'center',
+    opacity: 0.6,
+    padding: 24,
+  },
+  threadLoading: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   conversationCard: {
     marginBottom: 12,
@@ -311,17 +561,6 @@ const styles = StyleSheet.create({
   avatarContainer: {
     position: 'relative',
     marginRight: 12,
-  },
-  onlineIndicator: {
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#4CAF50',
-    borderWidth: 2,
-    borderColor: '#fff',
   },
   conversationDetails: {
     flex: 1,
@@ -346,6 +585,10 @@ const styles = StyleSheet.create({
     padding: 12,
     backgroundColor: '#fff',
   },
+  backButton: {
+    fontSize: 24,
+    marginHorizontal: 8,
+  },
   chatHeaderInfo: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -354,9 +597,6 @@ const styles = StyleSheet.create({
   },
   chatHeaderDetails: {
     marginLeft: 12,
-  },
-  onlineStatus: {
-    opacity: 0.6,
   },
   messagesList: {
     flex: 1,
@@ -391,14 +631,11 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     opacity: 0.8,
   },
-  messageContent: {
+  lightText: {
     color: '#fff',
   },
-  attachmentsContainer: {
-    marginTop: 8,
-  },
-  attachment: {
-    marginBottom: 4,
+  darkText: {
+    color: '#333',
   },
   messageTime: {
     opacity: 0.6,
@@ -416,10 +653,25 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
     maxHeight: 100,
   },
+  sendButton: {
+    fontSize: 24,
+    marginHorizontal: 8,
+  },
   fab: {
     position: 'absolute',
     margin: 16,
     right: 0,
     bottom: 0,
   },
-}); 
+  dialogRow: {
+    marginBottom: 8,
+  },
+  dialogRowInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dialogName: {
+    marginLeft: 8,
+    flex: 1,
+  },
+});

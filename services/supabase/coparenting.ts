@@ -38,11 +38,11 @@ export interface CoParentingMessage {
   id: string;
   family_id: string;
   sender_id: string;
-  recipient_id?: string; // null for group messages
-  subject: string;
+  recipient_id?: string | null;
+  subject?: string | null;
   content: string;
   message_type: 'general' | 'schedule' | 'expense' | 'emergency';
-  priority: 'low' | 'medium' | 'high';
+  priority?: 'low' | 'medium' | 'high';
   is_read: boolean;
   created_at: string;
 }
@@ -258,6 +258,18 @@ export const getMessagesByFamily = async (familyId: string, userId?: string): Pr
   const { data, error } = await query;
   if (error) throw error;
   return data || [];
+};
+
+/** All messages in a family (for threading). Family creators can read per RLS. */
+export const getAllMessagesForFamily = async (familyId: string): Promise<CoParentingMessage[]> => {
+  const { data, error } = await supabase
+    .from('messages')
+    .select('*')
+    .eq('family_id', familyId)
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+  return (data || []) as CoParentingMessage[];
 };
 
 export const markMessageAsRead = async (messageId: string): Promise<void> => {
