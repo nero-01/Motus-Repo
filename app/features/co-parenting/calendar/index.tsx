@@ -15,6 +15,7 @@ import {
   IconButton,
   Avatar,
   ProgressBar,
+  Switch,
 } from 'react-native-paper';
 import { router } from 'expo-router';
 import { useFamilyStore } from '../../../../stores/familyStore';
@@ -25,9 +26,47 @@ import {
   getUpcomingEvents,
   getUnreadMessageCount,
   getPendingExpenses,
+  createCalendarEvent,
+  deleteCalendarEvent,
   CalendarEvent,
   CustodySchedule,
 } from '../../../../services/supabase/coparenting';
+
+const CALENDAR_EVENT_TYPES = ['activity', 'custody', 'medical', 'school', 'other'] as const;
+
+function toEventStartIso(input: string, allDay: boolean): string {
+  const t = input.trim();
+  if (!t) throw new Error('Invalid start date');
+  if (t.includes('T')) {
+    const d = new Date(t);
+    if (Number.isNaN(d.getTime())) throw new Error('Invalid start date');
+    return d.toISOString();
+  }
+  const d = new Date(`${t}T${allDay ? '00:00:00' : '09:00:00'}`);
+  if (Number.isNaN(d.getTime())) throw new Error('Invalid start date');
+  return d.toISOString();
+}
+
+function toEventEndIso(
+  startIso: string,
+  endInput: string | undefined,
+  allDay: boolean
+): string {
+  const t = (endInput || '').trim();
+  if (t) {
+    if (t.includes('T')) {
+      const d = new Date(t);
+      if (Number.isNaN(d.getTime())) throw new Error('Invalid end date');
+      return d.toISOString();
+    }
+    const d = new Date(`${t}T${allDay ? '23:59:59' : '17:00:00'}`);
+    if (Number.isNaN(d.getTime())) throw new Error('Invalid end date');
+    return d.toISOString();
+  }
+  const start = new Date(startIso);
+  const addMs = allDay ? 24 * 60 * 60 * 1000 - 1 : 60 * 60 * 1000;
+  return new Date(start.getTime() + addMs).toISOString();
+}
 
 export default function CoParentingCalendarScreen() {
   const { user } = useAuthStore();
@@ -43,12 +82,20 @@ export default function CoParentingCalendarScreen() {
   const [showCustodyDialog, setShowCustodyDialog] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [viewMode, setViewMode] = useState<'calendar' | 'schedule' | 'communication' | 'expenses'>('calendar');
-  const [newEvent, setNewEvent] = useState({
+  const [newEvent, setNewEvent] = useState<{
+    title: string;
+    description: string;
+    start_date: string;
+    end_date: string;
+    event_type: (typeof CALENDAR_EVENT_TYPES)[number];
+    location: string;
+    is_all_day: boolean;
+  }>({
     title: '',
     description: '',
     start_date: '',
     end_date: '',
-    event_type: 'activity' as const,
+    event_type: 'activity',
     location: '',
     is_all_day: false,
   });
@@ -116,9 +163,23 @@ export default function CoParentingCalendarScreen() {
     }
 
     try {
-      // TODO: Implement createCalendarEvent from service
+      const startIso = toEventStartIso(newEvent.start_date, newEvent.is_all_day);
+      const endIso = toEventEndIso(startIso, newEvent.end_date, newEvent.is_all_day);
+
+      await createCalendarEvent({
+        family_id: currentFamily.id,
+        title: newEvent.title.trim(),
+        description: newEvent.description.trim() || undefined,
+        start_date: startIso,
+        end_date: endIso,
+        event_type: newEvent.event_type,
+        location: newEvent.location.trim() || undefined,
+        created_by: user.id,
+        is_all_day: newEvent.is_all_day,
+      });
+
       Alert.alert('Success', 'Event created successfully!');
-      
+
       setNewEvent({
         title: '',
         description: '',
@@ -132,19 +193,38 @@ export default function CoParentingCalendarScreen() {
       loadCalendarData();
     } catch (error) {
       console.error('Error creating event:', error);
-      Alert.alert('Error', 'Failed to create event');
+      const message =
+        error instanceof Error && error.message.startsWith('Invalid')
+          ? error.message
+          : 'Failed to create event. Use YYYY-MM-DD or a full ISO date/time.';
+      Alert.alert('Error', message);
     }
   };
 
-  const handleDeleteEvent = async (eventId: string) => {
-    try {
-      // TODO: Implement deleteCalendarEvent from service
-      Alert.alert('Success', 'Event deleted successfully');
-      loadCalendarData();
-    } catch (error) {
-      console.error('Error deleting event:', error);
-      Alert.alert('Error', 'Failed to delete event');
-    }
+  const handleDeleteEvent = (eventId: string) => {
+    Alert.alert(
+      'Delete event',
+      'Remove this event from the calendar?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              try {
+                await deleteCalendarEvent(eventId);
+                Alert.alert('Success', 'Event deleted successfully');
+                loadCalendarData();
+              } catch (error) {
+                console.error('Error deleting event:', error);
+                Alert.alert('Error', 'Failed to delete event');
+              }
+            })();
+          },
+        },
+      ]
+    );
   };
 
   const getEventTypeIcon = (type: string) => {
@@ -208,7 +288,7 @@ export default function CoParentingCalendarScreen() {
   };
 
   const handleCreateEvent = () => {
-    router.push('/co-parenting/calendar/create');
+    setShowAddDialog(true);
   };
 
   const handleCreateCustodySchedule = () => {
@@ -570,6 +650,78 @@ export default function CoParentingCalendarScreen() {
         onPress={handleCreateEvent}
         label="Add Event"
       />
+
+      <Portal>
+        <Dialog visible={showAddDialog} onDismiss={() => setShowAddDialog(false)}>
+          <Dialog.Title>Add event</Dialog.Title>
+          <Dialog.Content>
+            <ScrollView style={styles.addDialogScroll} keyboardShouldPersistTaps="handled">
+              <TextInput
+                label="Title *"
+                value={newEvent.title}
+                onChangeText={(text) => setNewEvent((s) => ({ ...s, title: text }))}
+                mode="outlined"
+                style={styles.addDialogField}
+              />
+              <TextInput
+                label="Description"
+                value={newEvent.description}
+                onChangeText={(text) => setNewEvent((s) => ({ ...s, description: text }))}
+                mode="outlined"
+                multiline
+                style={styles.addDialogField}
+              />
+              <Text variant="labelLarge" style={styles.addDialogLabel}>
+                Event type
+              </Text>
+              <View style={styles.eventTypeChips}>
+                {CALENDAR_EVENT_TYPES.map((t) => (
+                  <Chip
+                    key={t}
+                    selected={newEvent.event_type === t}
+                    onPress={() => setNewEvent((s) => ({ ...s, event_type: t }))}
+                  >
+                    {t}
+                  </Chip>
+                ))}
+              </View>
+              <TextInput
+                label="Start date * (YYYY-MM-DD or ISO)"
+                value={newEvent.start_date}
+                onChangeText={(text) => setNewEvent((s) => ({ ...s, start_date: text }))}
+                mode="outlined"
+                placeholder="2025-04-10"
+                style={styles.addDialogField}
+              />
+              <TextInput
+                label="End date (optional)"
+                value={newEvent.end_date}
+                onChangeText={(text) => setNewEvent((s) => ({ ...s, end_date: text }))}
+                mode="outlined"
+                style={styles.addDialogField}
+              />
+              <TextInput
+                label="Location"
+                value={newEvent.location}
+                onChangeText={(text) => setNewEvent((s) => ({ ...s, location: text }))}
+                mode="outlined"
+                style={styles.addDialogField}
+              />
+              <View style={styles.allDayRow}>
+                <Text variant="bodyLarge">All day</Text>
+                <Switch
+                  value={newEvent.is_all_day}
+                  onValueChange={(v) => setNewEvent((s) => ({ ...s, is_all_day: v }))}
+                />
+              </View>
+            </ScrollView>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setShowAddDialog(false)}>Cancel</Button>
+            <Button onPress={() => void handleAddEvent()}>Save</Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
     </View>
   );
 }
@@ -760,5 +912,26 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     color: '#666',
+  },
+  addDialogScroll: {
+    maxHeight: 420,
+  },
+  addDialogField: {
+    marginBottom: 8,
+  },
+  addDialogLabel: {
+    marginBottom: 8,
+  },
+  eventTypeChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+  },
+  allDayRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 4,
   },
 }); 

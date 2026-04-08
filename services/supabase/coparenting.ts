@@ -6,16 +6,18 @@ export interface CalendarEvent {
   title: string;
   description?: string;
   start_date: string;
-  end_date: string;
+  /** Nullable in DB when not set */
+  end_date?: string | null;
   event_type: 'custody' | 'activity' | 'medical' | 'school' | 'other';
   location?: string;
   created_by: string;
   is_all_day: boolean;
-  is_recurring: boolean;
-  recurrence_pattern?: string; // 'daily', 'weekly', 'monthly', 'yearly'
+  /** Present when DB column exists; omitted in minimal schema */
+  is_recurring?: boolean;
+  recurrence_pattern?: string;
   recurrence_end_date?: string;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 export interface CustodySchedule {
@@ -79,28 +81,27 @@ export interface Document {
 }
 
 // Calendar Event Management
-export const createCalendarEvent = async (event: Omit<CalendarEvent, 'id' | 'created_at' | 'updated_at'>): Promise<CalendarEvent> => {
+export const createCalendarEvent = async (
+  event: Omit<CalendarEvent, 'id' | 'created_at' | 'updated_at'>
+): Promise<CalendarEvent> => {
   const { data, error } = await supabase
     .from('calendar_events')
     .insert({
       family_id: event.family_id,
       title: event.title,
-      description: event.description,
+      description: event.description ?? null,
       start_date: event.start_date,
-      end_date: event.end_date,
+      end_date: event.end_date || null,
       event_type: event.event_type,
-      location: event.location,
+      location: event.location ?? null,
       created_by: event.created_by,
       is_all_day: event.is_all_day,
-      is_recurring: event.is_recurring,
-      recurrence_pattern: event.recurrence_pattern,
-      recurrence_end_date: event.recurrence_end_date,
     })
     .select()
     .single();
 
   if (error) throw error;
-  return data;
+  return data as CalendarEvent;
 };
 
 export const getCalendarEventsByFamily = async (familyId: string, startDate?: string, endDate?: string): Promise<CalendarEvent[]> => {
