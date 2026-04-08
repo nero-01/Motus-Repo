@@ -115,8 +115,9 @@ export const getCalendarEventsByFamily = async (familyId: string, startDate?: st
     query = query.gte('start_date', startDate);
   }
 
+  /** Upper bound on event *start* so rows with null end_date are not excluded. */
   if (endDate) {
-    query = query.lte('end_date', endDate);
+    query = query.lte('start_date', endDate);
   }
 
   const { data, error } = await query;
@@ -162,7 +163,7 @@ export const deleteCalendarEvent = async (eventId: string): Promise<void> => {
 // Custody Schedule Management
 export const createCustodySchedule = async (schedule: Omit<CustodySchedule, 'id' | 'created_at' | 'updated_at'>): Promise<CustodySchedule> => {
   const { data, error } = await supabase
-    .from('custody_schedules')
+    .from('custody_schedule')
     .insert({
       family_id: schedule.family_id,
       child_id: schedule.child_id,
@@ -171,18 +172,17 @@ export const createCustodySchedule = async (schedule: Omit<CustodySchedule, 'id'
       start_time: schedule.start_time,
       end_time: schedule.end_time,
       is_primary: schedule.is_primary,
-      notes: schedule.notes,
     })
     .select()
     .single();
 
   if (error) throw error;
-  return data;
+  return data as CustodySchedule;
 };
 
 export const getCustodyScheduleByFamily = async (familyId: string): Promise<CustodySchedule[]> => {
   const { data, error } = await supabase
-    .from('custody_schedules')
+    .from('custody_schedule')
     .select('*')
     .eq('family_id', familyId)
     .order('day_of_week');
@@ -193,7 +193,7 @@ export const getCustodyScheduleByFamily = async (familyId: string): Promise<Cust
 
 export const getCustodyScheduleByChild = async (childId: string): Promise<CustodySchedule[]> => {
   const { data, error } = await supabase
-    .from('custody_schedules')
+    .from('custody_schedule')
     .select('*')
     .eq('child_id', childId)
     .order('day_of_week');
@@ -203,23 +203,21 @@ export const getCustodyScheduleByChild = async (childId: string): Promise<Custod
 };
 
 export const updateCustodySchedule = async (scheduleId: string, updates: Partial<CustodySchedule>): Promise<CustodySchedule> => {
+  const { notes: _n, updated_at: _u, created_at: _c, id: _i, ...rest } = updates as Partial<CustodySchedule>;
   const { data, error } = await supabase
-    .from('custody_schedules')
-    .update({
-      ...updates,
-      updated_at: new Date().toISOString(),
-    })
+    .from('custody_schedule')
+    .update(rest)
     .eq('id', scheduleId)
     .select()
     .single();
 
   if (error) throw error;
-  return data;
+  return data as CustodySchedule;
 };
 
 export const deleteCustodySchedule = async (scheduleId: string): Promise<void> => {
   const { error } = await supabase
-    .from('custody_schedules')
+    .from('custody_schedule')
     .delete()
     .eq('id', scheduleId);
 
@@ -229,27 +227,26 @@ export const deleteCustodySchedule = async (scheduleId: string): Promise<void> =
 // Communication Management
 export const sendMessage = async (message: Omit<CoParentingMessage, 'id' | 'created_at'>): Promise<CoParentingMessage> => {
   const { data, error } = await supabase
-    .from('coparenting_messages')
+    .from('messages')
     .insert({
       family_id: message.family_id,
       sender_id: message.sender_id,
-      recipient_id: message.recipient_id,
-      subject: message.subject,
+      recipient_id: message.recipient_id ?? null,
+      subject: message.subject ?? null,
       content: message.content,
       message_type: message.message_type,
-      priority: message.priority,
       is_read: false,
     })
     .select()
     .single();
 
   if (error) throw error;
-  return data;
+  return data as CoParentingMessage;
 };
 
 export const getMessagesByFamily = async (familyId: string, userId?: string): Promise<CoParentingMessage[]> => {
   let query = supabase
-    .from('coparenting_messages')
+    .from('messages')
     .select('*')
     .eq('family_id', familyId)
     .order('created_at', { ascending: false });
@@ -265,7 +262,7 @@ export const getMessagesByFamily = async (familyId: string, userId?: string): Pr
 
 export const markMessageAsRead = async (messageId: string): Promise<void> => {
   const { error } = await supabase
-    .from('coparenting_messages')
+    .from('messages')
     .update({ is_read: true })
     .eq('id', messageId);
 
@@ -274,7 +271,7 @@ export const markMessageAsRead = async (messageId: string): Promise<void> => {
 
 export const deleteMessage = async (messageId: string): Promise<void> => {
   const { error } = await supabase
-    .from('coparenting_messages')
+    .from('messages')
     .delete()
     .eq('id', messageId);
 
@@ -539,7 +536,7 @@ export const getCustodySummary = async (familyId: string, childId?: string): Pro
   weeklySchedule: Record<string, { primary: string; secondary: string }>;
 }> => {
   let query = supabase
-    .from('custody_schedules')
+    .from('custody_schedule')
     .select('*')
     .eq('family_id', familyId);
 
@@ -586,15 +583,21 @@ export const getUpcomingEvents = async (familyId: string, days: number = 7): Pro
 };
 
 export const getUnreadMessageCount = async (familyId: string, userId: string): Promise<number> => {
-  const { count, error } = await supabase
-    .from('coparenting_messages')
-    .select('*', { count: 'exact', head: true })
-    .eq('family_id', familyId)
-    .or(`recipient_id.eq.${userId},recipient_id.is.null`)
-    .eq('is_read', false);
+  if (!userId) return 0;
+  try {
+    const { count, error } = await supabase
+      .from('messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('family_id', familyId)
+      .eq('is_read', false)
+      .or(`recipient_id.eq.${userId},recipient_id.is.null`);
 
-  if (error) throw error;
-  return count || 0;
+    if (error) throw error;
+    return count || 0;
+  } catch (e) {
+    console.warn('getUnreadMessageCount:', e);
+    return 0;
+  }
 };
 
 export const getPendingExpenses = async (familyId: string): Promise<SharedExpense[]> => {

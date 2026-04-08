@@ -166,16 +166,21 @@ export const dashboardService = {
         .gte('planned_date', localDayKey(weekStart))
         .lt('planned_date', localDayKey(weekEnd)),
       supabase
-        .from('coparenting_messages')
+        .from('messages')
         .select('id', { count: 'exact', head: true })
         .eq('family_id', family.id)
         .eq('is_read', false)
         .neq('sender_id', userId),
-      supabase
-        .from('shared_expenses')
-        .select('id', { count: 'exact', head: true })
-        .eq('family_id', family.id)
-        .eq('is_paid', false),
+      (() => {
+        const monthStart = new Date();
+        monthStart.setDate(1);
+        monthStart.setHours(0, 0, 0, 0);
+        return supabase
+          .from('expenses')
+          .select('id', { count: 'exact', head: true })
+          .eq('family_id', family.id)
+          .gte('expense_date', monthStart.toISOString().slice(0, 10));
+      })(),
     ]);
 
     const activeRoutines = routineIds.length;
@@ -274,7 +279,7 @@ export const dashboardService = {
     });
 
     const { data: messages } = await supabase
-      .from('coparenting_messages')
+      .from('messages')
       .select('id, created_at, subject, content, sender_id')
       .eq('family_id', family.id)
       .order('created_at', { ascending: false })
