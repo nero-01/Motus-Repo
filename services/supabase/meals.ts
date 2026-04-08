@@ -167,6 +167,112 @@ export const createMealPlan = async (mealPlan: Omit<MealPlan, 'id' | 'created_at
   return data;
 };
 
+function parseLocalDateYmd(ymd: string): Date | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd.trim());
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  const dt = new Date(y, mo - 1, d);
+  if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return null;
+  return dt;
+}
+
+function formatLocalDateYmd(d: Date): string {
+  const y = d.getFullYear();
+  const mo = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${mo}-${day}`;
+}
+
+/** Sunday 00:00 local for the calendar week that contains `d`. */
+function sundayOfWeekContaining(d: Date): Date {
+  const copy = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  copy.setDate(copy.getDate() - copy.getDay());
+  return copy;
+}
+
+/**
+ * Minimal meal row so `meal_plans.meal_id` FK is satisfied. User can replace with real recipes later.
+ */
+export async function createPlaceholderMealForPlan(
+  familyId: string,
+  userId: string,
+  planLabel: string
+): Promise<string> {
+  const { data, error } = await supabase
+    .from('meals')
+    .insert({
+      family_id: familyId,
+      name: planLabel,
+      description: 'Placeholder for a weekly meal plan — assign recipes from the planner.',
+      category: 'dinner',
+      ingredients: [],
+      instructions: '',
+      prep_time: 0,
+      cook_time: 0,
+      servings: 1,
+      difficulty: 1,
+      is_favorite: false,
+      created_by: userId,
+    })
+    .select('id')
+    .single();
+
+  if (error) throw error;
+  return data.id as string;
+}
+
+export type CreateWeeklyMealPlanInput = {
+  familyId: string;
+  userId: string;
+  planName: string;
+  /** Local calendar date `YYYY-MM-DD` — week containing this date is used. */
+  startDateYmd: string;
+  /** 0 = Sunday … 6 = Saturday */
+  selectedDayIndices: number[];
+};
+
+/**
+ * Inserts one `meal_plans` row per selected weekday in the same calendar week as `startDateYmd`.
+ */
+export async function createWeeklyMealPlan(input: CreateWeeklyMealPlanInput): Promise<MealPlan[]> {
+  const start = parseLocalDateYmd(input.startDateYmd);
+  if (!start) {
+    throw new Error('Invalid start date. Use YYYY-MM-DD.');
+  }
+
+  const days = Array.from(new Set(input.selectedDayIndices))
+    .filter((d) => d >= 0 && d <= 6)
+    .sort((a, b) => a - b);
+
+  if (days.length === 0) {
+    throw new Error('Select at least one day.');
+  }
+
+  const mealId = await createPlaceholderMealForPlan(input.familyId, input.userId, input.planName.trim());
+  const weekStart = sundayOfWeekContaining(start);
+  const created: MealPlan[] = [];
+
+  for (const dow of days) {
+    const planned = new Date(weekStart);
+    planned.setDate(weekStart.getDate() + dow);
+    const plannedDate = formatLocalDateYmd(planned);
+
+    const row = await createMealPlan({
+      family_id: input.familyId,
+      meal_id: mealId,
+      planned_date: plannedDate,
+      meal_type: 'dinner',
+      notes: input.planName.trim(),
+      created_by: input.userId,
+    });
+    created.push(row);
+  }
+
+  return created;
+}
+
 export const getMealPlansByFamily = async (familyId: string): Promise<MealPlan[]> => {
   try {
     // Add timeout to prevent hanging
