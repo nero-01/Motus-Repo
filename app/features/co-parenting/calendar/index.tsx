@@ -18,6 +18,7 @@ import {
   Switch,
 } from 'react-native-paper';
 import { router } from 'expo-router';
+import { formatZAR } from '../../../../utils/currency';
 import { useFamilyStore } from '../../../../stores/familyStore';
 import { useAuthStore } from '../../../../stores/authStore';
 import { 
@@ -638,7 +639,7 @@ export default function CoParentingCalendarScreen() {
                   </View>
                   <View style={styles.expenseStat}>
                     <Text variant="titleLarge" style={styles.expenseStatNumber}>
-                      $0
+                      {formatZAR(0)}
                     </Text>
                     <Text variant="bodySmall">Total</Text>
                   </View>

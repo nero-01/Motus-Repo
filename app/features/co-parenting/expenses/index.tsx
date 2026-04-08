@@ -28,12 +28,9 @@ import {
   type FamilyExpenseRow,
   type ExpenseCategory,
 } from '../../../../services/supabase/expenses';
+import { formatZAR } from '../../../../utils/currency';
 
 type TimeFilter = 'all' | 'this_month' | 'last_month';
-
-function formatCurrency(amount: number) {
-  return `$${amount.toFixed(2)}`;
-}
 
 function getCategoryIcon(category: string) {
   const icons: Record<string, string> = {
@@ -132,15 +129,15 @@ function buildReportText(rows: FamilyExpenseRow[]): string {
     byCat[r.category] = (byCat[r.category] || 0) + a;
   });
   const lines = [
-    `MotusTots — expense report`,
+    `MotusTots — expense report (ZAR)`,
     `Generated ${new Date().toLocaleString()}`,
     '',
-    `Total: ${formatCurrency(total)}`,
+    `Total: ${formatZAR(total)}`,
     '',
     'By category:',
   ];
   (Object.entries(byCat) as [string, number][]).forEach(([k, v]) => {
-    lines.push(`  ${k}: ${formatCurrency(v)}`);
+    lines.push(`  ${k}: ${formatZAR(v)}`);
   });
   lines.push('', `Count: ${rows.length} expense(s)`);
   return lines.join('\n');
@@ -148,7 +145,7 @@ function buildReportText(rows: FamilyExpenseRow[]): string {
 
 function toCsv(rows: FamilyExpenseRow[]): string {
   const esc = (s: string) => `"${s.replace(/"/g, '""')}"`;
-  const header = 'title,amount,category,expense_date,description,paid_by';
+  const header = 'title,amount_zar,category,expense_date,description,paid_by';
   const body = rows.map((r) =>
     [
       esc(r.title),
@@ -281,31 +278,31 @@ export default function ExpensesScreen() {
           <View style={styles.summaryContainer}>
             <View style={styles.summaryRow}>
               <View style={styles.summaryItem}>
-                <Text variant="titleLarge">{formatCurrency(summary.totalExpenses)}</Text>
+                <Text variant="titleLarge">{formatZAR(summary.totalExpenses)}</Text>
                 <Text variant="bodySmall">Total</Text>
               </View>
               <View style={styles.summaryItem}>
-                <Text variant="titleLarge">{formatCurrency(summary.thisMonth)}</Text>
+                <Text variant="titleLarge">{formatZAR(summary.thisMonth)}</Text>
                 <Text variant="bodySmall">This month</Text>
               </View>
             </View>
             <View style={styles.summaryRow}>
               <View style={styles.summaryItem}>
                 <Text variant="titleLarge" style={styles.yourShare}>
-                  {formatCurrency(summary.yourShare)}
+                  {formatZAR(summary.yourShare)}
                 </Text>
                 <Text variant="bodySmall">Paid by you</Text>
               </View>
               <View style={styles.summaryItem}>
                 <Text variant="titleLarge" style={styles.theirShare}>
-                  {formatCurrency(summary.theirShare)}
+                  {formatZAR(summary.theirShare)}
                 </Text>
                 <Text variant="bodySmall">Paid by others</Text>
               </View>
             </View>
             <View style={styles.summaryRow}>
               <View style={styles.summaryItem}>
-                <Text variant="titleLarge">{formatCurrency(summary.lastMonth)}</Text>
+                <Text variant="titleLarge">{formatZAR(summary.lastMonth)}</Text>
                 <Text variant="bodySmall">Last month</Text>
               </View>
             </View>
@@ -361,7 +358,7 @@ export default function ExpensesScreen() {
                     </View>
                     <View style={styles.expenseAmount}>
                       <Text variant="titleLarge" style={styles.amount}>
-                        {formatCurrency(Number(expense.amount))}
+                        {formatZAR(Number(expense.amount))}
                       </Text>
                       <Chip
                         mode="outlined"
