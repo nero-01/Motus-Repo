@@ -1,21 +1,14 @@
 /**
- * South African Rand (ZAR) display for the app.
+ * South African Rand display: literal `R` + number (no Intl `currency` style —
+ * Hermes/ICU can mis-resolve ZAR and show `$` in some RN builds).
  */
 export function formatZAR(amount: number): string {
-  if (Number.isNaN(amount) || !Number.isFinite(amount)) {
-    return new Intl.NumberFormat('en-ZA', {
-      style: 'currency',
-      currency: 'ZAR',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(0);
-  }
-  return new Intl.NumberFormat('en-ZA', {
-    style: 'currency',
-    currency: 'ZAR',
+  const n = Number.isNaN(amount) || !Number.isFinite(amount) ? 0 : amount;
+  const formatted = n.toLocaleString('en-ZA', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(amount);
+  });
+  return `R ${formatted}`;
 }
 
 export const APP_CURRENCY_CODE = 'ZAR' as const;
