@@ -35,6 +35,7 @@ interface FamilyMember {
 }
 
 const PREFERENCES_STORAGE_KEY = 'motustots:settings:preferences';
+const NOTIFICATIONS_STORAGE_KEY = 'motustots:settings:notifications';
 
 function formatMemberName(m: SupabaseFamilyMember): string {
   const u = m.user;
@@ -160,13 +161,29 @@ export default function SettingsScreen() {
     (async () => {
       try {
         const raw = await AsyncStorage.getItem(PREFERENCES_STORAGE_KEY);
-        if (!raw) return;
-        const parsed = JSON.parse(raw) as { id: string; value: string | boolean }[];
-        if (!Array.isArray(parsed)) return;
-        setPreferences((prev) =>
-          prev.map((p) => {
-            const hit = parsed.find((x) => x.id === p.id);
-            return hit ? { ...p, value: hit.value } : p;
+        if (raw) {
+          const parsed = JSON.parse(raw) as { id: string; value: string | boolean }[];
+          if (Array.isArray(parsed)) {
+            setPreferences((prev) =>
+              prev.map((p) => {
+                const hit = parsed.find((x) => x.id === p.id);
+                return hit ? { ...p, value: hit.value } : p;
+              })
+            );
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+      try {
+        const rawN = await AsyncStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
+        if (!rawN) return;
+        const parsedN = JSON.parse(rawN) as { id: string; isEnabled: boolean }[];
+        if (!Array.isArray(parsedN)) return;
+        setNotifications((prev) =>
+          prev.map((n) => {
+            const hit = parsedN.find((x) => x.id === n.id);
+            return hit ? { ...n, isEnabled: hit.isEnabled } : n;
           })
         );
       } catch {
@@ -230,12 +247,21 @@ export default function SettingsScreen() {
     });
   };
 
+  const persistNotificationSnapshot = (next: NotificationSetting[]) => {
+    const snapshot = next.map((n) => ({ id: n.id, isEnabled: n.isEnabled }));
+    void AsyncStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(snapshot));
+  };
+
   const toggleNotification = (id: string) => {
-    setNotifications(prev => prev.map(notification =>
-      notification.id === id 
-        ? { ...notification, isEnabled: !notification.isEnabled }
-        : notification
-    ));
+    setNotifications((prev) => {
+      const next = prev.map((notification) =>
+        notification.id === id
+          ? { ...notification, isEnabled: !notification.isEnabled }
+          : notification
+      );
+      persistNotificationSnapshot(next);
+      return next;
+    });
   };
 
   const togglePreference = (id: string) => {
