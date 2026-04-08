@@ -5,6 +5,8 @@ import { useLocalSearchParams, router } from 'expo-router';
 import {
   getRoutineTasks,
   completeRoutineTask,
+  getRoutineTasksCompletionToday,
+  deleteRoutineTaskCompletionsForChild,
   type RoutineTask,
 } from '../../../services/supabase/routines';
 import { useAuthStore } from '../../../stores/authStore';
@@ -80,41 +82,61 @@ export default function RoutineDetailScreen() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
+    if (!id) {
+      setError('Missing routine');
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
     const fetchRoutineData = async () => {
-      if (!id) {
-        setError('Missing routine');
-        setLoading(false);
-        return;
-      }
       setLoading(true);
       setError(null);
       try {
         const tasks = await getRoutineTasks(id);
-        // For now, we'll use mock routine data since we don't have a getRoutineById function
-        // In a real app, you'd fetch the routine details separately
-        setRoutine(prev => ({
+        let completionMap: Record<string, boolean> = {};
+        if (effectiveChildId) {
+          completionMap = await getRoutineTasksCompletionToday(id, effectiveChildId);
+        }
+        if (cancelled) return;
+
+        setRoutine((prev) => ({
           ...prev,
-          name: 'Morning Routine', // This would come from routine data
+          id,
+          name: 'Morning Routine',
           description: 'Start the day with healthy habits',
           tasks: tasks.map((task: RoutineTask) => ({
             id: task.id,
             title: task.name,
-            completed: false, // You'd check task_completions table for this
+            completed: effectiveChildId ? completionMap[task.id] ?? false : false,
             points: task.points_reward ?? 1,
           })),
           totalPoints: tasks.reduce((sum, task) => sum + (task.points_reward ?? 1), 0),
-          earnedPoints: 0, // Calculate from task_completions
+          earnedPoints: tasks.reduce((sum, task) => {
+            const done = effectiveChildId ? completionMap[task.id] ?? false : false;
+            return sum + (done ? task.points_reward ?? 1 : 0);
+          }, 0),
         }));
       } catch (err: any) {
-        setError(err.message || 'Failed to load routine tasks');
+        if (!cancelled) {
+          setError(err.message || 'Failed to load routine tasks');
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
-    fetchRoutineData();
-  }, [id]);
+
+    void fetchRoutineData();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, effectiveChildId]);
 
   const toggleTask = async (taskId: string) => {
     if (!effectiveChildId) {
@@ -126,20 +148,53 @@ export default function RoutineDetailScreen() {
     }
     try {
       await completeRoutineTask({ taskId, childId: effectiveChildId });
-      
-      // Update local state
-      setRoutine(prev => ({
-        ...prev,
-        tasks: prev.tasks.map(task => 
-          task.id === taskId 
-            ? { ...task, completed: !task.completed }
-            : task
-        ),
-      }));
+
+      setRoutine((prev) => {
+        const tasks = prev.tasks.map((task) =>
+          task.id === taskId ? { ...task, completed: true } : task
+        );
+        const earnedPoints = tasks
+          .filter((t) => t.completed)
+          .reduce((sum, t) => sum + (t.points || 0), 0);
+        return { ...prev, tasks, earnedPoints };
+      });
     } catch (err: any) {
       console.error('Failed to complete task:', err);
       // You might want to show an error toast here
     }
+  };
+
+  const resetForTomorrow = () => {
+    if (!id || !effectiveChildId) return;
+    Alert.alert(
+      'Reset for tomorrow?',
+      'This clears saved completions for this routine for the selected child so tasks can be checked off again.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              setResetting(true);
+              try {
+                await deleteRoutineTaskCompletionsForChild(id, effectiveChildId);
+                setRoutine((prev) => ({
+                  ...prev,
+                  tasks: prev.tasks.map((t) => ({ ...t, completed: false })),
+                  earnedPoints: 0,
+                }));
+              } catch (e) {
+                console.error(e);
+                Alert.alert('Error', 'Could not reset completions. Try again.');
+              } finally {
+                setResetting(false);
+              }
+            })();
+          },
+        },
+      ]
+    );
   };
 
   const getCompletionPercentage = () => {
@@ -296,13 +351,12 @@ export default function RoutineDetailScreen() {
         )}
 
         <View style={styles.actionsContainer}>
-          <Button 
-            mode="contained" 
+          <Button
+            mode="contained"
             style={styles.actionButton}
-            onPress={() => {
-              // TODO: Reset routine for next day
-              console.log('Reset routine');
-            }}
+            onPress={resetForTomorrow}
+            loading={resetting}
+            disabled={resetting || routine.tasks.length === 0}
           >
             Reset for Tomorrow
           </Button>
