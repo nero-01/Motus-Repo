@@ -60,6 +60,14 @@ export default function ProfileScreen() {
 
   const profileFeatures = [
     {
+      id: 'family',
+      title: 'Family setup',
+      description: 'Create your family, members, children',
+      icon: '👪',
+      color: '#E0F2F1',
+      route: '/features/settings/family',
+    },
+    {
       id: 'co-parenting',
       title: 'Co-Parenting',
       description: 'Calendar, messages, expenses, and documents',

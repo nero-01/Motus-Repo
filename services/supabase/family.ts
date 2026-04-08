@@ -109,6 +109,54 @@ export async function getCurrentFamily(): Promise<Family | null> {
   }
 }
 
+/** Creates a family row and adds the current user as owner (requires `public.users` row for FK). */
+export async function createFamilyWithOwner(params: {
+  name: string;
+  description?: string;
+}): Promise<Family | null> {
+  try {
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+    if (authError || !user) {
+      console.error('createFamilyWithOwner: not authenticated', authError);
+      return null;
+    }
+
+    const { data: family, error: famError } = await supabase
+      .from('families')
+      .insert({
+        name: params.name.trim(),
+        description: params.description?.trim() || null,
+        created_by: user.id,
+      })
+      .select()
+      .single();
+
+    if (famError) {
+      console.error('createFamilyWithOwner: families insert', famError);
+      throw famError;
+    }
+
+    const { error: memError } = await supabase.from('family_members').insert({
+      family_id: family.id,
+      user_id: user.id,
+      role: 'owner',
+    });
+
+    if (memError) {
+      console.error('createFamilyWithOwner: family_members insert', memError);
+      throw memError;
+    }
+
+    return family as Family;
+  } catch (error) {
+    console.error('createFamilyWithOwner', error);
+    return null;
+  }
+}
+
 // Get family children
 export async function getFamilyChildren(familyId: string): Promise<Child[]> {
   try {

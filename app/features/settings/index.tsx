@@ -336,6 +336,15 @@ export default function SettingsScreen() {
           Family Management
         </Text>
 
+        <Button
+          mode="contained-tonal"
+          icon="account-group"
+          style={styles.familySetupNav}
+          onPress={() => router.push('/features/settings/family')}
+        >
+          Family setup & members
+        </Button>
+
         <Card style={styles.familyCard}>
           <Card.Content>
             <Text variant="titleMedium" style={styles.cardTitle}>
@@ -675,6 +684,9 @@ const styles = StyleSheet.create({
   sectionTitle: {
     marginBottom: 16,
     fontWeight: 'bold',
+  },
+  familySetupNav: {
+    marginBottom: 16,
   },
   familyCard: {
     marginBottom: 24,

@@ -82,7 +82,7 @@ export default function CoParentingScreen() {
           No family workspace yet
         </Text>
         <Text variant="bodyMedium" style={styles.noFamilyBody}>
-          Co-parenting tools need a family. Complete onboarding or join a family from Home, then come back here.
+          Create a family from Home (Family setup card) or Settings → Family setup & members, then return here.
         </Text>
         {error ? (
           <Text variant="bodySmall" style={styles.noFamilyError}>

@@ -4,6 +4,8 @@ import { Text, Card, Button } from 'react-native-paper';
 import { router } from 'expo-router';
 import { getGreeting } from '../../utils/greeting';
 import { useAuthStore } from '../../src/modules/auth/store/authStore';
+import { useFamilyStore } from '../../stores/familyStore';
+import { supabase } from '../../services/supabase/client';
 import {
   dashboardService,
   type DashboardStats,
@@ -12,6 +14,7 @@ import {
 
 export default function DashboardScreen() {
   const { logout, user } = useAuthStore();
+  const { currentFamily, isLoading: familyLoading, loadFamilies } = useFamilyStore();
   const [stats, setStats] = useState<DashboardStats>({
     routinesCompleted: 0,
     routinesRemaining: 0,
@@ -66,6 +69,17 @@ export default function DashboardScreen() {
   useEffect(() => {
     void loadDashboardData();
   }, [user?.id]);
+
+  useEffect(() => {
+    (async () => {
+      const {
+        data: { user: authUser },
+      } = await supabase.auth.getUser();
+      if (authUser?.id) {
+        await loadFamilies(authUser.id);
+      }
+    })();
+  }, [loadFamilies]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -131,6 +145,43 @@ export default function DashboardScreen() {
             </Button>
           </View>
         </View>
+
+        {!familyLoading && !currentFamily ? (
+          <Card style={styles.familySetupCard}>
+            <Card.Content>
+              <Text style={styles.familySetupTitle}>Set up your family</Text>
+              <Text style={styles.familySetupBody}>
+                Create a family workspace on your account, then add children and use co-parenting
+                features.
+              </Text>
+              <Button
+                mode="contained"
+                buttonColor="#006A60"
+                onPress={() => router.push('/features/settings/family')}
+              >
+                Family setup
+              </Button>
+            </Card.Content>
+          </Card>
+        ) : null}
+
+        {currentFamily ? (
+          <Card style={styles.familySetupCard}>
+            <Card.Content>
+              <Text style={styles.familySetupTitle}>{currentFamily.name}</Text>
+              <Text style={styles.familySetupBody}>
+                Manage members, children, and co-parenting from one place.
+              </Text>
+              <Button
+                mode="outlined"
+                textColor="#006A60"
+                onPress={() => router.push('/features/settings/family')}
+              >
+                Family settings
+              </Button>
+            </Card.Content>
+          </Card>
+        ) : null}
 
         {/* Quick Stats */}
         <View style={styles.statsContainer}>
@@ -327,6 +378,23 @@ const styles = StyleSheet.create({
     borderColor: '#ffffff',
     borderWidth: 1,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  familySetupCard: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    backgroundColor: '#fff',
+  },
+  familySetupTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+    color: '#333',
+  },
+  familySetupBody: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 12,
+    lineHeight: 20,
   },
   statsContainer: {
     flexDirection: 'row',

@@ -18,6 +18,13 @@ export default function SettingsLayout() {
         }} 
       />
       <Stack.Screen
+        name="family"
+        options={{
+          title: 'Family setup',
+          headerShown: true,
+        }}
+      />
+      <Stack.Screen
         name="export-data"
         options={{
           title: 'Export data',

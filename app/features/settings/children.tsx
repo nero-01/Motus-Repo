@@ -243,7 +243,8 @@ export default function ChildrenManagementScreen() {
       <View style={styles.loadingContainer}>
         <Text style={styles.noFamilyTitle}>No family workspace</Text>
         <Text style={styles.noFamilyBody}>
-          Add children after you join or create a family (onboarding / Home). You can then manage profiles here.
+          On Home, tap Family setup, or open Settings → Family setup & members to create your family.
+          Then you can add children here.
         </Text>
         {familyError ? (
           <Text style={styles.noFamilyError}>{familyError}</Text>
