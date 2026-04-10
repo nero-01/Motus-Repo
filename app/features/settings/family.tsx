@@ -128,6 +128,13 @@ export default function FamilySetupScreen() {
             >
               Manage children
             </Button>
+            <Button
+              mode="outlined"
+              style={styles.button}
+              onPress={() => router.push('/features/settings/family-dashboard')}
+            >
+              Open family dashboard
+            </Button>
             <Button mode="outlined" style={styles.button} onPress={() => router.push('/features/co-parenting')}>
               Open co-parenting
             </Button>

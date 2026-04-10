@@ -43,6 +43,7 @@ export default function FamilyDashboard({
     isLoading,
     error,
     loadFamilies,
+    loadFamily,
     refreshAllChildStats,
     addChild,
     removeChild,
@@ -63,10 +64,13 @@ export default function FamilyDashboard({
   const [inviteRole, setInviteRole] = useState<'parent' | 'guardian'>('parent');
 
   useEffect(() => {
-    if (user) {
-      loadFamilies(user.id);
+    if (user?.id) {
+      void loadFamilies(user.id);
+      return;
     }
-  }, [user]);
+    // Fallback for standalone module usage where auth store is not wired.
+    void loadFamily('1');
+  }, [user?.id, loadFamilies, loadFamily]);
 
   useEffect(() => {
     if (currentFamily) {
