@@ -24,15 +24,18 @@ import {
 import { useFamilyStore } from '../store/familyStore';
 import { useAuthStore } from '../../auth/store/authStore';
 import { Child, Parent } from '../types';
+import { FamilyService } from '../services/familyService';
 
 interface FamilyDashboardProps {
   onNavigateToChild?: (childId: string) => void;
   onNavigateToSettings?: () => void;
+  onNavigateToAnalytics?: () => void;
 }
 
 export default function FamilyDashboard({ 
   onNavigateToChild, 
-  onNavigateToSettings 
+  onNavigateToSettings,
+  onNavigateToAnalytics
 }: FamilyDashboardProps) {
   const {
     currentFamily,
@@ -55,6 +58,9 @@ export default function FamilyDashboard({
     gender: 'other' as 'male' | 'female' | 'other',
     interests: [] as string[]
   });
+  const [showInviteParentModal, setShowInviteParentModal] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<'parent' | 'guardian'>('parent');
 
   useEffect(() => {
     if (user) {
@@ -123,6 +129,40 @@ export default function FamilyDashboard({
           }
         }
       ]
+    );
+  };
+
+  const handleInviteParent = async () => {
+    if (!currentFamily) return;
+    const email = inviteEmail.trim().toLowerCase();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      Alert.alert('Error', 'Please enter a valid email address');
+      return;
+    }
+    if (currentFamily.parents.some((p) => p.email.toLowerCase() === email)) {
+      Alert.alert('Already added', 'This parent is already part of the family.');
+      return;
+    }
+    try {
+      await FamilyService.inviteParent(currentFamily.id, email, inviteRole);
+      setShowInviteParentModal(false);
+      setInviteEmail('');
+      setInviteRole('parent');
+      Alert.alert('Invite sent', `Invitation sent to ${email}.`);
+    } catch (e) {
+      console.error(e);
+      Alert.alert('Error', 'Failed to send invite');
+    }
+  };
+
+  const handleViewAnalytics = () => {
+    if (onNavigateToAnalytics) {
+      onNavigateToAnalytics();
+      return;
+    }
+    Alert.alert(
+      'Analytics',
+      'Analytics view is available from the main app analytics screen.'
     );
   };
 
@@ -316,7 +356,7 @@ export default function FamilyDashboard({
               mode="outlined"
               icon="account-multiple-plus"
               style={styles.actionButton}
-              onPress={() => {/* TODO: Add parent invite */}}
+              onPress={() => setShowInviteParentModal(true)}
             >
               Invite Parent
             </Button>
@@ -324,7 +364,7 @@ export default function FamilyDashboard({
               mode="outlined"
               icon="chart-line"
               style={styles.actionButton}
-              onPress={() => {/* TODO: View analytics */}}
+              onPress={handleViewAnalytics}
             >
               View Analytics
             </Button>
@@ -334,6 +374,48 @@ export default function FamilyDashboard({
 
       {/* Add Child Modal */}
       <Portal>
+        <Modal
+          visible={showInviteParentModal}
+          onDismiss={() => setShowInviteParentModal(false)}
+          contentContainerStyle={styles.modal}
+        >
+          <Text variant="headlineSmall" style={styles.modalTitle}>Invite Parent</Text>
+          <TextInput
+            label="Parent Email"
+            value={inviteEmail}
+            onChangeText={setInviteEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            style={styles.input}
+          />
+          <Text variant="bodyMedium" style={styles.label}>Role</Text>
+          <SegmentedButtons
+            value={inviteRole}
+            onValueChange={(value) => setInviteRole(value as 'parent' | 'guardian')}
+            buttons={[
+              { value: 'parent', label: 'Parent' },
+              { value: 'guardian', label: 'Guardian' }
+            ]}
+            style={styles.segmentedButtons}
+          />
+          <View style={styles.modalActions}>
+            <Button
+              mode="outlined"
+              onPress={() => setShowInviteParentModal(false)}
+              style={styles.modalButton}
+            >
+              Cancel
+            </Button>
+            <Button
+              mode="contained"
+              onPress={handleInviteParent}
+              style={styles.modalButton}
+            >
+              Send Invite
+            </Button>
+          </View>
+        </Modal>
+
         <Modal
           visible={showAddChildModal}
           onDismiss={() => setShowAddChildModal(false)}
