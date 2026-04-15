@@ -11,8 +11,8 @@ import {
 } from 'react-native';
 import { ActivityIndicator, Chip, Searchbar, FAB } from 'react-native-paper';
 import { router } from 'expo-router';
-import { ActivityService } from '../../../src/modules/activities/services/activityService';
-import { Activity, ActivityFilter, ActivityStats } from '../../../src/modules/activities/types';
+import { ActivityService } from '../../src/modules/activities/services/activityService';
+import { Activity, ActivityFilter, ActivityStats } from '../../src/modules/activities/types';
 
 export default function ActivitiesScreen() {
   const [activities, setActivities] = useState<Activity[]>([]);

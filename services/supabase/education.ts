@@ -190,7 +190,7 @@ export async function saveProgress({
       );
 
       const upsertPromise = supabase
-        .from('progress')
+        .from('worksheet_progress')
         .upsert({
           worksheet_id,
           child_id,

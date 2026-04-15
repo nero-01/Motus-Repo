@@ -1,25 +1,53 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
-import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 
+async function loadNotificationsModule() {
+  try {
+    return await import('expo-notifications');
+  } catch (error) {
+    console.warn('Notifications unavailable in this environment:', error);
+    return null;
+  }
+}
+
 export default function RemindersScreen() {
-  const [reminders, setReminders] = useState<any[]>([]);
+  const [reminders, setReminders] = useState<Array<{ identifier: string; content: { title?: string; body?: string } }>>([]);
   const router = useRouter();
 
   useEffect(() => {
-    loadReminders();
+    void loadReminders();
   }, []);
 
   const loadReminders = async () => {
+    const Notifications = await loadNotificationsModule();
+    if (!Notifications) {
+      setReminders([]);
+      return;
+    }
     const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-    setReminders(scheduled);
+    setReminders(scheduled as Array<{ identifier: string; content: { title?: string; body?: string } }>);
   };
 
   const handleCancelAll = async () => {
+    const Notifications = await loadNotificationsModule();
+    if (!Notifications) {
+      Alert.alert('Unavailable in Expo Go', 'Notifications require a development build on SDK 53+.');
+      return;
+    }
     await Notifications.cancelAllScheduledNotificationsAsync();
     setReminders([]);
     Alert.alert('Reminders cancelled', 'All scheduled reminders have been cancelled.');
+  };
+
+  const handleCancelOne = async (id: string) => {
+    const Notifications = await loadNotificationsModule();
+    if (!Notifications) {
+      Alert.alert('Unavailable in Expo Go', 'Notifications require a development build on SDK 53+.');
+      return;
+    }
+    await Notifications.cancelScheduledNotificationAsync(id);
+    await loadReminders();
   };
 
   return (
@@ -34,9 +62,25 @@ export default function RemindersScreen() {
               <Text style={{ fontWeight: 'bold' }}>{reminder.content.title}</Text>
               <Text>{reminder.content.body}</Text>
               <Text style={{ color: '#888', marginTop: 4, fontSize: 12 }}>ID: {reminder.identifier}</Text>
+              <TouchableOpacity
+                style={{ marginTop: 10, alignSelf: 'flex-start', backgroundColor: '#8E1B1B', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 4 }}
+                onPress={() => {
+                  void handleCancelOne(reminder.identifier);
+                }}
+              >
+                <Text style={{ color: '#fff', fontWeight: '600' }}>Cancel</Text>
+              </TouchableOpacity>
             </View>
           ))
         )}
+        <TouchableOpacity
+          style={{ marginTop: 8, backgroundColor: '#006A60', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 6 }}
+          onPress={() => {
+            void loadReminders();
+          }}
+        >
+          <Text style={{ color: '#fff', fontWeight: 'bold' }}>Refresh</Text>
+        </TouchableOpacity>
         <TouchableOpacity
           style={{ marginTop: 20, backgroundColor: '#B00020', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 6 }}
           onPress={handleCancelAll}

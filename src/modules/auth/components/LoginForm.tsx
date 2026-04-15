@@ -5,7 +5,7 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
-import { Text, TextInput, Button, HelperText, Divider } from 'react-native-paper';
+import { Text, TextInput, Button, HelperText } from 'react-native-paper';
 import { router } from 'expo-router';
 import { useAuthStore } from '../store/authStore';
 import { SocialAuthService } from '../services/socialAuthService';
@@ -67,7 +67,12 @@ export default function LoginForm() {
       router.replace('/(tabs)');
     } catch (err) {
       console.error(`${provider.name} login error:`, err);
-      Alert.alert('Error', `Failed to sign in with ${provider.name}. Please try again.`);
+      const message =
+        err instanceof Error ? err.message : `Failed to sign in with ${provider.name}. Please try again.`;
+      if (message.toLowerCase().includes('cancelled')) {
+        return;
+      }
+      Alert.alert('Error', message);
     } finally {
       setSocialLoading(null);
     }
@@ -86,7 +91,7 @@ export default function LoginForm() {
   const renderSocialButton = (provider: SocialLoginProvider) => (
     <SocialLoginButton
       key={provider.id}
-      provider={provider.id as 'google' | 'facebook' | 'twitter'}
+      provider={provider.id as 'google' | 'facebook'}
       onPress={() => handleSocialLogin(provider)}
       loading={socialLoading === provider.id}
       disabled={isLoading || !!socialLoading}
@@ -110,11 +115,11 @@ export default function LoginForm() {
           </View>
 
           <View style={styles.dividerRow}>
-            <Divider style={styles.dividerLine} />
+            <View style={styles.dividerLine} />
             <Text variant="bodyMedium" style={styles.dividerText}>
               or continue with email
             </Text>
-            <Divider style={styles.dividerLine} />
+            <View style={styles.dividerLine} />
           </View>
 
           {/* Email/Password Form */}
@@ -236,10 +241,11 @@ const styles = StyleSheet.create({
   },
   dividerLine: {
     flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: '#ccc',
   },
   dividerText: {
     color: '#666',
-    backgroundColor: '#f5f5f5',
     paddingHorizontal: 16,
   },
   form: {

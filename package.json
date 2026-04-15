@@ -11,7 +11,10 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "check:tab-bar": "node scripts/verify-tab-bar.mjs",
+    "merge-main": "git fetch origin main && git merge origin/main -m \"merge: origin/main\"",
+    "sync-main": "npm run merge-main && npm run check:tab-bar"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.0",

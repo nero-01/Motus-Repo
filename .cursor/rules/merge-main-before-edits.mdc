@@ -1,0 +1,24 @@
+---
+description: Merge origin/main before changing app code; verify tab bar after merge
+alwaysApply: true
+---
+
+# Merge `main` before feature work (prevents layout regressions)
+
+Stale branches often reintroduce **old tab bar** (purple `#6200ee`, emoji icons, no safe-area) and drop **`SafeAreaProvider`**. That is usually **not** intentional.
+
+## Before you edit `app/`, `services/`, or `stores/`
+
+1. **Merge latest main:**  
+   `git fetch origin main && git merge origin/main`  
+   Or: `npm run sync-main` (merges then runs tab bar checks).
+
+2. **If Git reports conflicts** in `app/(tabs)/_layout.tsx` or `app/_layout.tsx`:  
+   - Do **not** keep versions that use `#6200ee` or emoji `Text` tab icons.  
+   - Prefer the version that matches **`tab-bar-layout.mdc`** (teal `#006A60`, `MaterialCommunityIcons`, `useSafeAreaInsets`, `SafeAreaProvider` in root).
+
+3. **Before commit:** run **`npm run check:tab-bar`** — it must **pass**. If it fails, fix layouts until it passes.
+
+## When starting a new session on a feature branch
+
+Assume the branch is behind. **Merge `main` first**, then implement the task. This is the main recurring fix for “tab bar reverted again.”
