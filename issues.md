@@ -196,7 +196,7 @@ This file lists known issues and incomplete work across the app so you can track
 - **Priority:** P0 for launch
 - **Description:** For production builds, `EXPO_PUBLIC_APP_ENV=production`, `EXPO_PUBLIC_SUPABASE_URL`, and `EXPO_PUBLIC_SUPABASE_ANON_KEY` must be set in EAS Secrets (or CI), not only in local `config/env.ts` fallbacks.
 - **Fix:** Configure EAS Secrets (or equivalent) for production builds; document in SETUP_GUIDE or README.
-- **Status:** Documented in SETUP_GUIDE.md (section “Production builds (EAS) – required environment variables”) and referenced in README.md; EAS Secrets steps and variable table added.
+- **Status:** Documented in SETUP_GUIDE.md (section “Production builds (EAS) – required environment variables”) and referenced in README.md; EAS Secrets steps and variable table added. Enforced in app config (`config/env.ts` + `services/supabase/client.ts`) and CI/local command `npm run check:prod-env` (`scripts/check-production-env.mjs`).
 
 ---
 

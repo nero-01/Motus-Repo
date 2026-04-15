@@ -101,6 +101,7 @@ motustots/
 
 5. **Production builds (EAS)**  
    For production builds, set `EXPO_PUBLIC_APP_ENV`, `EXPO_PUBLIC_SUPABASE_URL`, and `EXPO_PUBLIC_SUPABASE_ANON_KEY` in **EAS Secrets** — see **SETUP_GUIDE.md** (section: Production builds – required environment variables).
+   You can validate locally/CI with `npm run check:prod-env`.
 
 6. **Start the development server**
    ```bash

@@ -104,6 +104,16 @@ For **production** builds, the app does not use fallback values from `config/env
 
 Secrets are injected at build time. Never commit production keys to the repo. See also **PLAY_STORE_READINESS.md** and **BETA_CHECKLIST.md**.
 
+**Validation command (recommended in CI):**
+
+Run before a production build:
+
+```bash
+npm run check:prod-env
+```
+
+This command fails if required production variables are missing or if `EXPO_PUBLIC_APP_ENV` is not `production`.
+
 ## 📱 Features Overview
 
 ### 🔐 Authentication
