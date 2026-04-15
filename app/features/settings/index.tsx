@@ -15,6 +15,7 @@ import {
   RadioButton,
 } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Notifications from 'expo-notifications';
 import { router, useFocusEffect } from 'expo-router';
 import {
   getCurrentFamily,
@@ -34,6 +35,7 @@ interface FamilyMember {
 }
 
 const PREFERENCES_STORAGE_KEY = 'motustots:settings:preferences';
+const NOTIFICATIONS_STORAGE_KEY = 'motustots:settings:notifications';
 
 function formatMemberName(m: SupabaseFamilyMember): string {
   const u = m.user;
@@ -174,6 +176,25 @@ export default function SettingsScreen() {
     })();
   }, []);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw) as { id: string; isEnabled: boolean }[];
+        if (!Array.isArray(parsed)) return;
+        setNotifications((prev) =>
+          prev.map((n) => {
+            const hit = parsed.find((x) => x.id === n.id);
+            return hit ? { ...n, isEnabled: !!hit.isEnabled } : n;
+          })
+        );
+      } catch {
+        /* ignore */
+      }
+    })();
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       let alive = true;
@@ -229,12 +250,36 @@ export default function SettingsScreen() {
     });
   };
 
-  const toggleNotification = (id: string) => {
-    setNotifications(prev => prev.map(notification =>
-      notification.id === id 
-        ? { ...notification, isEnabled: !notification.isEnabled }
-        : notification
-    ));
+  const persistNotificationsSnapshot = (next: NotificationSetting[]) => {
+    const snapshot = next.map((n) => ({ id: n.id, isEnabled: n.isEnabled }));
+    void AsyncStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(snapshot));
+  };
+
+  const toggleNotification = async (id: string) => {
+    const current = notifications.find((n) => n.id === id);
+    if (!current) return;
+
+    const nextEnabled = !current.isEnabled;
+    if (nextEnabled) {
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Notifications disabled',
+          'Please enable notifications in your device settings to receive alerts.'
+        );
+        return;
+      }
+    }
+
+    setNotifications((prev) => {
+      const next = prev.map((notification) =>
+        notification.id === id
+          ? { ...notification, isEnabled: nextEnabled }
+          : notification
+      );
+      persistNotificationsSnapshot(next);
+      return next;
+    });
   };
 
   const togglePreference = (id: string) => {
@@ -416,10 +461,19 @@ export default function SettingsScreen() {
                 </View>
                 <Switch 
                   value={notification.isEnabled} 
-                  onValueChange={() => toggleNotification(notification.id)}
+                  onValueChange={() => {
+                    void toggleNotification(notification.id);
+                  }}
                 />
               </View>
             ))}
+            <Button
+              mode="outlined"
+              style={styles.addButton}
+              onPress={() => router.push('/features/settings/reminders')}
+            >
+              Manage Scheduled Reminders
+            </Button>
           </Card.Content>
         </Card>
 
