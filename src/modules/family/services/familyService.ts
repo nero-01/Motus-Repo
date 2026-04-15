@@ -102,6 +102,18 @@ export class FamilyService {
       difficulty: 'medium'
     }
   ];
+  private static familyInvites: FamilyInvite[] = [];
+
+  static async getFamilyInvites(
+    familyId: string,
+    status?: FamilyInvite['status']
+  ): Promise<FamilyInvite[]> {
+    const invites = this.familyInvites.filter((invite) => invite.familyId === familyId);
+    if (!status) {
+      return invites;
+    }
+    return invites.filter((invite) => invite.status === status);
+  }
 
   static async getFamily(familyId: string): Promise<Family | null> {
     return this.families.find(f => f.id === familyId) || null;
@@ -198,17 +210,37 @@ export class FamilyService {
   }
 
   static async inviteParent(familyId: string, email: string, role: 'parent' | 'guardian'): Promise<FamilyInvite> {
+    const family = this.families.find((f) => f.id === familyId);
+    if (!family) {
+      throw new Error('Family not found');
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    if (family.parents.some((parent) => parent.email.toLowerCase() === normalizedEmail)) {
+      throw new Error('Parent already belongs to this family');
+    }
+
+    const existingPendingInvite = this.familyInvites.some(
+      (invite) =>
+        invite.familyId === familyId &&
+        invite.email.toLowerCase() === normalizedEmail &&
+        invite.status === 'pending'
+    );
+    if (existingPendingInvite) {
+      throw new Error('A pending invite already exists for this email');
+    }
+
     const invite: FamilyInvite = {
       id: Date.now().toString(),
       familyId,
-      email,
+      email: normalizedEmail,
       role,
       status: 'pending',
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days
       createdAt: new Date().toISOString()
     };
 
-    // In a real app, this would be saved to the database
+    this.familyInvites.push(invite);
     return invite;
   }
 

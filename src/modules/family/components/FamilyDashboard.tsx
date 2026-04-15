@@ -23,7 +23,7 @@ import {
 } from 'react-native-paper';
 import { useFamilyStore } from '../store/familyStore';
 import { useAuthStore } from '../../auth/store/authStore';
-import { Child, Parent } from '../types';
+import { Child, FamilyInvite, Parent } from '../types';
 import { FamilyService } from '../services/familyService';
 
 interface FamilyDashboardProps {
@@ -62,6 +62,7 @@ export default function FamilyDashboard({
   const [showInviteParentModal, setShowInviteParentModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'parent' | 'guardian'>('parent');
+  const [pendingInvites, setPendingInvites] = useState<FamilyInvite[]>([]);
 
   useEffect(() => {
     if (user?.id) {
@@ -76,6 +77,24 @@ export default function FamilyDashboard({
     if (currentFamily) {
       refreshAllChildStats();
     }
+  }, [currentFamily]);
+
+  useEffect(() => {
+    if (!currentFamily) {
+      setPendingInvites([]);
+      return;
+    }
+
+    const loadPendingInvites = async () => {
+      try {
+        const invites = await FamilyService.getFamilyInvites(currentFamily.id, 'pending');
+        setPendingInvites(invites);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    void loadPendingInvites();
   }, [currentFamily]);
 
   const handleRefresh = async () => {
@@ -148,14 +167,16 @@ export default function FamilyDashboard({
       return;
     }
     try {
-      await FamilyService.inviteParent(currentFamily.id, email, inviteRole);
+      const invite = await FamilyService.inviteParent(currentFamily.id, email, inviteRole);
+      setPendingInvites((prev) => [invite, ...prev]);
       setShowInviteParentModal(false);
       setInviteEmail('');
       setInviteRole('parent');
       Alert.alert('Invite sent', `Invitation sent to ${email}.`);
     } catch (e) {
       console.error(e);
-      Alert.alert('Error', 'Failed to send invite');
+      const message = e instanceof Error ? e.message : 'Failed to send invite';
+      Alert.alert('Error', message);
     }
   };
 
@@ -342,6 +363,24 @@ export default function FamilyDashboard({
               </Card.Content>
             </Card>
           ))}
+          {pendingInvites.length > 0 ? (
+            <Card style={styles.pendingCard}>
+              <Card.Content>
+                <Text variant="titleMedium">Pending Invites</Text>
+                {pendingInvites.map((invite) => (
+                  <View key={invite.id} style={styles.pendingInviteRow}>
+                    <View style={styles.pendingInviteInfo}>
+                      <Text variant="bodyLarge">{invite.email}</Text>
+                      <Text variant="bodySmall" style={styles.pendingInviteMeta}>
+                        {invite.role} • expires {new Date(invite.expiresAt).toLocaleDateString()}
+                      </Text>
+                    </View>
+                    <Chip compact>Pending</Chip>
+                  </View>
+                ))}
+              </Card.Content>
+            </Card>
+          ) : null}
         </View>
 
         {/* Quick Actions */}
@@ -572,6 +611,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     elevation: 1,
   },
+  pendingCard: {
+    marginTop: 8,
+    elevation: 1,
+  },
   parentHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -583,6 +626,22 @@ const styles = StyleSheet.create({
   roleChip: {
     marginTop: 4,
     alignSelf: 'flex-start',
+  },
+  pendingInviteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#e0e0e0',
+  },
+  pendingInviteInfo: {
+    flex: 1,
+    marginRight: 12,
+  },
+  pendingInviteMeta: {
+    color: '#666',
+    marginTop: 2,
   },
   quickActions: {
     flexDirection: 'row',
