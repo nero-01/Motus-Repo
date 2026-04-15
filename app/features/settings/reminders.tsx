@@ -1,28 +1,51 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
-import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 
+async function loadNotificationsModule() {
+  try {
+    return await import('expo-notifications');
+  } catch (error) {
+    console.warn('Notifications unavailable in this environment:', error);
+    return null;
+  }
+}
+
 export default function RemindersScreen() {
-  const [reminders, setReminders] = useState<Notifications.NotificationRequest[]>([]);
+  const [reminders, setReminders] = useState<Array<{ identifier: string; content: { title?: string; body?: string } }>>([]);
   const router = useRouter();
 
   useEffect(() => {
-    loadReminders();
+    void loadReminders();
   }, []);
 
   const loadReminders = async () => {
+    const Notifications = await loadNotificationsModule();
+    if (!Notifications) {
+      setReminders([]);
+      return;
+    }
     const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-    setReminders(scheduled);
+    setReminders(scheduled as Array<{ identifier: string; content: { title?: string; body?: string } }>);
   };
 
   const handleCancelAll = async () => {
+    const Notifications = await loadNotificationsModule();
+    if (!Notifications) {
+      Alert.alert('Unavailable in Expo Go', 'Notifications require a development build on SDK 53+.');
+      return;
+    }
     await Notifications.cancelAllScheduledNotificationsAsync();
     setReminders([]);
     Alert.alert('Reminders cancelled', 'All scheduled reminders have been cancelled.');
   };
 
   const handleCancelOne = async (id: string) => {
+    const Notifications = await loadNotificationsModule();
+    if (!Notifications) {
+      Alert.alert('Unavailable in Expo Go', 'Notifications require a development build on SDK 53+.');
+      return;
+    }
     await Notifications.cancelScheduledNotificationAsync(id);
     await loadReminders();
   };

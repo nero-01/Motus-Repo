@@ -1,9 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { View, ScrollView, StyleSheet, Text, TouchableOpacity, Image, Alert } from 'react-native';
-import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import ParentSheetImage from '../../assets/parent_involvement_sheet_winter.png';
 import * as ImagePicker from 'expo-image-picker';
+
+async function loadNotificationsModule() {
+  try {
+    return await import('expo-notifications');
+  } catch (error) {
+    console.warn('Notifications unavailable in this environment:', error);
+    return null;
+  }
+}
 
 export default function RemindersTabScreen() {
   const [remindersEnabled, setRemindersEnabled] = useState(false);
@@ -12,30 +20,36 @@ export default function RemindersTabScreen() {
 
   // Set up notification handler
   useEffect(() => {
-    // Configure how notifications are handled when app is in foreground
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-        shouldShowBanner: true,
-        shouldShowList: true,
-      }),
-    });
+    let notificationListener: { remove: () => void } | null = null;
+    let responseListener: { remove: () => void } | null = null;
+    let mounted = true;
 
-    // Listen for notifications when app is in foreground
-    const notificationListener = Notifications.addNotificationReceivedListener(notification => {
-      console.log('Notification received in foreground:', notification);
-    });
+    void (async () => {
+      const Notifications = await loadNotificationsModule();
+      if (!mounted || !Notifications) {
+        return;
+      }
+      Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldShowAlert: true,
+          shouldPlaySound: true,
+          shouldSetBadge: false,
+          shouldShowBanner: true,
+          shouldShowList: true,
+        }),
+      });
 
-    // Listen for notification responses (when user taps notification)
-    const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
-      console.log('Notification response received:', response);
-    });
-
+      notificationListener = Notifications.addNotificationReceivedListener((notification) => {
+        console.log('Notification received in foreground:', notification);
+      });
+      responseListener = Notifications.addNotificationResponseReceivedListener((response) => {
+        console.log('Notification response received:', response);
+      });
+    })();
     return () => {
-      notificationListener.remove();
-      responseListener.remove();
+      mounted = false;
+      notificationListener?.remove();
+      responseListener?.remove();
     };
   }, []);
 
@@ -50,6 +64,11 @@ export default function RemindersTabScreen() {
 
   const handleEnableReminders = async () => {
     try {
+      const Notifications = await loadNotificationsModule();
+      if (!Notifications) {
+        Alert.alert('Unavailable in Expo Go', 'Notifications require a development build on SDK 53+.');
+        return;
+      }
       console.log('Requesting notification permissions...');
       const { status } = await Notifications.requestPermissionsAsync();
       console.log('Permission status:', status);
@@ -111,6 +130,11 @@ export default function RemindersTabScreen() {
 
   const handleTestNotification = async () => {
     try {
+      const Notifications = await loadNotificationsModule();
+      if (!Notifications) {
+        Alert.alert('Unavailable in Expo Go', 'Notifications require a development build on SDK 53+.');
+        return;
+      }
       const { status } = await Notifications.requestPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission required', 'Please enable notifications in your settings.');
@@ -140,6 +164,11 @@ export default function RemindersTabScreen() {
 
   const checkScheduledNotifications = async () => {
     try {
+      const Notifications = await loadNotificationsModule();
+      if (!Notifications) {
+        Alert.alert('Unavailable in Expo Go', 'Notifications require a development build on SDK 53+.');
+        return;
+      }
       const scheduled = await Notifications.getAllScheduledNotificationsAsync();
       console.log('Currently scheduled notifications:', scheduled);
       Alert.alert('Scheduled Notifications', `Found ${scheduled.length} scheduled notifications. Check console for details.`);
@@ -150,7 +179,12 @@ export default function RemindersTabScreen() {
   };
 
   const resetRemindersState = () => {
-    void Notifications.cancelAllScheduledNotificationsAsync();
+    void (async () => {
+      const Notifications = await loadNotificationsModule();
+      if (Notifications) {
+        await Notifications.cancelAllScheduledNotificationsAsync();
+      }
+    })();
     setRemindersEnabled(false);
     Alert.alert('State Reset', 'Reminders state has been reset. You can now enable reminders again.');
   };

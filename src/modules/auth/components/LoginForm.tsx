@@ -115,19 +115,11 @@ export default function LoginForm() {
           </View>
 
           <View style={styles.dividerRow}>
-<<<<<<< HEAD
             <View style={styles.dividerLine} />
             <Text variant="bodyMedium" style={styles.dividerText}>
               or continue with email
             </Text>
             <View style={styles.dividerLine} />
-=======
-            <Divider style={styles.dividerLine} />
-            <Text variant="bodyMedium" style={styles.dividerText}>
-              or continue with email
-            </Text>
-            <Divider style={styles.dividerLine} />
->>>>>>> nero-01/issue22
           </View>
 
           {/* Email/Password Form */}
@@ -242,18 +234,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   dividerRow: {
-<<<<<<< HEAD
-    flexDirection: 'row',
-    alignItems: 'center',
-=======
->>>>>>> nero-01/issue22
     marginVertical: 24,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-  },
-  dividerLine: {
-    flex: 1,
   },
   dividerLine: {
     flex: 1,
