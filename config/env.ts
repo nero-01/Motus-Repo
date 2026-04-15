@@ -31,6 +31,9 @@ export const ENV = {
   // Google Calendar API (for future use)
   GOOGLE_CLIENT_ID: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '',
   GOOGLE_CLIENT_SECRET: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_SECRET || '',
+  GOOGLE_VISION_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_VISION_API_KEY || '',
+  PRIVACY_POLICY_URL:
+    process.env.EXPO_PUBLIC_PRIVACY_POLICY_URL || 'https://motustots.com/privacy',
 
   // App Configuration
   APP_ENV,

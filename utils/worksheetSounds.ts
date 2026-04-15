@@ -4,7 +4,7 @@
  * Victory/defeat sounds use victory.mp3/defeat.mp3 if available, otherwise fall back to success/wrong.
  */
 
-import { Audio } from 'expo-av';
+import { Audio, type AVPlaybackStatus } from 'expo-av';
 
 const VOLUME = 0.5;
 
@@ -50,7 +50,7 @@ async function playLocalSound(source: number): Promise<void> {
     await ensureAudioMode();
     const { sound } = await Audio.Sound.createAsync(source);
     await sound.setVolumeAsync(VOLUME);
-    sound.setOnPlaybackStatusUpdate((status) => {
+    sound.setOnPlaybackStatusUpdate((status: AVPlaybackStatus) => {
       if (status.isLoaded && 'didJustFinish' in status && status.didJustFinish) {
         sound.unloadAsync().catch(() => {});
       }

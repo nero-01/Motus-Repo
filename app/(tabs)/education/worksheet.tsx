@@ -1480,6 +1480,12 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 6,
   },
+  addReviewItemAnswer: {
+    fontSize: 15,
+    color: '#333',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
   addReviewItemResult: {},
   addReviewCorrectText: {
     fontSize: 15,
