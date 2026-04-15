@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView, Linking } from 'react-native';
 import { Text, Card, List, Divider } from 'react-native-paper';
 import { router } from 'expo-router';
 import Constants from 'expo-constants';
-import { PRIVACY_POLICY_URL } from './supportConstants';
+import { PRIVACY_POLICY_URL } from '../../../constants/support';
 
 function appVersion(): string {
   return (

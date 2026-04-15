@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, ScrollView, Linking, Alert } from 'react-native';
 import { Text, Card, Button } from 'react-native-paper';
-import { SUPPORT_EMAIL } from './supportConstants';
+import { SUPPORT_EMAIL } from '../../../constants/support';
 
 export default function ContactSupportScreen() {
   const subject = encodeURIComponent('MotusTots support request');

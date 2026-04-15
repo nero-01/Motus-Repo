@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, ScrollView, Linking, Alert } from 'react-native';
 import { Text, Card, List, Divider, Button } from 'react-native-paper';
-import { HELP_CENTER_URL, SUPPORT_EMAIL } from './supportConstants';
+import { HELP_CENTER_URL, SUPPORT_EMAIL } from '../../../constants/support';
 
 const FAQS = [
   {
