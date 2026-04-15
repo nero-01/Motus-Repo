@@ -34,8 +34,8 @@ export default function RemindersTabScreen() {
     });
 
     return () => {
-      Notifications.removeNotificationSubscription(notificationListener);
-      Notifications.removeNotificationSubscription(responseListener);
+      notificationListener.remove();
+      responseListener.remove();
     };
   }, []);
 
@@ -60,6 +60,7 @@ export default function RemindersTabScreen() {
       }
 
       console.log('Scheduling notifications...');
+      await Notifications.cancelAllScheduledNotificationsAsync();
       const now = new Date();
       let scheduledCount = 0;
       
@@ -149,6 +150,7 @@ export default function RemindersTabScreen() {
   };
 
   const resetRemindersState = () => {
+    void Notifications.cancelAllScheduledNotificationsAsync();
     setRemindersEnabled(false);
     Alert.alert('State Reset', 'Reminders state has been reset. You can now enable reminders again.');
   };
