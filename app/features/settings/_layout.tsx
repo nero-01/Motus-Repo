@@ -52,6 +52,13 @@ export default function SettingsLayout() {
           headerShown: true,
         }}
       />
+      <Stack.Screen
+        name="privacy"
+        options={{
+          title: 'Privacy settings',
+          headerShown: true,
+        }}
+      />
     </Stack>
   );
 }

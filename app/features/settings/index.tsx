@@ -538,10 +538,7 @@ export default function SettingsScreen() {
               description="Manage data sharing and privacy"
               left={(props) => <Text style={{ fontSize: 20, color: '#666' }}>🛡️</Text>}
               right={(props) => <Text style={{ fontSize: 16, color: '#666' }}>▶️</Text>}
-              onPress={() => {
-                // TODO: Navigate to privacy settings
-                console.log('Privacy settings');
-              }}
+              onPress={() => router.push('/features/settings/privacy')}
             />
             <Divider />
             <List.Item
