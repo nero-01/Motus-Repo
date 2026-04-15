@@ -67,7 +67,12 @@ export default function LoginForm() {
       router.replace('/(tabs)');
     } catch (err) {
       console.error(`${provider.name} login error:`, err);
-      Alert.alert('Error', `Failed to sign in with ${provider.name}. Please try again.`);
+      const message =
+        err instanceof Error ? err.message : `Failed to sign in with ${provider.name}. Please try again.`;
+      if (message.toLowerCase().includes('cancelled')) {
+        return;
+      }
+      Alert.alert('Error', message);
     } finally {
       setSocialLoading(null);
     }
@@ -86,7 +91,7 @@ export default function LoginForm() {
   const renderSocialButton = (provider: SocialLoginProvider) => (
     <SocialLoginButton
       key={provider.id}
-      provider={provider.id as 'google' | 'facebook' | 'twitter'}
+      provider={provider.id as 'google' | 'facebook'}
       onPress={() => handleSocialLogin(provider)}
       loading={socialLoading === provider.id}
       disabled={isLoading || !!socialLoading}
@@ -109,11 +114,13 @@ export default function LoginForm() {
             {SocialAuthService.socialProviders.map(renderSocialButton)}
           </View>
 
-          <Divider style={styles.divider}>
+          <View style={styles.dividerRow}>
+            <Divider style={styles.dividerLine} />
             <Text variant="bodyMedium" style={styles.dividerText}>
               or continue with email
             </Text>
-          </Divider>
+            <Divider style={styles.dividerLine} />
+          </View>
 
           {/* Email/Password Form */}
           <View style={styles.form}>
@@ -226,8 +233,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 8,
   },
-  divider: {
+  dividerRow: {
     marginVertical: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  dividerLine: {
+    flex: 1,
   },
   dividerText: {
     color: '#666',

@@ -1,15 +1,10 @@
-export interface User {
-  id: string
-  email: string
-  name?: string
-  avatar_url?: string
-  created_at: string
-  updated_at: string
-}
+import type { Session, User as SupabaseUser } from '@supabase/supabase-js'
+
+export type User = SupabaseUser
 
 export interface AuthState {
   user: User | null
-  session: any | null
+  session: Session | null
   loading: boolean
   error: string | null
 }
@@ -27,7 +22,7 @@ export interface RegisterCredentials {
 
 export interface AuthContextType {
   user: User | null
-  session: any | null
+  session: Session | null
   loading: boolean
   error: string | null
   login: (credentials: LoginCredentials) => Promise<void>
