@@ -114,11 +114,13 @@ export default function LoginForm() {
             {SocialAuthService.socialProviders.map(renderSocialButton)}
           </View>
 
-          <Divider style={styles.divider}>
+          <View style={styles.dividerRow}>
+            <Divider style={styles.dividerLine} />
             <Text variant="bodyMedium" style={styles.dividerText}>
               or continue with email
             </Text>
-          </Divider>
+            <Divider style={styles.dividerLine} />
+          </View>
 
           {/* Email/Password Form */}
           <View style={styles.form}>
@@ -234,10 +236,17 @@ const styles = StyleSheet.create({
   divider: {
     marginVertical: 24,
   },
+  dividerRow: {
+    marginVertical: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  dividerLine: {
+    flex: 1,
+  },
   dividerText: {
     color: '#666',
-    backgroundColor: '#f5f5f5',
-    paddingHorizontal: 16,
   },
   form: {
     gap: 16,

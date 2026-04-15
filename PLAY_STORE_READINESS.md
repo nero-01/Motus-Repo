@@ -35,7 +35,7 @@ This checklist tracks launch-blocking Play Console metadata and policy work.
 
 - In-app privacy policy entry point exists at:
   - `app/features/settings/about.tsx`
-  - URL source: `app/features/settings/supportConstants.ts` (`PRIVACY_POLICY_URL`)
+  - URL source: `constants/support.ts` (`PRIVACY_POLICY_URL`)
 - Default policy URL:
   - `https://motustots.com/privacy`
 - Override with env var when needed:
