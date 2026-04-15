@@ -16,6 +16,7 @@ export default function WorksheetsScreen() {
       case 'letter_tracing':
         return (
           <LetterTracing
+            letter="A"
             onComplete={(accuracy) => {
               console.log('Letter Tracing completed with accuracy:', accuracy);
               // Handle completion
