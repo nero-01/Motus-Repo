@@ -5,7 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
 interface SocialLoginButtonProps {
-  provider: 'google' | 'facebook' | 'twitter';
+  provider: 'google' | 'facebook';
   onPress: () => void;
   loading?: boolean;
   disabled?: boolean;
@@ -34,15 +34,6 @@ export default function SocialLoginButton({
           color: '#1877F2',
           icon: 'facebook',
           backgroundColor: '#1877F2',
-          textColor: '#ffffff',
-        };
-
-      case 'twitter':
-        return {
-          name: 'Twitter',
-          color: '#1DA1F2',
-          icon: 'twitter',
-          backgroundColor: '#1DA1F2',
           textColor: '#ffffff',
         };
       default:

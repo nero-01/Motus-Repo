@@ -67,7 +67,12 @@ export default function LoginForm() {
       router.replace('/(tabs)');
     } catch (err) {
       console.error(`${provider.name} login error:`, err);
-      Alert.alert('Error', `Failed to sign in with ${provider.name}. Please try again.`);
+      const message =
+        err instanceof Error ? err.message : `Failed to sign in with ${provider.name}. Please try again.`;
+      if (message.toLowerCase().includes('cancelled')) {
+        return;
+      }
+      Alert.alert('Error', message);
     } finally {
       setSocialLoading(null);
     }
@@ -86,7 +91,7 @@ export default function LoginForm() {
   const renderSocialButton = (provider: SocialLoginProvider) => (
     <SocialLoginButton
       key={provider.id}
-      provider={provider.id as 'google' | 'facebook' | 'twitter'}
+      provider={provider.id}
       onPress={() => handleSocialLogin(provider)}
       loading={socialLoading === provider.id}
       disabled={isLoading || !!socialLoading}
