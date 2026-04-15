@@ -1,5 +1,13 @@
 import React from 'react';
-import { View, Text, StyleSheet, ImageBackground, Dimensions, StatusBar } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ImageBackground,
+  Dimensions,
+  StatusBar,
+  Platform,
+} from 'react-native';
 import { Button } from 'react-native-paper';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,11 +16,11 @@ const { width, height } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const handleGetStarted = () => {
-    router.push('/(auth)/register');
+    router.replace('/(auth)/register');
   };
 
   const handleSignIn = () => {
-    router.push('/(auth)/login');
+    router.replace('/(auth)/login');
   };
 
   return (
@@ -47,6 +55,7 @@ export default function HomeScreen() {
                   style={styles.getStartedButton}
                   contentStyle={styles.buttonContent}
                   labelStyle={styles.buttonLabel}
+                  compact={false}
                 >
                   Get Started
                 </Button>
@@ -57,6 +66,7 @@ export default function HomeScreen() {
                   style={styles.signInButton}
                   contentStyle={styles.buttonContent}
                   labelStyle={styles.signInButtonLabel}
+                  compact={false}
                 >
                   I have an account
                 </Button>
@@ -139,24 +149,31 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.3)',
   },
   buttonContent: {
-    paddingVertical: 16,
-    height: 64,
-    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 52,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
   },
   buttonLabel: {
     fontSize: 18,
+    lineHeight: 22,
     fontWeight: '700',
+    letterSpacing: 0,
     color: '#ffffff',
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 3,
+    textAlign: 'center',
+    marginVertical: 0,
+    ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}),
   },
   signInButtonLabel: {
     fontSize: 18,
+    lineHeight: 22,
     fontWeight: '700',
+    letterSpacing: 0,
     color: '#ffffff',
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 3,
+    textAlign: 'center',
+    marginVertical: 0,
+    ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}),
   },
 }); 
