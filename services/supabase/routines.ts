@@ -138,6 +138,59 @@ export async function reorderRoutineTasks(tasks: { id: string; order_index: numb
   if (error) throw error;
 }
 
+function isSameLocalCalendarDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+/** Which tasks in this routine are "done" for the current local calendar day (by completed_at). */
+export async function getRoutineTasksCompletionToday(
+  routineId: string,
+  childId: string
+): Promise<Record<string, boolean>> {
+  const tasks = await getRoutineTasks(routineId);
+  if (tasks.length === 0) return {};
+  const taskIds = tasks.map((t) => t.id);
+  const { data, error } = await supabase
+    .from('task_completions')
+    .select('task_id, completed_at')
+    .eq('child_id', childId)
+    .in('task_id', taskIds);
+
+  if (error) throw error;
+
+  const out: Record<string, boolean> = {};
+  for (const t of tasks) out[t.id] = false;
+  const now = new Date();
+  for (const row of data || []) {
+    const d = new Date(row.completed_at);
+    if (isSameLocalCalendarDay(d, now)) {
+      out[row.task_id] = true;
+    }
+  }
+  return out;
+}
+
+/** Remove completion rows for all tasks in this routine for this child (e.g. end-of-day reset). */
+export async function deleteRoutineTaskCompletionsForChild(
+  routineId: string,
+  childId: string
+): Promise<void> {
+  const tasks = await getRoutineTasks(routineId);
+  if (tasks.length === 0) return;
+  const taskIds = tasks.map((t) => t.id);
+  const { error } = await supabase
+    .from('task_completions')
+    .delete()
+    .eq('child_id', childId)
+    .in('task_id', taskIds);
+
+  if (error) throw error;
+}
+
 // Mark a routine task as complete for a child
 export async function completeRoutineTask({ taskId, childId, notes }: { taskId: string; childId: string; notes?: string }): Promise<TaskCompletion> {
   // First get the task to know the points reward

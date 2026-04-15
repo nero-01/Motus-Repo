@@ -1,52 +1,29 @@
 import { Tabs } from 'expo-router';
-import { Platform, Text, View, StyleSheet } from 'react-native';
+import { Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 
-function MoreIcon({ color }: { color: string }) {
-  return (
-    <View style={iconStyles.dotsRow}>
-      <View style={[iconStyles.dot, { backgroundColor: color }]} />
-      <View style={[iconStyles.dot, { backgroundColor: color }]} />
-      <View style={[iconStyles.dot, { backgroundColor: color }]} />
-    </View>
-  );
-}
-
-const iconStyles = StyleSheet.create({
-  dotsRow: {
-    flexDirection: 'row',
-    gap: 4,
-    alignItems: 'center',
-  },
-  dot: {
-    width: 5,
-    height: 5,
-    borderRadius: 3,
-  },
-});
+const TAB_ACTIVE = '#006A60';
+const TAB_INACTIVE = '#888888';
 
 export default function TabLayout() {
-  const isAndroid = Platform.OS === 'android';
+  const insets = useSafeAreaInsets();
+  const bottomInset = Platform.OS === 'ios' ? insets.bottom : Math.max(insets.bottom, 8);
+  const tabBarHeight = 56 + bottomInset;
 
   return (
     <Tabs
-      initialRouteName="index"
       screenOptions={{
-        tabBarActiveTintColor: '#6200ee',
-        tabBarInactiveTintColor: '#666',
+        tabBarActiveTintColor: TAB_ACTIVE,
+        tabBarInactiveTintColor: TAB_INACTIVE,
         headerShown: true,
         tabBarStyle: {
-          height: isAndroid ? 78 : 64,
-          paddingBottom: isAndroid ? 18 : 8,
-          paddingTop: 6,
-          marginBottom: isAndroid ? 18 : 0,
+          height: tabBarHeight,
+          paddingBottom: bottomInset,
+          paddingTop: 8,
           backgroundColor: '#ffffff',
-          borderTopWidth: 0.5,
+          borderTopWidth: 1,
           borderTopColor: '#e0e0e0',
-          elevation: 12,
-          shadowColor: '#00000040',
-          shadowOpacity: 0.1,
-          shadowOffset: { width: 0, height: -2 },
-          shadowRadius: 6,
         },
         tabBarLabelStyle: {
           fontSize: 11,
@@ -56,22 +33,23 @@ export default function TabLayout() {
         tabBarIconStyle: {
           marginBottom: 2,
         },
-      }}>
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>🏠</Text>
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="home-outline" size={size ?? 24} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="activities/index"
+        name="education/index"
         options={{
-          title: 'Activities',
-          tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>⭐</Text>
+          title: 'Education',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="book-open-outline" size={size ?? 24} color={color} />
           ),
         }}
       />
@@ -79,17 +57,18 @@ export default function TabLayout() {
         name="reminders/index"
         options={{
           title: 'Reminders',
-          tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>🔔</Text>
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="bell-outline" size={size ?? 24} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="education"
+        name="activities/index"
         options={{
-          title: 'Education',
-          tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>📚</Text>
+          title: 'Activities',
+          headerTitle: 'Activities',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="star-outline" size={size ?? 24} color={color} />
           ),
         }}
       />
@@ -97,7 +76,10 @@ export default function TabLayout() {
         name="profile/index"
         options={{
           title: 'More',
-          tabBarIcon: ({ color }) => <MoreIcon color={color} />,
+          headerTitle: 'More',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="dots-horizontal" size={size ?? 24} color={color} />
+          ),
         }}
       />
     </Tabs>

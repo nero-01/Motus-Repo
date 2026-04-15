@@ -1,51 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl, ActivityIndicator, Alert, TouchableOpacity, Dimensions } from 'react-native';
-import { Text, Card, Button, Surface, Chip, Avatar, List, Divider } from 'react-native-paper';
-import { Link, router } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, StyleSheet, ScrollView, RefreshControl, ActivityIndicator, Alert } from 'react-native';
+import { Text, Card, Button } from 'react-native-paper';
+import { router } from 'expo-router';
 import { getGreeting } from '../../utils/greeting';
 import { useAuthStore } from '../../src/modules/auth/store/authStore';
-
-const { width } = Dimensions.get('window');
-const HORIZONTAL_PADDING = 20;
-const ACTION_GAP = 10;
-const cardWidth = (width - HORIZONTAL_PADDING * 2 - ACTION_GAP) / 2; // tighter two-column layout
-
-interface DashboardStats {
-  routinesCompleted: number;
-  routinesRemaining: number;
-  mealsPlanned: number;
-  worksheetsAvailable: number;
-  newMessages: number;
-  expensesToReview: number;
-  weeklyProgress: number;
-  streakDays: number;
-  activeRoutines: number;
-}
-
-interface QuickAction {
-  id: string;
-  title: string;
-  subtitle: string;
-  icon: string;
-  color: string;
-  gradient: string[];
-  route: string;
-}
-
-interface RecentActivity {
-  id: string;
-  type: 'routine' | 'meal' | 'education' | 'message';
-  title: string;
-  description: string;
-  time: string;
-  icon: string;
-  color: string;
-}
+import { useFamilyStore } from '../../stores/familyStore';
+import { supabase } from '../../services/supabase/client';
+import {
+  dashboardService,
+  type DashboardStats,
+  type RecentActivity,
+} from '../../services/supabase/dashboard';
 
 export default function DashboardScreen() {
-  const { logout } = useAuthStore();
+  const { logout, user } = useAuthStore();
+  const { currentFamily, isLoading: familyLoading, loadFamilies } = useFamilyStore();
   const [stats, setStats] = useState<DashboardStats>({
     routinesCompleted: 0,
     routinesRemaining: 0,
@@ -56,123 +25,41 @@ export default function DashboardScreen() {
     weeklyProgress: 0,
     streakDays: 0,
     activeRoutines: 0,
+    childrenCount: 0,
   });
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const quickActions: QuickAction[] = [
-    {
-      id: '1',
-      title: 'Activities',
-      subtitle: 'Fun & Games',
-      icon: '🎯',
-      color: '#FF6B6B',
-      gradient: ['#FF6B6B', '#FF8E8E'],
-      route: '/(tabs)/activities',
-    },
-    {
-      id: '2',
-      title: 'Education',
-      subtitle: 'Learning Hub',
-      icon: '📚',
-      color: '#4ECDC4',
-      gradient: ['#4ECDC4', '#6EE5DC'],
-      route: '/(tabs)/education',
-    },
-    {
-      id: '3',
-      title: 'Routines',
-      subtitle: 'Daily Tasks',
-      icon: '⚡',
-      color: '#45B7D1',
-      gradient: ['#45B7D1', '#67C8E0'],
-      route: '/features/routines',
-    },
-    {
-      id: '4',
-      title: 'Rewards',
-      subtitle: 'Achievements',
-      icon: '🏆',
-      color: '#F7DC6F',
-      gradient: ['#F7DC6F', '#F9E79F'],
-      route: '/features/rewards',
-    },
-    {
-      id: '5',
-      title: 'Chores',
-      subtitle: 'House Tasks',
-      icon: '🏠',
-      color: '#BB8FCE',
-      gradient: ['#BB8FCE', '#C8A2DB'],
-      route: '/features/chores',
-    },
-    {
-      id: '6',
-      title: 'Co-Parenting',
-      subtitle: 'Family Sync',
-      icon: '👨‍👩‍👧‍👦',
-      color: '#85C1E9',
-      gradient: ['#85C1E9', '#A3D5F1'],
-      route: '/features/co-parenting',
-    },
-  ];
-
   const loadDashboardData = async () => {
+    const userId = user?.id;
     try {
       setIsLoading(true);
-      if (__DEV__) console.log('Dashboard: Loading data...');
-      
-      // Simulate loading
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      const mockStats: DashboardStats = {
-        routinesCompleted: 3,
-        routinesRemaining: 2,
-        mealsPlanned: 4,
-        worksheetsAvailable: 6,
-        newMessages: 2,
-        expensesToReview: 1,
-        weeklyProgress: 75,
-        streakDays: 5,
-        activeRoutines: 3,
-      };
-      
-      const mockActivities: RecentActivity[] = [
-        {
-          id: '1',
-          type: 'routine',
-          title: 'Morning Routine',
-          description: 'Emma completed her morning tasks',
-          time: '2h ago',
-          icon: '☀️',
-          color: '#4CAF50',
-        },
-        {
-          id: '2',
-          type: 'education',
-          title: 'Math Practice',
-          description: 'Addition worksheet finished',
-          time: '4h ago',
-          icon: '🧮',
-          color: '#2196F3',
-        },
-        {
-          id: '3',
-          type: 'meal',
-          title: 'Lunch Planned',
-          description: 'Healthy meal added to schedule',
-          time: '6h ago',
-          icon: '🥗',
-          color: '#FF9800',
-        },
-      ];
-      
-      setStats(mockStats);
-      setRecentActivities(mockActivities);
-      if (__DEV__) console.log('Dashboard: Data loaded successfully');
+      if (!userId) {
+        setStats({
+          routinesCompleted: 0,
+          routinesRemaining: 0,
+          mealsPlanned: 0,
+          worksheetsAvailable: 0,
+          newMessages: 0,
+          expensesToReview: 0,
+          weeklyProgress: 0,
+          streakDays: 0,
+          activeRoutines: 0,
+          childrenCount: 0,
+        });
+        setRecentActivities([]);
+        return;
+      }
+
+      const [nextStats, activities] = await Promise.all([
+        dashboardService.getDashboardStats(userId),
+        dashboardService.getRecentActivities(userId, 10),
+      ]);
+      setStats(nextStats);
+      setRecentActivities(activities);
     } catch (error) {
-      if (__DEV__) console.warn('Dashboard: Error loading data:', error);
+      console.error('Dashboard: Error loading data:', error);
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -180,8 +67,19 @@ export default function DashboardScreen() {
   };
 
   useEffect(() => {
-    loadDashboardData();
-  }, []);
+    void loadDashboardData();
+  }, [user?.id]);
+
+  useEffect(() => {
+    (async () => {
+      const {
+        data: { user: authUser },
+      } = await supabase.auth.getUser();
+      if (authUser?.id) {
+        await loadFamilies(authUser.id);
+      }
+    })();
+  }, [loadFamilies]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -198,7 +96,7 @@ export default function DashboardScreen() {
           text: 'Sign Out',
           style: 'destructive',
           onPress: async () => {
-            if (__DEV__) console.log('Signing out...');
+            console.log('Signing out...');
             await logout();
             router.replace('/(auth)/login');
           },
@@ -213,92 +111,113 @@ export default function DashboardScreen() {
     return '#F44336';
   };
 
-  const renderStatCard = (title: string, value: string | number, icon: string, color: string) => (
-    <Surface style={[styles.statCard, { borderLeftColor: color }]}>
-      <View style={styles.statContent}>
-        <Text style={styles.statIcon}>{icon}</Text>
-        <View style={styles.statInfo}>
-          <Text style={[styles.statValue, { color }]}>{value}</Text>
-          <Text style={styles.statTitle}>{title}</Text>
-        </View>
-      </View>
-    </Surface>
-  );
-
-  const renderQuickAction = (action: QuickAction) => (
-    <TouchableOpacity
-      key={action.id}
-      style={styles.actionTile}
-      onPress={() => router.push(action.route as any)}
-      activeOpacity={0.8}
-      accessibilityLabel={`${action.title}, ${action.subtitle}`}
-      accessibilityRole="button"
-    >
-      <LinearGradient
-        colors={action.gradient as any}
-        style={styles.actionGradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <View style={styles.actionContent}>
-          <Text style={styles.actionIcon}>{action.icon}</Text>
-          <Text style={styles.actionTitle}>{action.title}</Text>
-          <Text style={styles.actionSubtitle}>{action.subtitle}</Text>
-        </View>
-      </LinearGradient>
-    </TouchableOpacity>
-  );
-
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.loadingContainer}>
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#006A60" />
-        <Text style={styles.loadingText}>Loading your dashboard...</Text>
-      </SafeAreaView>
+        <Text style={styles.loadingText}>Loading dashboard...</Text>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <View style={styles.container}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
-        showsVerticalScrollIndicator={false}
       >
-        {/* Modern Header */}
-        <LinearGradient
-          colors={['#006A60', '#008577']}
-          style={styles.header}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
+        {/* Header */}
+        <View style={styles.header}>
           <View style={styles.headerContent}>
-            <View style={styles.welcomeSection}>
+            <View>
               <Text style={styles.greeting}>{getGreeting().message} {getGreeting().icon}</Text>
-              <Text style={styles.subtitle}>Ready to make today amazing?</Text>
+              <Text style={styles.subtitle}>Here's your family's progress today</Text>
             </View>
-            <TouchableOpacity
+            <Button
+              mode="outlined"
               onPress={handleSignOut}
-              style={styles.profileButton}
-              activeOpacity={0.8}
-              accessibilityLabel="Profile and sign out"
-              accessibilityRole="button"
+              style={styles.signOutButton}
+              textColor="#ffffff"
             >
-              <Avatar.Text size={40} label="U" style={styles.avatar} />
-            </TouchableOpacity>
+              Sign Out
+            </Button>
           </View>
-        </LinearGradient>
+        </View>
 
-        {/* Progress Overview - Compact */}
-        <View style={styles.progressSection}>
-          <Surface style={styles.progressCard}>
-            <View style={styles.progressHeader}>
-              <Text style={styles.progressTitle}>Weekly Progress</Text>
-              <Text style={styles.progressPercentage}>{stats.weeklyProgress}%</Text>
-            </View>
+        {!familyLoading && !currentFamily ? (
+          <Card style={styles.familySetupCard}>
+            <Card.Content>
+              <Text style={styles.familySetupTitle}>Set up your family</Text>
+              <Text style={styles.familySetupBody}>
+                Create a family workspace on your account, then add children and use co-parenting
+                features.
+              </Text>
+              <Button
+                mode="contained"
+                buttonColor="#006A60"
+                onPress={() => router.push('/features/settings/family')}
+              >
+                Family setup
+              </Button>
+            </Card.Content>
+          </Card>
+        ) : null}
+
+        {currentFamily ? (
+          <Card style={styles.familySetupCard}>
+            <Card.Content>
+              <Text style={styles.familySetupTitle}>{currentFamily.name}</Text>
+              <Text style={styles.familySetupBody}>
+                Manage members, children, and co-parenting from one place.
+              </Text>
+              <Button
+                mode="outlined"
+                textColor="#006A60"
+                onPress={() => router.push('/features/settings/family')}
+              >
+                Family settings
+              </Button>
+            </Card.Content>
+          </Card>
+        ) : null}
+
+        {/* Quick Stats */}
+        <View style={styles.statsContainer}>
+          <Card style={styles.statCard}>
+            <Card.Content>
+              <Text style={styles.statNumber}>{stats.routinesCompleted}</Text>
+              <Text style={styles.statLabel}>Routines Completed</Text>
+            </Card.Content>
+          </Card>
+          
+          <Card style={styles.statCard}>
+            <Card.Content>
+              <Text style={styles.statNumber}>{stats.routinesRemaining}</Text>
+              <Text style={styles.statLabel}>Remaining</Text>
+            </Card.Content>
+          </Card>
+          
+          <Card style={styles.statCard}>
+            <Card.Content>
+              <Text style={styles.statNumber}>{stats.weeklyProgress}%</Text>
+              <Text style={styles.statLabel}>Weekly Progress</Text>
+            </Card.Content>
+          </Card>
+          
+          <Card style={styles.statCard}>
+            <Card.Content>
+              <Text style={styles.statNumber}>{stats.streakDays}</Text>
+              <Text style={styles.statLabel}>Day Streak</Text>
+            </Card.Content>
+          </Card>
+        </View>
+
+        {/* Progress Overview */}
+        <Card style={styles.progressCard}>
+          <Card.Content>
+            <Text style={styles.cardTitle}>Weekly Progress</Text>
             <View style={styles.progressBar}>
               <View 
                 style={[
@@ -310,273 +229,300 @@ export default function DashboardScreen() {
                 ]} 
               />
             </View>
-            <Text style={styles.progressSubtext}>
-              Great job! Keep up the momentum 🚀
+            <Text style={styles.progressText}>
+              {stats.weeklyProgress}% of weekly goals completed
             </Text>
-          </Surface>
-        </View>
+          </Card.Content>
+        </Card>
 
-        {/* Quick Stats - Compact Grid */}
-        <View style={styles.statsGrid}>
-          {renderStatCard('Completed', stats.routinesCompleted, '✅', '#4CAF50')}
-          {renderStatCard('Remaining', stats.routinesRemaining, '⏳', '#FF9800')}
-          {renderStatCard('Streak Days', stats.streakDays, '🔥', '#F44336')}
-          {renderStatCard('Activities', stats.activeRoutines, '⚡', '#2196F3')}
-        </View>
-
-        {/* Quick Actions - Modern Tiles */}
-        <View style={styles.quickActionsSection}>
+        {/* Quick Actions */}
+        <View style={styles.quickActionsContainer}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.actionsGrid}>
-            {quickActions.map(renderQuickAction)}
+          
+          <View style={styles.actionButtons}>
+            <Button
+              mode="contained"
+              onPress={() => router.push('/(tabs)/activities')}
+              style={styles.actionButton}
+              icon="plus"
+            >
+              New Activity
+            </Button>
+            
+            <Button
+              mode="contained"
+              onPress={() => router.push('/(tabs)/education')}
+              style={styles.actionButton}
+              icon="book"
+            >
+              Education
+            </Button>
+            
+            <Button
+              mode="contained"
+              onPress={() => router.push('/(tabs)/reminders')}
+              style={styles.actionButton}
+              icon="bell"
+            >
+              Reminders
+            </Button>
+            
+            <Button
+              mode="contained"
+              onPress={() => router.push('/(tabs)/profile')}
+              style={styles.actionButton}
+              icon="account"
+            >
+              Profile
+            </Button>
           </View>
         </View>
 
-        {/* Recent Activity - Compact */}
-        <View style={styles.recentSection}>
+        {/* Recent Activity */}
+        <View style={styles.recentActivityContainer}>
           <Text style={styles.sectionTitle}>Recent Activity</Text>
+          
+          {recentActivities.length === 0 ? (
+            <Text style={styles.emptyFeed}>No recent activity yet. Complete a routine or worksheet to see it here.</Text>
+          ) : null}
+
           {recentActivities.map((activity) => (
-            <Surface
-              key={activity.id}
-              style={styles.activityItem}
-              accessibilityLabel={`${activity.title}, ${activity.description}`}
-            >
-              <View style={styles.activityContent}>
-                <View style={[styles.activityIcon, { backgroundColor: activity.color + '20' }]}>
-                  <Text style={styles.activityIconText}>{activity.icon}</Text>
+            <Card key={activity.id} style={styles.activityCard}>
+              <Card.Content>
+                <View style={styles.activityHeader}>
+                  <View style={styles.activityIcon}>
+                    <Text style={styles.activityIconText}>{activity.icon}</Text>
+                  </View>
+                  <View style={styles.activityInfo}>
+                    <Text style={styles.activityTitle}>{activity.title}</Text>
+                    <Text style={styles.activityDescription}>{activity.description}</Text>
+                    <Text style={styles.activityTime}>{activity.time}</Text>
+                  </View>
                 </View>
-                <View style={styles.activityInfo}>
-                  <Text style={styles.activityTitle}>{activity.title}</Text>
-                  <Text style={styles.activityDescription}>{activity.description}</Text>
-                </View>
-                <Text style={styles.activityTime}>{activity.time}</Text>
-              </View>
-            </Surface>
+              </Card.Content>
+            </Card>
           ))}
         </View>
+
+        {/* Family Overview */}
+        <Card style={styles.familyCard}>
+          <Card.Content>
+            <Text style={styles.cardTitle}>Family Overview</Text>
+            <View style={styles.familyStats}>
+              <View style={styles.familyStat}>
+                <Text style={styles.familyStatNumber}>{stats.childrenCount}</Text>
+                <Text style={styles.familyStatLabel}>
+                  {stats.childrenCount === 1 ? 'Child' : 'Children'}
+                </Text>
+              </View>
+              <View style={styles.familyStat}>
+                <Text style={styles.familyStatNumber}>{stats.activeRoutines}</Text>
+                <Text style={styles.familyStatLabel}>Active Routines</Text>
+              </View>
+              <View style={styles.familyStat}>
+                <Text style={styles.familyStatNumber}>{stats.mealsPlanned}</Text>
+                <Text style={styles.familyStatLabel}>Meals Planned</Text>
+              </View>
+              <View style={styles.familyStat}>
+                <Text style={styles.familyStatNumber}>{stats.worksheetsAvailable}</Text>
+                <Text style={styles.familyStatLabel}>Worksheets</Text>
+              </View>
+            </View>
+          </Card.Content>
+        </Card>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#f5f5f5',
   },
   scrollView: {
     flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 20, // Extra padding to avoid Android navigation buttons
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
   },
   loadingText: {
     marginTop: 16,
     color: '#666',
     fontSize: 16,
-    fontWeight: '500',
   },
   header: {
-    paddingHorizontal: 20,
-    paddingVertical: 24,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    backgroundColor: '#006A60',
+    padding: 20,
+    paddingTop: 40,
   },
   headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  welcomeSection: {
-    flex: 1,
-  },
   greeting: {
-    fontSize: 22,
-    fontWeight: '700',
+    fontSize: 24,
+    fontWeight: 'bold',
     color: '#ffffff',
     marginBottom: 4,
   },
   subtitle: {
-    fontSize: 15,
+    fontSize: 16,
     color: '#ffffff',
     opacity: 0.9,
-    fontWeight: '400',
   },
-  profileButton: {
-    marginLeft: 16,
+  signOutButton: {
+    borderColor: '#ffffff',
+    borderWidth: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
-  avatar: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  familySetupCard: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    backgroundColor: '#fff',
   },
-  progressSection: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-  },
-  progressCard: {
-    padding: 20,
-    borderRadius: 16,
-    elevation: 2,
-  },
-  progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  progressTitle: {
-    fontSize: 16,
+  familySetupTitle: {
+    fontSize: 18,
     fontWeight: '600',
+    marginBottom: 8,
     color: '#333',
   },
-  progressPercentage: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#006A60',
-  },
-  progressBar: {
-    height: 6,
-    backgroundColor: '#e0e0e0',
-    borderRadius: 3,
-    overflow: 'hidden',
-    marginBottom: 12,
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  progressSubtext: {
-    fontSize: 13,
+  familySetupBody: {
+    fontSize: 14,
     color: '#666',
-    fontStyle: 'italic',
+    marginBottom: 12,
+    lineHeight: 20,
   },
-  statsGrid: {
+  statsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: HORIZONTAL_PADDING,
-    paddingTop: 16,
-    gap: 12,
+    padding: 16,
+    gap: 8,
   },
   statCard: {
     flex: 1,
-    minWidth: cardWidth - 6,
-    padding: 16,
-    borderRadius: 12,
-    elevation: 1,
-    borderLeftWidth: 3,
+    minWidth: '45%',
+    marginBottom: 8,
   },
-  statContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  statNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#006A60',
   },
-  statIcon: {
-    fontSize: 20,
-    marginRight: 12,
-  },
-  statInfo: {
-    flex: 1,
-  },
-  statValue: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  statTitle: {
+  statLabel: {
     fontSize: 12,
     color: '#666',
-    marginTop: 2,
+    marginTop: 4,
   },
-  quickActionsSection: {
-    paddingHorizontal: HORIZONTAL_PADDING,
-    paddingTop: 24,
+  progressCard: {
+    margin: 16,
+    marginTop: 0,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  progressBar: {
+    height: 8,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  progressText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 8,
+  },
+  quickActionsContainer: {
+    padding: 16,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 16,
+    marginBottom: 12,
   },
-  actionsGrid: {
+  actionButtons: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: ACTION_GAP,
-    justifyContent: 'space-between',
+    gap: 8,
   },
-  actionTile: {
-    width: cardWidth,
-    height: 100,
-  },
-  actionGradient: {
+  actionButton: {
     flex: 1,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  actionContent: {
-    alignItems: 'center',
-  },
-  actionIcon: {
-    fontSize: 24,
-    marginBottom: 4,
-  },
-  actionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
-    textAlign: 'center',
-  },
-  actionSubtitle: {
-    fontSize: 11,
-    color: '#fff',
-    opacity: 0.9,
-    textAlign: 'center',
-  },
-  recentSection: {
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 32, // Extra bottom padding for Android navigation
-  },
-  activityItem: {
+    minWidth: '45%',
     marginBottom: 8,
-    borderRadius: 12,
-    elevation: 1,
   },
-  activityContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  recentActivityContainer: {
     padding: 16,
   },
+  activityCard: {
+    marginBottom: 8,
+  },
+  activityHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   activityIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   activityIconText: {
-    fontSize: 16,
+    fontSize: 20,
   },
   activityInfo: {
     flex: 1,
   },
   activityTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 2,
+    marginBottom: 4,
   },
   activityDescription: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#666',
+    marginBottom: 4,
   },
   activityTime: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#999',
-    fontWeight: '500',
   },
-});
+  familyCard: {
+    margin: 16,
+    marginTop: 0,
+  },
+  familyStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  familyStat: {
+    alignItems: 'center',
+  },
+  familyStatNumber: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#006A60',
+  },
+  familyStatLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+  },
+  emptyFeed: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 12,
+    lineHeight: 20,
+  },
+}); 

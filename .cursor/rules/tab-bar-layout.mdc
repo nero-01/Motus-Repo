@@ -1,0 +1,12 @@
+---
+description: MotusTots tab bar must use brand teal, Material icons, and safe-area insets
+globs: app/(tabs)/_layout.tsx,app/_layout.tsx
+---
+
+# Tab bar (regression guard)
+
+- **`app/(tabs)/_layout.tsx`:** Use **`#006A60`** for `tabBarActiveTintColor` (not default purple). Use **`@expo/vector-icons` `MaterialCommunityIcons`** for tab icons—not emoji `Text` placeholders.
+- **Safe area:** Wrap the app root in **`SafeAreaProvider`** (`app/_layout.tsx`) and drive tab bar **`paddingBottom` / `height`** with **`useSafeAreaInsets()`** so the bar clears the home indicator on iOS.
+- **Order:** Home → Education → Reminders → **Activities** (`activities/index`) → **More** (`profile/index`, far right).
+
+When merging branches, if this file conflicts, preserve these behaviors rather than reverting to Expo defaults.

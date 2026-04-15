@@ -23,16 +23,19 @@ import {
 } from 'react-native-paper';
 import { useFamilyStore } from '../store/familyStore';
 import { useAuthStore } from '../../auth/store/authStore';
-import { Child, Parent } from '../types';
+import { Child, FamilyInvite, Parent } from '../types';
+import { FamilyService } from '../services/familyService';
 
 interface FamilyDashboardProps {
   onNavigateToChild?: (childId: string) => void;
   onNavigateToSettings?: () => void;
+  onNavigateToAnalytics?: () => void;
 }
 
 export default function FamilyDashboard({ 
   onNavigateToChild, 
-  onNavigateToSettings 
+  onNavigateToSettings,
+  onNavigateToAnalytics
 }: FamilyDashboardProps) {
   const {
     currentFamily,
@@ -40,6 +43,7 @@ export default function FamilyDashboard({
     isLoading,
     error,
     loadFamilies,
+    loadFamily,
     refreshAllChildStats,
     addChild,
     removeChild,
@@ -55,17 +59,42 @@ export default function FamilyDashboard({
     gender: 'other' as 'male' | 'female' | 'other',
     interests: [] as string[]
   });
+  const [showInviteParentModal, setShowInviteParentModal] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<'parent' | 'guardian'>('parent');
+  const [pendingInvites, setPendingInvites] = useState<FamilyInvite[]>([]);
 
   useEffect(() => {
-    if (user) {
-      loadFamilies(user.id);
+    if (user?.id) {
+      void loadFamilies(user.id);
+      return;
     }
-  }, [user]);
+    // Fallback for standalone module usage where auth store is not wired.
+    void loadFamily('1');
+  }, [user?.id, loadFamilies, loadFamily]);
 
   useEffect(() => {
     if (currentFamily) {
       refreshAllChildStats();
     }
+  }, [currentFamily]);
+
+  useEffect(() => {
+    if (!currentFamily) {
+      setPendingInvites([]);
+      return;
+    }
+
+    const loadPendingInvites = async () => {
+      try {
+        const invites = await FamilyService.getFamilyInvites(currentFamily.id, 'pending');
+        setPendingInvites(invites);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    void loadPendingInvites();
   }, [currentFamily]);
 
   const handleRefresh = async () => {
@@ -123,6 +152,42 @@ export default function FamilyDashboard({
           }
         }
       ]
+    );
+  };
+
+  const handleInviteParent = async () => {
+    if (!currentFamily) return;
+    const email = inviteEmail.trim().toLowerCase();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      Alert.alert('Error', 'Please enter a valid email address');
+      return;
+    }
+    if (currentFamily.parents.some((p) => p.email.toLowerCase() === email)) {
+      Alert.alert('Already added', 'This parent is already part of the family.');
+      return;
+    }
+    try {
+      const invite = await FamilyService.inviteParent(currentFamily.id, email, inviteRole);
+      setPendingInvites((prev) => [invite, ...prev]);
+      setShowInviteParentModal(false);
+      setInviteEmail('');
+      setInviteRole('parent');
+      Alert.alert('Invite sent', `Invitation sent to ${email}.`);
+    } catch (e) {
+      console.error(e);
+      const message = e instanceof Error ? e.message : 'Failed to send invite';
+      Alert.alert('Error', message);
+    }
+  };
+
+  const handleViewAnalytics = () => {
+    if (onNavigateToAnalytics) {
+      onNavigateToAnalytics();
+      return;
+    }
+    Alert.alert(
+      'Analytics',
+      'Analytics view is available from the main app analytics screen.'
     );
   };
 
@@ -298,6 +363,24 @@ export default function FamilyDashboard({
               </Card.Content>
             </Card>
           ))}
+          {pendingInvites.length > 0 ? (
+            <Card style={styles.pendingCard}>
+              <Card.Content>
+                <Text variant="titleMedium">Pending Invites</Text>
+                {pendingInvites.map((invite) => (
+                  <View key={invite.id} style={styles.pendingInviteRow}>
+                    <View style={styles.pendingInviteInfo}>
+                      <Text variant="bodyLarge">{invite.email}</Text>
+                      <Text variant="bodySmall" style={styles.pendingInviteMeta}>
+                        {invite.role} • expires {new Date(invite.expiresAt).toLocaleDateString()}
+                      </Text>
+                    </View>
+                    <Chip compact>Pending</Chip>
+                  </View>
+                ))}
+              </Card.Content>
+            </Card>
+          ) : null}
         </View>
 
         {/* Quick Actions */}
@@ -316,7 +399,7 @@ export default function FamilyDashboard({
               mode="outlined"
               icon="account-multiple-plus"
               style={styles.actionButton}
-              onPress={() => {/* TODO: Add parent invite */}}
+              onPress={() => setShowInviteParentModal(true)}
             >
               Invite Parent
             </Button>
@@ -324,7 +407,7 @@ export default function FamilyDashboard({
               mode="outlined"
               icon="chart-line"
               style={styles.actionButton}
-              onPress={() => {/* TODO: View analytics */}}
+              onPress={handleViewAnalytics}
             >
               View Analytics
             </Button>
@@ -334,6 +417,48 @@ export default function FamilyDashboard({
 
       {/* Add Child Modal */}
       <Portal>
+        <Modal
+          visible={showInviteParentModal}
+          onDismiss={() => setShowInviteParentModal(false)}
+          contentContainerStyle={styles.modal}
+        >
+          <Text variant="headlineSmall" style={styles.modalTitle}>Invite Parent</Text>
+          <TextInput
+            label="Parent Email"
+            value={inviteEmail}
+            onChangeText={setInviteEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            style={styles.input}
+          />
+          <Text variant="bodyMedium" style={styles.label}>Role</Text>
+          <SegmentedButtons
+            value={inviteRole}
+            onValueChange={(value) => setInviteRole(value as 'parent' | 'guardian')}
+            buttons={[
+              { value: 'parent', label: 'Parent' },
+              { value: 'guardian', label: 'Guardian' }
+            ]}
+            style={styles.segmentedButtons}
+          />
+          <View style={styles.modalActions}>
+            <Button
+              mode="outlined"
+              onPress={() => setShowInviteParentModal(false)}
+              style={styles.modalButton}
+            >
+              Cancel
+            </Button>
+            <Button
+              mode="contained"
+              onPress={handleInviteParent}
+              style={styles.modalButton}
+            >
+              Send Invite
+            </Button>
+          </View>
+        </Modal>
+
         <Modal
           visible={showAddChildModal}
           onDismiss={() => setShowAddChildModal(false)}
@@ -486,6 +611,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     elevation: 1,
   },
+  pendingCard: {
+    marginTop: 8,
+    elevation: 1,
+  },
   parentHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -497,6 +626,22 @@ const styles = StyleSheet.create({
   roleChip: {
     marginTop: 4,
     alignSelf: 'flex-start',
+  },
+  pendingInviteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#e0e0e0',
+  },
+  pendingInviteInfo: {
+    flex: 1,
+    marginRight: 12,
+  },
+  pendingInviteMeta: {
+    color: '#666',
+    marginTop: 2,
   },
   quickActions: {
     flexDirection: 'row',

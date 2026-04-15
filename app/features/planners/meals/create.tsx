@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -12,19 +12,33 @@ import {
   TextInput,
   Surface,
   Chip,
-  SegmentedButtons,
 } from 'react-native-paper';
 import { router } from 'expo-router';
 import { useAuthStore } from '../../../../stores/authStore';
 import { useFamilyStore } from '../../../../stores/familyStore';
+import { createWeeklyMealPlan } from '../../../../services/supabase/meals';
+
+function todayLocalYmd(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 
 export default function CreateMealPlanScreen() {
   const { user } = useAuthStore();
-  const { currentFamily } = useFamilyStore();
+  const { currentFamily, loadFamilies } = useFamilyStore();
   const [planName, setPlanName] = useState('');
-  const [startDate, setStartDate] = useState('');
+  const [startDate, setStartDate] = useState(todayLocalYmd);
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (user?.id) {
+      void loadFamilies(user.id);
+    }
+  }, [user?.id, loadFamilies]);
 
   const daysOfWeek = [
     { value: '0', label: 'Sun' },
@@ -47,21 +61,31 @@ export default function CreateMealPlanScreen() {
       return;
     }
 
+    if (!startDate.trim()) {
+      Alert.alert('Error', 'Please enter a start date (YYYY-MM-DD)');
+      return;
+    }
+
+    if (!currentFamily?.id || !user?.id) {
+      Alert.alert('Error', 'Sign in and open this screen from a family workspace.');
+      return;
+    }
+
     setLoading(true);
     try {
-      // TODO: Implement createMealPlan from service
-      Alert.alert(
-        'Success', 
-        'Meal plan created successfully!',
-        [
-          {
-            text: 'OK',
-            onPress: () => router.back()
-          }
-        ]
-      );
-    } catch (error) {
-      Alert.alert('Error', 'Failed to create meal plan');
+      await createWeeklyMealPlan({
+        familyId: currentFamily.id,
+        userId: user.id,
+        planName: planName.trim(),
+        startDateYmd: startDate.trim(),
+        selectedDayIndices: selectedDays.map((d) => parseInt(d, 10)),
+      });
+      Alert.alert('Success', 'Meal plan saved.', [
+        { text: 'OK', onPress: () => router.back() },
+      ]);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to create meal plan';
+      Alert.alert('Error', message);
     } finally {
       setLoading(false);
     }

@@ -8,9 +8,11 @@ import {
   Alert,
   Modal,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
-import { Card, Button, FAB, Portal, Dialog } from 'react-native-paper';
+import { Card, Button, FAB } from 'react-native-paper';
 import { router } from 'expo-router';
+import { useAuthStore } from '../../../stores/authStore';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AvatarSelector, { Avatar } from '../../../components/ui/AvatarSelector';
 import { 
@@ -25,7 +27,8 @@ import { useFamilyStore } from '../../../stores/familyStore';
 import Toast, { ToastType } from '../../../components/ui/Toast';
 
 export default function ChildrenManagementScreen() {
-  const { currentFamily } = useFamilyStore();
+  const { user } = useAuthStore();
+  const { currentFamily, isLoading: familyLoading, error: familyError, loadFamilies } = useFamilyStore();
   const [children, setChildren] = useState<Child[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -41,12 +44,21 @@ export default function ChildrenManagementScreen() {
   });
 
   useEffect(() => {
+    if (user?.id) {
+      void loadFamilies(user.id);
+    }
+  }, [user?.id, loadFamilies]);
+
+  useEffect(() => {
     loadChildren();
   }, [currentFamily]);
 
   const loadChildren = async () => {
-    if (!currentFamily) return;
-    
+    if (!currentFamily) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const familyChildren = await getFamilyChildren(currentFamily.id);
@@ -217,9 +229,48 @@ export default function ChildrenManagementScreen() {
     return age;
   };
 
+  if (familyLoading && !currentFamily) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" />
+        <Text style={styles.loadingText}>Loading family...</Text>
+      </View>
+    );
+  }
+
+  if (!currentFamily) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.noFamilyTitle}>No family workspace</Text>
+        <Text style={styles.noFamilyBody}>
+          On Home, tap Family setup, or open Settings → Family setup & members to create your family.
+          Then you can add children here.
+        </Text>
+        {familyError ? (
+          <Text style={styles.noFamilyError}>{familyError}</Text>
+        ) : null}
+        <View style={styles.noFamilyActions}>
+          {user?.id ? (
+            <Button
+              mode="contained"
+              style={styles.retryButton}
+              onPress={() => void loadFamilies(user.id)}
+            >
+              Retry
+            </Button>
+          ) : null}
+          <Button mode="outlined" onPress={() => router.push('/(tabs)')} style={styles.homeButton}>
+            Go to Home
+          </Button>
+        </View>
+      </View>
+    );
+  }
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" />
         <Text style={styles.loadingText}>Loading children...</Text>
       </View>
     );
@@ -412,6 +463,41 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     color: '#666',
+    marginTop: 12,
+  },
+  noFamilyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 12,
+    paddingHorizontal: 24,
+  },
+  noFamilyBody: {
+    fontSize: 15,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 22,
+    paddingHorizontal: 28,
+  },
+  noFamilyError: {
+    marginTop: 16,
+    color: '#c62828',
+    textAlign: 'center',
+    paddingHorizontal: 24,
+  },
+  retryButton: {
+    marginTop: 0,
+  },
+  noFamilyActions: {
+    marginTop: 24,
+    gap: 12,
+    width: '100%',
+    maxWidth: 280,
+    alignSelf: 'center',
+  },
+  homeButton: {
+    marginTop: 0,
   },
   scrollView: {
     flex: 1,

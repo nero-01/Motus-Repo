@@ -1,571 +1,389 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, ScrollView, Text, TouchableOpacity, Alert, TextInput, Platform, Modal, ActivityIndicator } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Image } from 'expo-image';
-import * as FileSystem from 'expo-file-system/legacy';
+import {
+  View,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  Image,
+  Alert,
+  Modal,
+  ActivityIndicator,
+} from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
-import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import ParentSheetImage from '../../../assets/parent_involvement_sheet_winter.png';
-import { extractTextFromImage } from '../../../services/googleVision';
-
-const OCR_MAX_WIDTH = 1200;
-const OCR_JPEG_QUALITY = 0.85;
-
-const REMINDERS_CHANNEL_ID = 'motustots-reminders';
-const REMINDERS_STORAGE_KEY_WEEK = 'motustots_reminders_week';
-const REMINDERS_STORAGE_KEY_ENABLED = 'motustots_reminders_enabled';
-
-const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-
-const emptyWeek = (): { day: string; activity: string | null }[] =>
-  DAYS.map(day => ({ day, activity: null }));
-
-const DAY_PATTERNS: { full: string; shorts: string[] }[] = [
-  { full: 'monday', shorts: ['mon', 'mondav'] },
-  { full: 'tuesday', shorts: ['tue', 'tues', 'tuesdav'] },
-  { full: 'wednesday', shorts: ['wed', 'weds', 'wednesdav', 'wensday'] },
-  { full: 'thursday', shorts: ['thu', 'thur', 'thurs', 'thursdav'] },
-  { full: 'friday', shorts: ['fri', 'frisay'] },
-  { full: 'saturday', shorts: ['sat', 'saturdav'] },
-  { full: 'sunday', shorts: ['sun', 'sundav'] },
-];
-
-type DayMatch = { dayIndex: number; start: number; end: number };
-
-/** Normalize OCR output so parsing is consistent regardless of line breaks/spaces. */
-function normalizeOcrText(text: string): string {
-  return text
-    .replace(/\r\n|\r|\n/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-/** Fix common OCR misreads of day names (whole-word, case-insensitive). */
-function fixOcrDayTypos(text: string): string {
-  const lower = text.toLowerCase();
-  const replacements: [string, string][] = [
-    ['tuesdav', 'tuesday'], ['wednesdav', 'wednesday'], ['wensday', 'wednesday'],
-    ['thursdav', 'thursday'], ['mondav', 'monday'], ['frisay', 'friday'],
-    ['saturdav', 'saturday'], ['sundav', 'sunday'],
-    ['tuesda y', 'tuesday'], ['wednesda y', 'wednesday'], ['thursda y', 'thursday'],
-    ['monda y', 'monday'], ['frida y', 'friday'], ['saturda y', 'saturday'], ['sunda y', 'sunday'],
-  ];
-  let out = lower;
-  for (const [wrong, right] of replacements) {
-    const re = new RegExp('\\b' + wrong.replace(/\s/g, '\\s*') + '\\b', 'gi');
-    out = out.replace(re, right);
-  }
-  return out;
-}
-
-/** All day name patterns (longest first) for regex. */
-const DAY_REGEX_SOURCES = DAY_PATTERNS.flatMap(({ full, shorts }) =>
-  [full, ...shorts].sort((a, b) => b.length - a.length)
-);
-const DAY_REGEX = new RegExp(
-  '\\b(' + DAY_REGEX_SOURCES.join('|') + ')\\b',
-  'gi'
-);
-
-/**
- * Find all day names in text using a single regex pass (whole words only).
- * Returns one match per day (earliest occurrence), sorted by position.
- */
-function findAllDayMatches(text: string): DayMatch[] {
-  const lower = text.toLowerCase();
-  const byDay = new Map<number, DayMatch>();
-  let match: RegExpExecArray | null;
-  const re = new RegExp(DAY_REGEX.source, 'gi');
-  while ((match = re.exec(lower)) !== null) {
-    const pat = match[1].toLowerCase();
-    const dayIndex = DAY_PATTERNS.findIndex(
-      ({ full, shorts }) => full === pat || shorts.includes(pat)
-    );
-    if (dayIndex === -1) continue;
-    const start = match.index;
-    const end = start + pat.length;
-    const existing = byDay.get(dayIndex);
-    const keep =
-      !existing ||
-      start < existing.start ||
-      (start === existing.start && end - start > existing.end - existing.start);
-    if (keep) byDay.set(dayIndex, { dayIndex, start, end });
-  }
-  return Array.from(byDay.values()).sort((a, b) => a.start - b.start);
-}
-
-/**
- * Also find day names without requiring word boundary after (OCR often concatenates "MondayKarate").
- * Merge with regex results so we catch days that appear right before another word.
- */
-function findAllDayMatchesNoBoundaryAfter(text: string): DayMatch[] {
-  const lower = text.toLowerCase();
-  const matches: DayMatch[] = [];
-  for (let i = 0; i < DAY_PATTERNS.length; i++) {
-    const { full, shorts } = DAY_PATTERNS[i];
-    const patterns = [full, ...shorts].sort((a, b) => b.length - a.length);
-    for (const pat of patterns) {
-      let pos = 0;
-      while (pos < lower.length) {
-        const idx = lower.indexOf(pat, pos);
-        if (idx === -1) break;
-        const before = idx === 0 ? '' : lower[idx - 1];
-        const beforeOk = idx === 0 || !/[a-zA-Z]/.test(before);
-        if (beforeOk) {
-          const overlap = matches.find(
-            (m) => m.dayIndex === i && m.start <= idx && idx < m.end
-          );
-          if (!overlap) {
-            matches.push({ dayIndex: i, start: idx, end: idx + pat.length });
-          }
-          pos = idx + pat.length;
-        } else {
-          pos = idx + 1;
-        }
-      }
-    }
-  }
-  matches.sort((a, b) => a.start - b.start);
-  const byDay = new Map<number, DayMatch>();
-  for (const m of matches) {
-    const existing = byDay.get(m.dayIndex);
-    const keep =
-      !existing ||
-      m.start < existing.start ||
-      (m.start === existing.start && m.end - m.start > existing.end - existing.start);
-    if (keep) byDay.set(m.dayIndex, m);
-  }
-  return Array.from(byDay.values()).sort((a, b) => a.start - b.start);
-}
-
-/** Find which day (if any) the line starts with; return dayIndex and length of match. */
-function matchDayAtLineStart(line: string): { dayIndex: number; len: number } | null {
-  const trimmed = line.trimStart();
-  const lower = trimmed.toLowerCase();
-  let best: { dayIndex: number; len: number } | null = null;
-  for (let i = 0; i < DAY_PATTERNS.length; i++) {
-    const { full, shorts } = DAY_PATTERNS[i];
-    const patterns = [full, ...shorts].sort((a, b) => b.length - a.length);
-    for (const pat of patterns) {
-      if (lower === pat || lower.startsWith(pat + ' ') || lower.startsWith(pat + '\t') ||
-          lower.startsWith(pat + ':') || lower.startsWith(pat + '-') || lower.startsWith(pat + '–') || lower.startsWith(pat + '—')) {
-        const len = trimmed.substring(0, pat.length).length;
-        if (!best || len > best.len) best = { dayIndex: i, len };
-        break;
-      }
-    }
-  }
-  return best;
-}
-
-/** Merge two sorted day-match arrays: union by day index, keep earliest position per day. */
-function mergeDayMatches(a: DayMatch[], b: DayMatch[]): DayMatch[] {
-  const byDay = new Map<number, DayMatch>();
-  for (const m of [...a, ...b]) {
-    const existing = byDay.get(m.dayIndex);
-    const keep =
-      !existing ||
-      m.start < existing.start ||
-      (m.start === existing.start && m.end - m.start > existing.end - existing.start);
-    if (keep) byDay.set(m.dayIndex, m);
-  }
-  return Array.from(byDay.values()).sort((x, y) => x.start - y.start);
-}
-
-function extractWeekFromBlockText(
-  text: string,
-  isDayNameOnly: (s: string) => boolean
-): { week: { day: string; activity: string | null }[]; matchedIndices: Set<number> } {
-  const week = emptyWeek();
-  const matchedIndices = new Set<number>();
-  const regexMatches = findAllDayMatches(text);
-  const noBoundaryMatches = findAllDayMatchesNoBoundaryAfter(text);
-  const matches = mergeDayMatches(regexMatches, noBoundaryMatches);
-  for (let i = 0; i < matches.length; i++) {
-    const m = matches[i];
-    matchedIndices.add(m.dayIndex);
-    const nextStart = i + 1 < matches.length ? matches[i + 1].start : text.length;
-    const raw = text
-      .slice(m.end, nextStart)
-      .replace(/^\s*[:\-–—.]\s*/, '')
-      .trim();
-    const activity = raw && !isDayNameOnly(raw) ? raw : null;
-    week[m.dayIndex] = { day: DAYS[m.dayIndex], activity };
-  }
-  return { week, matchedIndices };
-}
-
-function parseWeekFromOcrText(fullText: string): { day: string; activity: string | null }[] {
-  const week = emptyWeek();
-  const withNewlines = fullText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  const normalized = normalizeOcrText(fullText);
-  const corrected = fixOcrDayTypos(normalized);
-
-  const isDayNameOnly = (s: string) => {
-    const low = s.toLowerCase().trim();
-    if (!low) return false;
-    for (const { full, shorts } of DAY_PATTERNS) {
-      if (low === full || shorts.some(sh => low === sh)) return true;
-    }
-    return false;
-  };
-
-  // Pass 1a: block-based on normalized text
-  const { week: week1, matchedIndices: idx1 } = extractWeekFromBlockText(normalized, isDayNameOnly);
-  // Pass 1b: block-based on typo-corrected text (catches "Tuesdav", "Wensday", etc.)
-  const { week: week2, matchedIndices: idx2 } = extractWeekFromBlockText(corrected, isDayNameOnly);
-  // Merge: keep every day found in either pass, prefer non-empty activity and longer when both have one
-  const allMatched = new Set([...idx1, ...idx2]);
-  for (const i of allMatched) {
-    const a1 = week1[i].activity?.trim();
-    const a2 = week2[i].activity?.trim();
-    if (a1 && a2) {
-      week[i] = { day: DAYS[i], activity: a1.length >= a2.length ? a1 : a2 };
-    } else if (a1) {
-      week[i] = { day: DAYS[i], activity: a1 };
-    } else if (a2) {
-      week[i] = { day: DAYS[i], activity: a2 };
-    } else {
-      week[i] = { day: DAYS[i], activity: null };
-    }
-  }
-
-  // Pass 2: line-based on original lines (fill gaps)
-  const lines = withNewlines.split('\n');
-  for (const line of lines) {
-    const hit = matchDayAtLineStart(line);
-    if (!hit || week[hit.dayIndex].activity) continue;
-    const trimmed = line.trimStart();
-    const rest = trimmed.slice(hit.len).replace(/^\s*[:\-–—]\s*/, '').trim();
-    const activity = rest.replace(/\s+/g, ' ').trim() || null;
-    if (activity && !isDayNameOnly(activity)) {
-      week[hit.dayIndex] = { day: DAYS[hit.dayIndex], activity };
-    }
-  }
-  return week;
-}
+import * as ImagePicker from 'expo-image-picker';
 
 export default function RemindersTabScreen() {
   const [remindersEnabled, setRemindersEnabled] = useState(false);
   const [plannerImage, setPlannerImage] = useState<string | null>(null);
-  const [week, setWeek] = useState(emptyWeek());
-  const [readingImage, setReadingImage] = useState(false);
-  const [visionModalVisible, setVisionModalVisible] = useState(false);
-  const hasLoadedFromStorageRef = useRef(false);
+  const [isScanningImage, setIsScanningImage] = useState(false);
+  const activeScanControllerRef = useRef<AbortController | null>(null);
   const router = useRouter();
 
+  // Set up notification handler
   useEffect(() => {
-    let cleanup: (() => void) | undefined;
-    const id = setTimeout(() => {
-      try {
-        Notifications.setNotificationHandler({
-          handleNotification: async () => ({
-            shouldShowBanner: true,
-            shouldShowList: true,
-            shouldPlaySound: true,
-            shouldSetBadge: false,
-          }),
-        });
-        const sub1 = Notifications.addNotificationReceivedListener(() => {});
-        const sub2 = Notifications.addNotificationResponseReceivedListener(() => {});
-        cleanup = () => {
-          try {
-            sub1.remove();
-            sub2.remove();
-          } catch (_) {}
-        };
-      } catch (_) {
-        // Native module may not be ready (Expo Go first load)
-      }
-    }, 400);
+    // Configure how notifications are handled when app is in foreground
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+        shouldShowBanner: true,
+        shouldShowList: true,
+      }),
+    });
+
+    // Listen for notifications when app is in foreground
+    const notificationListener = Notifications.addNotificationReceivedListener(notification => {
+      console.log('Notification received in foreground:', notification);
+    });
+
+    // Listen for notification responses (when user taps notification)
+    const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
+      console.log('Notification response received:', response);
+    });
+
     return () => {
-      clearTimeout(id);
-      cleanup?.();
+      notificationListener.remove();
+      responseListener.remove();
     };
   }, []);
 
-  // Load baked-in reminders from storage only; do not refresh from notifications on reload
   useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const [storedWeek, storedEnabled] = await Promise.all([
-          AsyncStorage.getItem(REMINDERS_STORAGE_KEY_WEEK),
-          AsyncStorage.getItem(REMINDERS_STORAGE_KEY_ENABLED),
-        ]);
-        if (!mounted) return;
-        if (storedWeek) {
-          try {
-            const parsed = JSON.parse(storedWeek) as { day: string; activity: string | null }[];
-            if (Array.isArray(parsed) && parsed.length === DAYS.length) {
-              setWeek(parsed);
-            }
-          } catch (_) {}
-        }
-        if (storedEnabled === 'true') {
-          setRemindersEnabled(true);
-        }
-      } catch (_) {}
-      if (mounted) hasLoadedFromStorageRef.current = true;
-    })();
-    return () => { mounted = false; };
+    return () => {
+      if (activeScanControllerRef.current) {
+        activeScanControllerRef.current.abort();
+      }
+    };
   }, []);
 
-  // Persist reminders when they change (stay baked in across reloads)
-  useEffect(() => {
-    if (!hasLoadedFromStorageRef.current) return;
-    (async () => {
-      try {
-        await AsyncStorage.setItem(REMINDERS_STORAGE_KEY_WEEK, JSON.stringify(week));
-        await AsyncStorage.setItem(REMINDERS_STORAGE_KEY_ENABLED, remindersEnabled ? 'true' : 'false');
-      } catch (_) {}
-    })();
-  }, [week, remindersEnabled]);
+  // Activities for the week (for notifications)
+  const weekActivities = [
+    { day: 'Monday', activity: null },
+    { day: 'Tuesday', activity: 'Bring along a poster / object relating to the theme. Karate' },
+    { day: 'Wednesday', activity: 'Speech & Drama' },
+    { day: 'Thursday', activity: null },
+    { day: 'Friday', activity: null },
+  ];
 
-  const ensurePermission = async () => {
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync(REMINDERS_CHANNEL_ID, {
-        name: 'MotusTots Reminders',
-        importance: Notifications.AndroidImportance.HIGH,
-        vibrationPattern: [0, 250, 250, 250],
-        sound: 'default',
-      });
-    }
-    const { status } = await Notifications.getPermissionsAsync();
-    if (status === 'granted') return true;
-    const { canAskAgain } = await Notifications.getPermissionsAsync();
-    if (!canAskAgain) {
-      Alert.alert('Notifications disabled', 'Enable them in Settings to receive reminders.');
-      return false;
-    }
-    const { status: s } = await Notifications.requestPermissionsAsync();
-    if (s !== 'granted') {
-      Alert.alert('Permission required', 'Notifications were not enabled.');
-      return false;
-    }
-    return true;
-  };
-
-  /** Resize/compress image, then run Google Vision OCR and build reminders. */
-  const startVisionFromUri = async (uri: string) => {
-    setReadingImage(true);
-    setVisionModalVisible(true);
+  const handleEnableReminders = async () => {
     try {
-      let base64: string;
-      try {
-        const result = await manipulateAsync(
-          uri,
-          [{ resize: { width: OCR_MAX_WIDTH } }],
-          { compress: OCR_JPEG_QUALITY, format: SaveFormat.JPEG, base64: true }
-        );
-        base64 = result.base64 ?? '';
-        if (!base64) throw new Error('No base64');
-      } catch {
-        base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
-      }
-
-      const visionResult = await extractTextFromImage(base64);
-
-      if (!visionResult.success) {
-        setVisionModalVisible(false);
-        setReadingImage(false);
-        Alert.alert('Scan failed', visionResult.error);
+      console.log('Requesting notification permissions...');
+      const { status } = await Notifications.requestPermissionsAsync();
+      console.log('Permission status:', status);
+      
+      if (status !== 'granted') {
+        Alert.alert('Permission required', 'Please enable notifications in your settings.');
         return;
       }
 
-      const parsed = parseWeekFromOcrText(visionResult.text);
-      const filled = parsed.filter((e) => e.activity?.trim()).length;
-      setWeek(parsed);
-      setVisionModalVisible(false);
-      setReadingImage(false);
-
-      if (filled > 0) {
-        await enableReminders(parsed);
-      } else {
-        Alert.alert('Done', 'No day names found. Try a clearer image or check that the Vision API key is set.');
+      console.log('Scheduling notifications...');
+      const now = new Date();
+      let scheduledCount = 0;
+      
+      for (let i = 0; i < weekActivities.length; i++) {
+        const { day, activity } = weekActivities[i];
+        if (!activity) continue;
+        
+        const dayOfWeek = i + 1; // Monday=1, Sunday=0
+        let notificationDate = new Date(now);
+        // Calculate the day before the activity (dayOfWeek - 1)
+        let dayBefore = dayOfWeek - 1;
+        if (dayBefore === 0) dayBefore = 7; // Sunday becomes 7
+        notificationDate.setDate(now.getDate() + ((dayBefore + 7 - now.getDay()) % 7));
+        notificationDate.setHours(20, 0, 0, 0); // 8:00 PM
+        
+        // If the time has already passed today, schedule for next week
+        if (notificationDate <= now) {
+          notificationDate.setDate(notificationDate.getDate() + 7);
+        }
+        
+        console.log(`Scheduling notification for ${day} (day before) at ${notificationDate.toLocaleString()}`);
+        
+                // Calculate seconds from now until the notification time
+        const secondsFromNow = Math.max(1, Math.floor((notificationDate.getTime() - Date.now()) / 1000));
+        
+        const notificationId = await Notifications.scheduleNotificationAsync({
+          content: {
+            title: `Reminder: ${day}`,
+            body: activity,
+            sound: true,
+          },
+          trigger: {
+            seconds: secondsFromNow,
+          } as any,
+        });
+        
+        console.log(`Notification scheduled with ID: ${notificationId}`);
+        scheduledCount++;
       }
-    } catch (e) {
-      setVisionModalVisible(false);
-      setReadingImage(false);
-      Alert.alert('Could not read image', e instanceof Error ? e.message : 'Try choosing the image again.');
+      
+      setRemindersEnabled(true);
+      Alert.alert('Reminders enabled', `Successfully scheduled ${scheduledCount} reminders for the week.`);
+    } catch (error) {
+      console.error('Error scheduling notifications:', error);
+      Alert.alert('Error', 'Failed to schedule notifications. Please try again.');
     }
   };
 
-  const pickImage = async () => {
-    const res = await ImagePicker.launchImageLibraryAsync({
+  const handleTestNotification = async () => {
+    try {
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission required', 'Please enable notifications in your settings.');
+        return;
+      }
+
+      // Schedule a test notification for 5 seconds from now
+      const testDate = new Date(Date.now() + 5000);
+      const notificationId = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Test Notification',
+          body: 'This is a test notification from MotusTots!',
+          sound: true,
+        },
+        trigger: {
+          seconds: 5,
+        } as any,
+      });
+      
+      console.log('Test notification scheduled with ID:', notificationId);
+      Alert.alert('Test Notification', 'A test notification will appear in 5 seconds.');
+    } catch (error) {
+      console.error('Error scheduling test notification:', error);
+      Alert.alert('Error', 'Failed to schedule test notification.');
+    }
+  };
+
+  const checkScheduledNotifications = async () => {
+    try {
+      const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+      console.log('Currently scheduled notifications:', scheduled);
+      Alert.alert('Scheduled Notifications', `Found ${scheduled.length} scheduled notifications. Check console for details.`);
+    } catch (error) {
+      console.error('Error checking scheduled notifications:', error);
+      Alert.alert('Error', 'Failed to check scheduled notifications.');
+    }
+  };
+
+  const resetRemindersState = () => {
+    setRemindersEnabled(false);
+    Alert.alert('State Reset', 'Reminders state has been reset. You can now enable reminders again.');
+  };
+
+  const handlePickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 5],
       quality: 1,
+      base64: true,
     });
-    if (!res.canceled && res.assets?.[0]) {
-      const uri = res.assets[0].uri;
-      setPlannerImage(uri);
-      await Notifications.cancelAllScheduledNotificationsAsync();
-      setRemindersEnabled(false);
-      setWeek(emptyWeek());
-      await startVisionFromUri(uri);
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      const selectedAsset = result.assets[0];
+      setPlannerImage(selectedAsset.uri);
+      await handleScanImage(selectedAsset.base64 ?? null);
     }
   };
 
-  const readFromImage = async () => {
-    if (!plannerImage) {
-      Alert.alert('No image', 'Upload a weekly planner image first.');
+  const handleScanImage = async (imageBase64: string | null) => {
+    if (!imageBase64) {
+      Alert.alert('Scan unavailable', 'Could not read the selected image for scanning.');
       return;
     }
-    await startVisionFromUri(plannerImage);
-  };
 
-  const clearReminders = async () => {
-    await Notifications.cancelAllScheduledNotificationsAsync();
-    setRemindersEnabled(false);
-    setWeek(emptyWeek());
-    Alert.alert('Cleared', 'Reminders cleared. Tap Read from image or Enable when ready.');
-  };
-
-  const enableReminders = async (weekOverride?: { day: string; activity: string | null }[]) => {
-    const w = weekOverride ?? week;
-    if (!(await ensurePermission())) return;
-    await Notifications.cancelAllScheduledNotificationsAsync();
-
-    const now = new Date();
-    let count = 0;
-
-    for (let i = 0; i < w.length; i++) {
-      const a = w[i].activity?.trim();
-      if (!a) continue;
-
-      const prevDayGetDay = i;
-      let daysUntil = (prevDayGetDay - now.getDay() + 7) % 7;
-      const at = new Date(now);
-      at.setDate(now.getDate() + daysUntil);
-      at.setHours(9, 0, 0, 0);
-      if (at.getTime() <= Date.now()) at.setDate(at.getDate() + 7);
-
-      const sec = Math.max(1, Math.floor((at.getTime() - Date.now()) / 1000));
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: `Reminder: ${w[i].day}`,
-          body: a,
-          sound: true,
-          ...(Platform.OS === 'android' && { channelId: REMINDERS_CHANNEL_ID }),
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-          seconds: sec,
-          ...(Platform.OS === 'android' && { channelId: REMINDERS_CHANNEL_ID }),
-        },
-      });
-      count++;
+    const googleVisionApiKey = process.env.EXPO_PUBLIC_GOOGLE_VISION_API_KEY;
+    if (!googleVisionApiKey) {
+      Alert.alert(
+        'Google Vision not configured',
+        'Set EXPO_PUBLIC_GOOGLE_VISION_API_KEY to enable planner image scanning.'
+      );
+      return;
     }
 
-    setRemindersEnabled(true);
-    if (weekOverride) setWeek(weekOverride);
-    Alert.alert('Enabled', `Scheduled ${count} reminder(s) for the week.`);
+    const controller = new AbortController();
+    activeScanControllerRef.current = controller;
+    setIsScanningImage(true);
+
+    try {
+      const response = await fetch(
+        `https://vision.googleapis.com/v1/images:annotate?key=${googleVisionApiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            requests: [
+              {
+                image: { content: imageBase64 },
+                features: [{ type: 'TEXT_DETECTION' }],
+              },
+            ],
+          }),
+          signal: controller.signal,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Vision request failed (${response.status})`);
+      }
+
+      const data = await response.json();
+      const extractedText: string | undefined =
+        data?.responses?.[0]?.fullTextAnnotation?.text || data?.responses?.[0]?.textAnnotations?.[0]?.description;
+
+      if (extractedText?.trim()) {
+        Alert.alert('Scan complete', 'Image text detected successfully.');
+      } else {
+        Alert.alert('Scan complete', 'No readable text detected in this image.');
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        return;
+      }
+      console.error('Vision scan error:', error);
+      Alert.alert('Scan failed', 'Could not scan the image. Please try again.');
+    } finally {
+      if (activeScanControllerRef.current === controller) {
+        activeScanControllerRef.current = null;
+      }
+      setIsScanningImage(false);
+    }
   };
 
-  const testNotification = async () => {
-    if (!(await ensurePermission())) return;
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: 'Test',
-        body: 'Test from MotusTots',
-        sound: true,
-        ...(Platform.OS === 'android' && { channelId: REMINDERS_CHANNEL_ID }),
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-        seconds: 5,
-        ...(Platform.OS === 'android' && { channelId: REMINDERS_CHANNEL_ID }),
-      },
-    });
-    Alert.alert('Test', 'Notification in 5 seconds.');
-  };
-
-  const setActivity = (i: number, v: string) => {
-    setWeek(prev => {
-      const n = [...prev];
-      n[i] = { ...n[i], activity: v || null };
-      return n;
-    });
+  const handleCancelScan = () => {
+    if (activeScanControllerRef.current) {
+      activeScanControllerRef.current.abort();
+      activeScanControllerRef.current = null;
+    }
+    setIsScanningImage(false);
   };
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
-      <View style={{ alignItems: 'center', marginTop: 16 }}>
-        <Image
-          source={plannerImage ? { uri: plannerImage } : ParentSheetImage}
-          contentFit="contain"
-          style={{ width: 320, height: 430, borderRadius: 12 }}
-          onError={() => setPlannerImage(null)}
-        />
-        <TouchableOpacity
-          onPress={pickImage}
-          style={{ marginTop: 10, backgroundColor: '#2196F3', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 6 }}
-        >
-          <Text style={{ color: '#fff', fontWeight: 'bold' }}>Upload Weekly Planner</Text>
-        </TouchableOpacity>
-        {plannerImage && (
+    <>
+      <ScrollView style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
+        <View style={{ alignItems: 'center', marginTop: 16 }}>
+          <Image
+            source={plannerImage ? { uri: plannerImage } : ParentSheetImage}
+            style={{ width: 320, height: 430, resizeMode: 'contain', borderRadius: 12 }}
+          />
           <TouchableOpacity
-            onPress={readFromImage}
-            disabled={readingImage}
-            style={{ marginTop: 10, backgroundColor: readingImage ? '#9e9e9e' : '#006A60', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 6 }}
+            style={{ marginTop: 10, backgroundColor: '#2196F3', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 6 }}
+            onPress={() => void handlePickImage()}
           >
-            <Text style={{ color: '#fff', fontWeight: 'bold' }}>{readingImage ? 'Reading…' : 'Read from image'}</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      <View style={{ marginTop: 16, marginHorizontal: 20, backgroundColor: '#fff', borderRadius: 8, padding: 16, elevation: 2 }}>
-        <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 8 }}>This Week&apos;s Reminders</Text>
-        {week.map(({ day, activity }, i) => (
-          <View key={day} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-            <Text style={{ fontWeight: '600', width: 90 }}>{day}</Text>
-            <TextInput
-              value={activity ?? ''}
-              onChangeText={v => setActivity(i, v)}
-              placeholder="e.g. Karate, Speech & Drama"
-              placeholderTextColor="#999"
-              style={{ flex: 1, borderWidth: 1, borderColor: '#ddd', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 8, fontSize: 14 }}
-            />
-          </View>
-        ))}
-        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
-          <TouchableOpacity onPress={clearReminders} style={{ backgroundColor: '#757575', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 4 }}>
-            <Text style={{ color: '#fff', fontWeight: 'bold' }}>Clear reminders</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push('/features/settings/reminders')} style={{ backgroundColor: '#006A60', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 4 }}>
-            <Text style={{ color: '#fff', fontWeight: 'bold' }}>Manage</Text>
+            <Text style={{ color: '#fff', fontWeight: 'bold' }}>Upload Weekly Planner</Text>
           </TouchableOpacity>
         </View>
-      </View>
+        {/* Show list of reminders for the week */}
+        <View style={{ marginTop: 16, marginHorizontal: 20, backgroundColor: '#fff', borderRadius: 8, padding: 16, elevation: 2 }}>
+          <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 8 }}>This Week's Reminders</Text>
+          {weekActivities.map(({ day, activity }) => (
+            <View key={day} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 }}>
+              <Text style={{ fontWeight: '600', width: 90 }}>{day}:</Text>
+              <Text style={{ color: activity ? '#222' : '#bbb', flex: 1, flexWrap: 'wrap' }} numberOfLines={3} ellipsizeMode="tail">{activity || 'No reminder'}</Text>
+            </View>
+          ))}
+          <TouchableOpacity
+            style={{ marginTop: 12, alignSelf: 'flex-end', backgroundColor: '#006A60', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 4 }}
+            onPress={() => router.push('/features/settings/reminders')}
+          >
+            <Text style={{ color: '#fff', fontWeight: 'bold' }}>Manage Reminders</Text>
+          </TouchableOpacity>
+        </View>
+        {/* Bottom buttons section */}
+        <View style={{ marginTop: 20, marginHorizontal: 20, marginBottom: 20 }}>
+          <TouchableOpacity
+            style={{
+              backgroundColor: remindersEnabled ? '#bdbdbd' : '#006A60',
+              paddingHorizontal: 24,
+              paddingVertical: 12,
+              borderRadius: 6,
+              marginBottom: 10,
+            }}
+            onPress={handleEnableReminders}
+            disabled={remindersEnabled}
+          >
+            <Text style={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}>
+              {remindersEnabled ? 'Reminders Enabled' : 'Enable Reminders for the Week'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={{ backgroundColor: '#FF9800', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 6, marginBottom: 10 }}
+            onPress={handleTestNotification}
+          >
+            <Text style={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}>Test Notification (5s)</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={{ backgroundColor: '#9C27B0', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 6, marginBottom: 10 }}
+            onPress={checkScheduledNotifications}
+          >
+            <Text style={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}>Check Scheduled</Text>
+          </TouchableOpacity>
+          {remindersEnabled && (
+            <TouchableOpacity
+              style={{ backgroundColor: '#FF5722', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 6 }}
+              onPress={resetRemindersState}
+            >
+              <Text style={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}>Reset State</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </ScrollView>
 
-      <View style={{ marginTop: 20, marginHorizontal: 20, marginBottom: 20 }}>
-        <TouchableOpacity
-          onPress={() => enableReminders()}
-          disabled={remindersEnabled}
-          style={{ backgroundColor: remindersEnabled ? '#bdbdbd' : '#006A60', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 6, marginBottom: 10 }}
-        >
-          <Text style={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}>
-            {remindersEnabled ? 'Reminders Enabled' : 'Enable Reminders for the Week'}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={testNotification} style={{ backgroundColor: '#FF9800', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 6 }}>
-          <Text style={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}>Test Notification (5s)</Text>
-        </TouchableOpacity>
-      </View>
-
-      <Modal visible={visionModalVisible} transparent animationType="fade">
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 }}>
-          <View style={{ backgroundColor: '#fff', borderRadius: 12, overflow: 'hidden', padding: 24, alignItems: 'center', minHeight: 120 }}>
-            <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 16 }}>Scanning image…</Text>
+      <Modal visible={isScanningImage} transparent animationType="fade">
+        <View style={styles.scanOverlay}>
+          <View style={styles.scanCard}>
             <ActivityIndicator size="large" color="#006A60" />
-            <Text style={{ fontSize: 14, color: '#666', marginTop: 12 }}>Google Vision</Text>
+            <Text style={styles.scanTitle}>Scanning image…</Text>
+            <Text style={styles.scanSubtitle}>Extracting text from your weekly planner</Text>
+            <TouchableOpacity style={styles.cancelScanButton} onPress={handleCancelScan}>
+              <Text style={styles.cancelScanText}>Cancel</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
-    </ScrollView>
+    </>
   );
 }
+
+const styles = StyleSheet.create({
+  scanOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  scanCard: {
+    width: '100%',
+    maxWidth: 320,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingVertical: 24,
+    paddingHorizontal: 18,
+    alignItems: 'center',
+  },
+  scanTitle: {
+    marginTop: 16,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#222',
+  },
+  scanSubtitle: {
+    marginTop: 8,
+    textAlign: 'center',
+    color: '#666',
+  },
+  cancelScanButton: {
+    marginTop: 20,
+    backgroundColor: '#B00020',
+    paddingHorizontal: 22,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  cancelScanText: {
+    color: '#fff',
+    fontWeight: '700',
+  },
+});

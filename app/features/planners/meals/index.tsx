@@ -25,6 +25,7 @@ import {
   getMealPlansByFamily,
   getMealPlanWithItems,
   getMealPlanStats,
+  toggleMealCompletion,
   MealPlan,
   MealPlanItem,
   Recipe,
@@ -50,6 +51,8 @@ export default function MealPlanningScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedView, setSelectedView] = useState<'plan' | 'recipes' | 'shopping'>('plan');
+  /** Mock week data has no Supabase rows — toggle is local-only. */
+  const [weekMealsFromMock, setWeekMealsFromMock] = useState(true);
 
   const views = [
     { value: 'plan', label: 'Meal Plan' },
@@ -83,13 +86,14 @@ export default function MealPlanningScreen() {
       if (recentPlan) {
         await loadMealPlanDetails(recentPlan);
       } else {
-        // Create mock data for demo
+        setWeekMealsFromMock(true);
         setWeekMeals(createMockWeekMeals());
       }
 
     } catch (err) {
-      if (__DEV__) console.error('Error loading meal planning data:', err);
+      console.error('Error loading meal planning data:', err);
       setError('Failed to load meal plans. Please try again.');
+      setWeekMealsFromMock(true);
       setWeekMeals(createMockWeekMeals());
     } finally {
       setLoading(false);
@@ -127,8 +131,10 @@ export default function MealPlanningScreen() {
       }
 
       setWeekMeals(organizedMeals);
+      setWeekMealsFromMock(false);
     } catch (err) {
-      if (__DEV__) console.error('Error loading meal plan details:', err);
+      console.error('Error loading meal plan details:', err);
+      setWeekMealsFromMock(true);
       setWeekMeals(createMockWeekMeals());
     }
   };
@@ -287,11 +293,35 @@ export default function MealPlanningScreen() {
     router.push(`/features/planners/meals/recipes/${recipeId}`);
   };
 
+  const updateWeekMealsItem = (itemId: string, isCompleted: boolean) => {
+    setWeekMeals((prev) =>
+      prev.map((day) => ({
+        ...day,
+        breakfast:
+          day.breakfast?.id === itemId
+            ? { ...day.breakfast, is_completed: isCompleted }
+            : day.breakfast,
+        lunch:
+          day.lunch?.id === itemId ? { ...day.lunch, is_completed: isCompleted } : day.lunch,
+        dinner:
+          day.dinner?.id === itemId ? { ...day.dinner, is_completed: isCompleted } : day.dinner,
+        snacks: day.snacks.map((s) =>
+          s.id === itemId ? { ...s, is_completed: isCompleted } : s
+        ),
+      }))
+    );
+  };
+
   const handleToggleMealCompletion = async (itemId: string, isCompleted: boolean) => {
+    if (weekMealsFromMock) {
+      updateWeekMealsItem(itemId, isCompleted);
+      return;
+    }
     try {
-      // TODO: Implement toggleMealCompletion from service
-      Alert.alert('Success', `Meal marked as ${isCompleted ? 'completed' : 'incomplete'}`);
-    } catch (error) {
+      await toggleMealCompletion(itemId, isCompleted);
+      updateWeekMealsItem(itemId, isCompleted);
+    } catch (e) {
+      console.error(e);
       Alert.alert('Error', 'Failed to update meal status');
     }
   };

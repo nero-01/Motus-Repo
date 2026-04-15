@@ -6,16 +6,18 @@ export interface CalendarEvent {
   title: string;
   description?: string;
   start_date: string;
-  end_date: string;
+  /** Nullable in DB when not set */
+  end_date?: string | null;
   event_type: 'custody' | 'activity' | 'medical' | 'school' | 'other';
   location?: string;
   created_by: string;
   is_all_day: boolean;
-  is_recurring: boolean;
-  recurrence_pattern?: string; // 'daily', 'weekly', 'monthly', 'yearly'
+  /** Present when DB column exists; omitted in minimal schema */
+  is_recurring?: boolean;
+  recurrence_pattern?: string;
   recurrence_end_date?: string;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 export interface CustodySchedule {
@@ -36,11 +38,11 @@ export interface CoParentingMessage {
   id: string;
   family_id: string;
   sender_id: string;
-  recipient_id?: string; // null for group messages
-  subject: string;
+  recipient_id?: string | null;
+  subject?: string | null;
   content: string;
   message_type: 'general' | 'schedule' | 'expense' | 'emergency';
-  priority: 'low' | 'medium' | 'high';
+  priority?: 'low' | 'medium' | 'high';
   is_read: boolean;
   created_at: string;
 }
@@ -79,28 +81,27 @@ export interface Document {
 }
 
 // Calendar Event Management
-export const createCalendarEvent = async (event: Omit<CalendarEvent, 'id' | 'created_at' | 'updated_at'>): Promise<CalendarEvent> => {
+export const createCalendarEvent = async (
+  event: Omit<CalendarEvent, 'id' | 'created_at' | 'updated_at'>
+): Promise<CalendarEvent> => {
   const { data, error } = await supabase
     .from('calendar_events')
     .insert({
       family_id: event.family_id,
       title: event.title,
-      description: event.description,
+      description: event.description ?? null,
       start_date: event.start_date,
-      end_date: event.end_date,
+      end_date: event.end_date || null,
       event_type: event.event_type,
-      location: event.location,
+      location: event.location ?? null,
       created_by: event.created_by,
       is_all_day: event.is_all_day,
-      is_recurring: event.is_recurring,
-      recurrence_pattern: event.recurrence_pattern,
-      recurrence_end_date: event.recurrence_end_date,
     })
     .select()
     .single();
 
   if (error) throw error;
-  return data;
+  return data as CalendarEvent;
 };
 
 export const getCalendarEventsByFamily = async (familyId: string, startDate?: string, endDate?: string): Promise<CalendarEvent[]> => {
@@ -114,8 +115,9 @@ export const getCalendarEventsByFamily = async (familyId: string, startDate?: st
     query = query.gte('start_date', startDate);
   }
 
+  /** Upper bound on event *start* so rows with null end_date are not excluded. */
   if (endDate) {
-    query = query.lte('end_date', endDate);
+    query = query.lte('start_date', endDate);
   }
 
   const { data, error } = await query;
@@ -161,7 +163,7 @@ export const deleteCalendarEvent = async (eventId: string): Promise<void> => {
 // Custody Schedule Management
 export const createCustodySchedule = async (schedule: Omit<CustodySchedule, 'id' | 'created_at' | 'updated_at'>): Promise<CustodySchedule> => {
   const { data, error } = await supabase
-    .from('custody_schedules')
+    .from('custody_schedule')
     .insert({
       family_id: schedule.family_id,
       child_id: schedule.child_id,
@@ -170,18 +172,17 @@ export const createCustodySchedule = async (schedule: Omit<CustodySchedule, 'id'
       start_time: schedule.start_time,
       end_time: schedule.end_time,
       is_primary: schedule.is_primary,
-      notes: schedule.notes,
     })
     .select()
     .single();
 
   if (error) throw error;
-  return data;
+  return data as CustodySchedule;
 };
 
 export const getCustodyScheduleByFamily = async (familyId: string): Promise<CustodySchedule[]> => {
   const { data, error } = await supabase
-    .from('custody_schedules')
+    .from('custody_schedule')
     .select('*')
     .eq('family_id', familyId)
     .order('day_of_week');
@@ -192,7 +193,7 @@ export const getCustodyScheduleByFamily = async (familyId: string): Promise<Cust
 
 export const getCustodyScheduleByChild = async (childId: string): Promise<CustodySchedule[]> => {
   const { data, error } = await supabase
-    .from('custody_schedules')
+    .from('custody_schedule')
     .select('*')
     .eq('child_id', childId)
     .order('day_of_week');
@@ -202,23 +203,21 @@ export const getCustodyScheduleByChild = async (childId: string): Promise<Custod
 };
 
 export const updateCustodySchedule = async (scheduleId: string, updates: Partial<CustodySchedule>): Promise<CustodySchedule> => {
+  const { notes: _n, updated_at: _u, created_at: _c, id: _i, ...rest } = updates as Partial<CustodySchedule>;
   const { data, error } = await supabase
-    .from('custody_schedules')
-    .update({
-      ...updates,
-      updated_at: new Date().toISOString(),
-    })
+    .from('custody_schedule')
+    .update(rest)
     .eq('id', scheduleId)
     .select()
     .single();
 
   if (error) throw error;
-  return data;
+  return data as CustodySchedule;
 };
 
 export const deleteCustodySchedule = async (scheduleId: string): Promise<void> => {
   const { error } = await supabase
-    .from('custody_schedules')
+    .from('custody_schedule')
     .delete()
     .eq('id', scheduleId);
 
@@ -228,27 +227,26 @@ export const deleteCustodySchedule = async (scheduleId: string): Promise<void> =
 // Communication Management
 export const sendMessage = async (message: Omit<CoParentingMessage, 'id' | 'created_at'>): Promise<CoParentingMessage> => {
   const { data, error } = await supabase
-    .from('coparenting_messages')
+    .from('messages')
     .insert({
       family_id: message.family_id,
       sender_id: message.sender_id,
-      recipient_id: message.recipient_id,
-      subject: message.subject,
+      recipient_id: message.recipient_id ?? null,
+      subject: message.subject ?? null,
       content: message.content,
       message_type: message.message_type,
-      priority: message.priority,
       is_read: false,
     })
     .select()
     .single();
 
   if (error) throw error;
-  return data;
+  return data as CoParentingMessage;
 };
 
 export const getMessagesByFamily = async (familyId: string, userId?: string): Promise<CoParentingMessage[]> => {
   let query = supabase
-    .from('coparenting_messages')
+    .from('messages')
     .select('*')
     .eq('family_id', familyId)
     .order('created_at', { ascending: false });
@@ -262,9 +260,21 @@ export const getMessagesByFamily = async (familyId: string, userId?: string): Pr
   return data || [];
 };
 
+/** All messages in a family (for threading). Family creators can read per RLS. */
+export const getAllMessagesForFamily = async (familyId: string): Promise<CoParentingMessage[]> => {
+  const { data, error } = await supabase
+    .from('messages')
+    .select('*')
+    .eq('family_id', familyId)
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+  return (data || []) as CoParentingMessage[];
+};
+
 export const markMessageAsRead = async (messageId: string): Promise<void> => {
   const { error } = await supabase
-    .from('coparenting_messages')
+    .from('messages')
     .update({ is_read: true })
     .eq('id', messageId);
 
@@ -273,7 +283,7 @@ export const markMessageAsRead = async (messageId: string): Promise<void> => {
 
 export const deleteMessage = async (messageId: string): Promise<void> => {
   const { error } = await supabase
-    .from('coparenting_messages')
+    .from('messages')
     .delete()
     .eq('id', messageId);
 
@@ -306,7 +316,7 @@ export const createSharedExpense = async (expense: Omit<SharedExpense, 'id' | 'c
     if (error) throw error;
     return data;
   } catch (error) {
-    if (__DEV__) console.error('Error creating shared expense (table may not exist):', error);
+    console.error('Error creating shared expense (table may not exist):', error);
     // Return mock data when table doesn't exist
     return {
       id: 'mock-expense-1',
@@ -340,46 +350,8 @@ export const getSharedExpensesByFamily = async (familyId: string): Promise<Share
     if (error) throw error;
     return data || [];
   } catch (error) {
-    if (__DEV__) console.error('Error loading shared expenses (table may not exist):', error);
-    // Return mock data when table doesn't exist
-    return [
-      {
-        id: 'mock-expense-1',
-        family_id: familyId,
-        title: 'Childcare Expenses',
-        description: 'Monthly childcare costs',
-        amount: 800,
-        currency: 'USD',
-        category: 'childcare',
-        paid_by: 'parent-1',
-        split_percentage: 50,
-        due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        is_paid: false,
-        payment_date: undefined,
-        receipt_url: undefined,
-        created_by: 'parent-1',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-      {
-        id: 'mock-expense-2',
-        family_id: familyId,
-        title: 'School Supplies',
-        description: 'Back to school supplies',
-        amount: 150,
-        currency: 'USD',
-        category: 'education',
-        paid_by: 'parent-2',
-        split_percentage: 50,
-        due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-        is_paid: true,
-        payment_date: new Date().toISOString(),
-        receipt_url: undefined,
-        created_by: 'parent-2',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-    ];
+    console.error('Error loading shared expenses (table may not exist):', error);
+    return [];
   }
 };
 
@@ -398,7 +370,7 @@ export const updateSharedExpense = async (expenseId: string, updates: Partial<Sh
     if (error) throw error;
     return data;
   } catch (error) {
-    if (__DEV__) console.error('Error updating shared expense (table may not exist):', error);
+    console.error('Error updating shared expense (table may not exist):', error);
     // Return mock updated data when table doesn't exist
     return {
       id: expenseId,
@@ -406,7 +378,7 @@ export const updateSharedExpense = async (expenseId: string, updates: Partial<Sh
       title: updates.title || 'Updated Expense',
       description: updates.description,
       amount: updates.amount || 0,
-      currency: updates.currency || 'USD',
+      currency: updates.currency || 'ZAR',
       category: updates.category || 'other',
       paid_by: updates.paid_by || 'parent-1',
       split_percentage: updates.split_percentage || 50,
@@ -430,7 +402,7 @@ export const deleteSharedExpense = async (expenseId: string): Promise<void> => {
 
     if (error) throw error;
   } catch (error) {
-    if (__DEV__) console.error('Error deleting shared expense (table may not exist):', error);
+    console.error('Error deleting shared expense (table may not exist):', error);
     // Silently succeed when table doesn't exist
   }
 };
@@ -448,7 +420,7 @@ export const markExpenseAsPaid = async (expenseId: string, paymentDate?: string)
 
     if (error) throw error;
   } catch (error) {
-    if (__DEV__) console.error('Error marking expense as paid (table may not exist):', error);
+    console.error('Error marking expense as paid (table may not exist):', error);
     // Silently succeed when table doesn't exist
   }
 };
@@ -550,7 +522,7 @@ export const getExpenseSummary = async (familyId: string, startDate?: string, en
       monthlyBreakdown,
     };
   } catch (error) {
-    if (__DEV__) console.error('Error loading expense summary (table may not exist):', error);
+    console.error('Error loading expense summary (table may not exist):', error);
     // Return mock data when table doesn't exist
     return {
       totalExpenses: 1200,
@@ -576,7 +548,7 @@ export const getCustodySummary = async (familyId: string, childId?: string): Pro
   weeklySchedule: Record<string, { primary: string; secondary: string }>;
 }> => {
   let query = supabase
-    .from('custody_schedules')
+    .from('custody_schedule')
     .select('*')
     .eq('family_id', familyId);
 
@@ -623,15 +595,21 @@ export const getUpcomingEvents = async (familyId: string, days: number = 7): Pro
 };
 
 export const getUnreadMessageCount = async (familyId: string, userId: string): Promise<number> => {
-  const { count, error } = await supabase
-    .from('coparenting_messages')
-    .select('*', { count: 'exact', head: true })
-    .eq('family_id', familyId)
-    .or(`recipient_id.eq.${userId},recipient_id.is.null`)
-    .eq('is_read', false);
+  if (!userId) return 0;
+  try {
+    const { count, error } = await supabase
+      .from('messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('family_id', familyId)
+      .eq('is_read', false)
+      .or(`recipient_id.eq.${userId},recipient_id.is.null`);
 
-  if (error) throw error;
-  return count || 0;
+    if (error) throw error;
+    return count || 0;
+  } catch (e) {
+    console.warn('getUnreadMessageCount:', e);
+    return 0;
+  }
 };
 
 export const getPendingExpenses = async (familyId: string): Promise<SharedExpense[]> => {
@@ -646,7 +624,7 @@ export const getPendingExpenses = async (familyId: string): Promise<SharedExpens
     if (error) throw error;
     return data || [];
   } catch (error) {
-    if (__DEV__) console.error('Error loading pending expenses (table may not exist):', error);
+    console.error('Error loading pending expenses (table may not exist):', error);
     // Return mock data when table doesn't exist
     return [
       {
@@ -655,7 +633,7 @@ export const getPendingExpenses = async (familyId: string): Promise<SharedExpens
         title: 'Childcare Expenses',
         description: 'Monthly childcare costs',
         amount: 800,
-        currency: 'USD',
+        currency: 'ZAR',
         category: 'childcare',
         paid_by: 'parent-1',
         split_percentage: 50,

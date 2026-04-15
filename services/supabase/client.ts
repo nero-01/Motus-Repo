@@ -7,8 +7,15 @@ import { ENV } from '../../config/env';
 //   hasKey: !!ENV.SUPABASE_ANON_KEY,
 // });
 
-if (__DEV__ && (!ENV.SUPABASE_URL || !ENV.SUPABASE_ANON_KEY)) {
-  console.warn('Missing Supabase configuration. Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY.');
+if (!ENV.SUPABASE_URL || !ENV.SUPABASE_ANON_KEY) {
+  const message =
+    'Missing Supabase configuration. Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY.';
+  if (ENV.APP_ENV === 'production') {
+    throw new Error(message);
+  }
+  if (__DEV__) {
+    console.warn(message);
+  }
 }
 
 export const supabase = createClient(

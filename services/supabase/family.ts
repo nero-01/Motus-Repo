@@ -1,5 +1,38 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './client';
 import { Avatar } from '../../components/ui/AvatarSelector';
+
+/** Client-side only: `family_members` has no `is_active` in schema; persists per device until DB supports it. */
+const FAMILY_MEMBER_ACTIVE_KEY = (familyId: string) => `motustots:familyMemberActive:${familyId}`;
+
+export async function getFamilyMemberActiveMap(
+  familyId: string
+): Promise<Record<string, boolean>> {
+  try {
+    const raw = await AsyncStorage.getItem(FAMILY_MEMBER_ACTIVE_KEY(familyId));
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, boolean>;
+    }
+    return {};
+  } catch {
+    return {};
+  }
+}
+
+export async function setFamilyMemberActivePreference(
+  familyId: string,
+  memberId: string,
+  isActive: boolean
+): Promise<void> {
+  const map = await getFamilyMemberActiveMap(familyId);
+  map[memberId] = isActive;
+  await AsyncStorage.setItem(
+    FAMILY_MEMBER_ACTIVE_KEY(familyId),
+    JSON.stringify(map)
+  );
+}
 
 export interface Child {
   id: string;
@@ -72,6 +105,54 @@ export async function getCurrentFamily(): Promise<Family | null> {
     return familyMembers[0]?.families as unknown as Family || null;
   } catch (error) {
     if (__DEV__) console.error('Error getting current family:', error);
+    return null;
+  }
+}
+
+/** Creates a family row and adds the current user as owner (requires `public.users` row for FK). */
+export async function createFamilyWithOwner(params: {
+  name: string;
+  description?: string;
+}): Promise<Family | null> {
+  try {
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+    if (authError || !user) {
+      console.error('createFamilyWithOwner: not authenticated', authError);
+      return null;
+    }
+
+    const { data: family, error: famError } = await supabase
+      .from('families')
+      .insert({
+        name: params.name.trim(),
+        description: params.description?.trim() || null,
+        created_by: user.id,
+      })
+      .select()
+      .single();
+
+    if (famError) {
+      console.error('createFamilyWithOwner: families insert', famError);
+      throw famError;
+    }
+
+    const { error: memError } = await supabase.from('family_members').insert({
+      family_id: family.id,
+      user_id: user.id,
+      role: 'owner',
+    });
+
+    if (memError) {
+      console.error('createFamilyWithOwner: family_members insert', memError);
+      throw memError;
+    }
+
+    return family as Family;
+  } catch (error) {
+    console.error('createFamilyWithOwner', error);
     return null;
   }
 }
