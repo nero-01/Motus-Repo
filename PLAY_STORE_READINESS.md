@@ -5,6 +5,7 @@ This checklist tracks launch-blocking Play Console metadata and policy work.
 Supporting docs:
 - `STORE_LISTING_CONTENT.md` (copy-ready listing text)
 - `DATA_SAFETY_MAPPING.md` (privacy/data-safety declaration mapping)
+- `APP_STORE_READINESS.md` (Apple submission checklist)
 
 ## App Content
 
