@@ -67,7 +67,12 @@ export default function LoginForm() {
       router.replace('/(tabs)');
     } catch (err) {
       console.error(`${provider.name} login error:`, err);
-      Alert.alert('Error', `Failed to sign in with ${provider.name}. Please try again.`);
+      const message =
+        err instanceof Error ? err.message : `Failed to sign in with ${provider.name}. Please try again.`;
+      if (message.toLowerCase().includes('cancelled')) {
+        return;
+      }
+      Alert.alert('Error', message);
     } finally {
       setSocialLoading(null);
     }
@@ -86,7 +91,7 @@ export default function LoginForm() {
   const renderSocialButton = (provider: SocialLoginProvider) => (
     <SocialLoginButton
       key={provider.id}
-      provider={provider.id as 'google' | 'facebook' | 'twitter'}
+      provider={provider.id as 'google' | 'facebook'}
       onPress={() => handleSocialLogin(provider)}
       loading={socialLoading === provider.id}
       disabled={isLoading || !!socialLoading}
@@ -110,11 +115,19 @@ export default function LoginForm() {
           </View>
 
           <View style={styles.dividerRow}>
+<<<<<<< HEAD
             <View style={styles.dividerLine} />
             <Text variant="bodyMedium" style={styles.dividerText}>
               or continue with email
             </Text>
             <View style={styles.dividerLine} />
+=======
+            <Divider style={styles.dividerLine} />
+            <Text variant="bodyMedium" style={styles.dividerText}>
+              or continue with email
+            </Text>
+            <Divider style={styles.dividerLine} />
+>>>>>>> nero-01/issue22
           </View>
 
           {/* Email/Password Form */}
@@ -229,9 +242,18 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   dividerRow: {
+<<<<<<< HEAD
     flexDirection: 'row',
     alignItems: 'center',
+=======
+>>>>>>> nero-01/issue22
     marginVertical: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  dividerLine: {
+    flex: 1,
   },
   dividerLine: {
     flex: 1,

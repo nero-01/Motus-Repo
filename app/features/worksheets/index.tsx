@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Text, Card, Button } from 'react-native-paper';
 import { router, useLocalSearchParams } from 'expo-router';
 import LetterTracing from '../../../components/worksheets/LetterTracing';
@@ -11,19 +11,28 @@ export default function WorksheetsScreen() {
   const { type } = useLocalSearchParams<{ type: string }>();
   const [currentWorksheet, setCurrentWorksheet] = useState<string | null>(type || null);
 
+  const handleWorksheetComplete = (name: string, accuracy: number) => {
+    Alert.alert('Great job!', `${name} completed with ${accuracy}% accuracy.`, [
+      {
+        text: 'Done',
+        onPress: () => {
+          setCurrentWorksheet(null);
+          router.back();
+        },
+      },
+    ]);
+  };
+
   const renderWorksheet = () => {
     switch (currentWorksheet) {
       case 'letter_tracing':
         return (
           <LetterTracing
+            letter="A"
             onComplete={(accuracy) => {
-              console.log('Letter Tracing completed with accuracy:', accuracy);
-              // Handle completion
+              handleWorksheetComplete('Letter Tracing', accuracy);
             }}
-            onNext={() => {
-              setCurrentWorksheet(null);
-              router.back();
-            }}
+            onNext={() => {}}
           />
         );
       
@@ -31,13 +40,9 @@ export default function WorksheetsScreen() {
         return (
           <ColorMixing
             onComplete={(accuracy) => {
-              console.log('Color Mixing completed with accuracy:', accuracy);
-              // Handle completion
+              handleWorksheetComplete('Color Mixing', accuracy);
             }}
-            onNext={() => {
-              setCurrentWorksheet(null);
-              router.back();
-            }}
+            onNext={() => {}}
           />
         );
       
@@ -45,13 +50,9 @@ export default function WorksheetsScreen() {
         return (
           <AnimalHabitats
             onComplete={(accuracy) => {
-              console.log('Animal Habitats completed with accuracy:', accuracy);
-              // Handle completion
+              handleWorksheetComplete('Animal Habitats', accuracy);
             }}
-            onNext={() => {
-              setCurrentWorksheet(null);
-              router.back();
-            }}
+            onNext={() => {}}
           />
         );
       
@@ -59,13 +60,9 @@ export default function WorksheetsScreen() {
         return (
           <CommunityHelpers
             onComplete={(accuracy) => {
-              console.log('Community Helpers completed with accuracy:', accuracy);
-              // Handle completion
+              handleWorksheetComplete('Community Helpers', accuracy);
             }}
-            onNext={() => {
-              setCurrentWorksheet(null);
-              router.back();
-            }}
+            onNext={() => {}}
           />
         );
       

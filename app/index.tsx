@@ -16,11 +16,11 @@ const { width, height } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const handleGetStarted = () => {
-    router.push('/(auth)/register');
+    router.replace('/(auth)/register');
   };
 
   const handleSignIn = () => {
-    router.push('/(auth)/login');
+    router.replace('/(auth)/login');
   };
 
   return (

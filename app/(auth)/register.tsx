@@ -55,7 +55,7 @@ export default function RegisterScreen() {
           />
 
           <View style={styles.links}>
-            <Link href="/login" asChild>
+            <Link href="/(auth)/login" asChild>
               <Text variant="bodyMedium" style={styles.link}>
                 Already have an account? Sign in
               </Text>

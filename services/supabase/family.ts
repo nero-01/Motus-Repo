@@ -1,5 +1,38 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './client';
 import { Avatar } from '../../components/ui/AvatarSelector';
+
+/** Client-side only: `family_members` has no `is_active` in schema; persists per device until DB supports it. */
+const FAMILY_MEMBER_ACTIVE_KEY = (familyId: string) => `motustots:familyMemberActive:${familyId}`;
+
+export async function getFamilyMemberActiveMap(
+  familyId: string
+): Promise<Record<string, boolean>> {
+  try {
+    const raw = await AsyncStorage.getItem(FAMILY_MEMBER_ACTIVE_KEY(familyId));
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, boolean>;
+    }
+    return {};
+  } catch {
+    return {};
+  }
+}
+
+export async function setFamilyMemberActivePreference(
+  familyId: string,
+  memberId: string,
+  isActive: boolean
+): Promise<void> {
+  const map = await getFamilyMemberActiveMap(familyId);
+  map[memberId] = isActive;
+  await AsyncStorage.setItem(
+    FAMILY_MEMBER_ACTIVE_KEY(familyId),
+    JSON.stringify(map)
+  );
+}
 
 export interface Child {
   id: string;
