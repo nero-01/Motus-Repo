@@ -1,5 +1,5 @@
-import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 import { supabase } from '../../../../services/supabase/client';
 import { SocialLoginProvider } from '../types';
 
@@ -7,10 +7,6 @@ import { SocialLoginProvider } from '../types';
 WebBrowser.maybeCompleteAuthSession();
 
 export class SocialAuthService {
-  private static readonly GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
-  private static readonly FACEBOOK_APP_ID = process.env.EXPO_PUBLIC_FACEBOOK_APP_ID;
-  private static readonly APPLE_CLIENT_ID = process.env.EXPO_PUBLIC_APPLE_CLIENT_ID;
-
   static readonly socialProviders: SocialLoginProvider[] = [
     {
       id: 'google',
@@ -24,43 +20,54 @@ export class SocialAuthService {
       icon: '📘',
       color: '#1877F2',
     },
-    {
-      id: 'twitter',
-      name: 'Twitter',
-      icon: '🐦',
-      color: '#1DA1F2',
-    },
   ];
+
+  private static extractCodeFromRedirect(url: string): string | null {
+    try {
+      const parsed = new URL(url);
+      return parsed.searchParams.get('code');
+    } catch {
+      const queryString = url.split('?')[1] ?? '';
+      const params = new URLSearchParams(queryString);
+      return params.get('code');
+    }
+  }
+
+  private static async signInWithSupabaseOAuth(
+    provider: 'google' | 'facebook'
+  ): Promise<void> {
+    const redirectTo = Linking.createURL('auth/callback');
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo,
+        skipBrowserRedirect: true,
+      },
+    });
+
+    if (error) {
+      throw error;
+    }
+    if (!data?.url) {
+      throw new Error(`Could not start ${provider} sign-in flow.`);
+    }
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+    if (result.type !== 'success' || !result.url) {
+      throw new Error('Social sign-in was cancelled.');
+    }
+    const code = this.extractCodeFromRedirect(result.url);
+    if (!code) {
+      throw new Error('Missing auth code from redirect URL.');
+    }
+    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+    if (exchangeError) {
+      throw exchangeError;
+    }
+  }
 
   static async signInWithGoogle(): Promise<void> {
     try {
-      const redirectUri = AuthSession.makeRedirectUri({
-        scheme: 'motustots',
-        path: 'auth/callback',
-      });
-
-      const request = new AuthSession.AuthRequest({
-        clientId: this.GOOGLE_CLIENT_ID!,
-        scopes: ['openid', 'profile', 'email'],
-        redirectUri,
-        responseType: AuthSession.ResponseType.Code,
-        extraParams: {
-          access_type: 'offline',
-        },
-      });
-
-      const result = await request.promptAsync({
-        authorizationEndpoint: 'https://accounts.google.com/oauth/authorize',
-      });
-
-      if (result.type === 'success' && result.params.code) {
-        const { data, error } = await supabase.auth.signInWithIdToken({
-          provider: 'google',
-          token: result.params.code,
-        });
-
-        if (error) throw error;
-      }
+      await this.signInWithSupabaseOAuth('google');
     } catch (error) {
       throw new Error(error instanceof Error ? error.message : 'Google sign-in failed');
     }
@@ -68,60 +75,17 @@ export class SocialAuthService {
 
   static async signInWithFacebook(): Promise<void> {
     try {
-      const redirectUri = AuthSession.makeRedirectUri({
-        scheme: 'motustots',
-        path: 'auth/callback',
-      });
-
-      const request = new AuthSession.AuthRequest({
-        clientId: this.FACEBOOK_APP_ID!,
-        scopes: ['public_profile', 'email'],
-        redirectUri,
-        responseType: AuthSession.ResponseType.Code,
-      });
-
-      const result = await request.promptAsync({
-        authorizationEndpoint: 'https://www.facebook.com/v18.0/dialog/oauth',
-      });
-
-      if (result.type === 'success' && result.params.code) {
-        const { data, error } = await supabase.auth.signInWithIdToken({
-          provider: 'facebook',
-          token: result.params.code,
-        });
-
-        if (error) throw error;
-      }
+      await this.signInWithSupabaseOAuth('facebook');
     } catch (error) {
       throw new Error(error instanceof Error ? error.message : 'Facebook sign-in failed');
     }
   }
-
-
-
-  static async signInWithTwitter(): Promise<void> {
-    try {
-      const redirectUri = AuthSession.makeRedirectUri({
-        scheme: 'motustots',
-        path: 'auth/callback',
-      });
-
-      // Note: Twitter OAuth 2.0 requires additional setup
-      // This is a placeholder implementation
-      throw new Error('Twitter sign-in not yet implemented');
-    } catch (error) {
-      throw new Error(error instanceof Error ? error.message : 'Twitter sign-in failed');
-    }
-  }
-
   static async signInWithProvider(providerId: SocialLoginProvider['id']): Promise<void> {
     switch (providerId) {
       case 'google':
         return this.signInWithGoogle();
       case 'facebook':
         return this.signInWithFacebook();
-      case 'twitter':
-        return this.signInWithTwitter();
       default:
         throw new Error(`Unsupported provider: ${providerId}`);
     }

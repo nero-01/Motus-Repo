@@ -26,7 +26,7 @@ export interface RegisterCredentials {
 }
 
 export interface SocialLoginProvider {
-  id: 'google' | 'facebook' | 'apple' | 'twitter';
+  id: 'google' | 'facebook';
   name: string;
   icon: string;
   color: string;

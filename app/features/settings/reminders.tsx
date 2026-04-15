@@ -4,7 +4,7 @@ import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 
 export default function RemindersScreen() {
-  const [reminders, setReminders] = useState<any[]>([]);
+  const [reminders, setReminders] = useState<Notifications.NotificationRequest[]>([]);
   const router = useRouter();
 
   useEffect(() => {
@@ -22,6 +22,11 @@ export default function RemindersScreen() {
     Alert.alert('Reminders cancelled', 'All scheduled reminders have been cancelled.');
   };
 
+  const handleCancelOne = async (id: string) => {
+    await Notifications.cancelScheduledNotificationAsync(id);
+    await loadReminders();
+  };
+
   return (
     <ScrollView style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
       <View style={{ padding: 20 }}>
@@ -34,9 +39,25 @@ export default function RemindersScreen() {
               <Text style={{ fontWeight: 'bold' }}>{reminder.content.title}</Text>
               <Text>{reminder.content.body}</Text>
               <Text style={{ color: '#888', marginTop: 4, fontSize: 12 }}>ID: {reminder.identifier}</Text>
+              <TouchableOpacity
+                style={{ marginTop: 10, alignSelf: 'flex-start', backgroundColor: '#8E1B1B', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 4 }}
+                onPress={() => {
+                  void handleCancelOne(reminder.identifier);
+                }}
+              >
+                <Text style={{ color: '#fff', fontWeight: '600' }}>Cancel</Text>
+              </TouchableOpacity>
             </View>
           ))
         )}
+        <TouchableOpacity
+          style={{ marginTop: 8, backgroundColor: '#006A60', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 6 }}
+          onPress={() => {
+            void loadReminders();
+          }}
+        >
+          <Text style={{ color: '#fff', fontWeight: 'bold' }}>Refresh</Text>
+        </TouchableOpacity>
         <TouchableOpacity
           style={{ marginTop: 20, backgroundColor: '#B00020', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 6 }}
           onPress={handleCancelAll}
