@@ -41,6 +41,13 @@ interface Worksheet {
   image_url?: string;
 }
 
+const SUPPORTED_WORKSHEET_TYPES = new Set([
+  'letter_tracing',
+  'color_mixing',
+  'animal_habitats',
+  'community_helpers',
+]);
+
 interface EducationStats {
   totalWorksheets: number;
   averageScore: number;
@@ -253,23 +260,22 @@ export default function EducationScreen() {
 
   const startWorksheet = () => {
     if (!selectedWorksheet) return;
-    
+
+    const worksheetToStart = selectedWorksheet;
     closeWorksheetModal();
-    
-    // For now, show an alert that the worksheet is starting
-    Alert.alert(
-      'Worksheet Starting',
-      `Starting ${selectedWorksheet.title}...`,
-      [
-        {
-          text: 'OK',
-          onPress: () => {
-            // In a real app, this would navigate to the actual worksheet
-            console.log('Starting worksheet:', selectedWorksheet.title);
-          }
-        }
-      ]
-    );
+
+    if (!SUPPORTED_WORKSHEET_TYPES.has(worksheetToStart.type)) {
+      Alert.alert(
+        'Worksheet coming soon',
+        `${worksheetToStart.title} is not interactive yet. Please try one of the interactive worksheets.`
+      );
+      return;
+    }
+
+    router.push({
+      pathname: '/features/worksheets',
+      params: { type: worksheetToStart.type },
+    });
   };
 
   if (loading) {
@@ -409,7 +415,12 @@ export default function EducationScreen() {
           <View style={styles.quickAccessButtons}>
             <Button
               mode="contained"
-              onPress={() => Alert.alert('Letter Tracing', 'Letter tracing worksheet coming soon!')}
+              onPress={() =>
+                router.push({
+                  pathname: '/features/worksheets',
+                  params: { type: 'letter_tracing' },
+                })
+              }
               style={styles.quickButton}
               icon="pencil"
             >
@@ -418,7 +429,12 @@ export default function EducationScreen() {
             
             <Button
               mode="contained"
-              onPress={() => Alert.alert('Color Mixing', 'Color mixing worksheet coming soon!')}
+              onPress={() =>
+                router.push({
+                  pathname: '/features/worksheets',
+                  params: { type: 'color_mixing' },
+                })
+              }
               style={styles.quickButton}
               icon="palette"
             >
@@ -427,7 +443,12 @@ export default function EducationScreen() {
             
             <Button
               mode="contained"
-              onPress={() => Alert.alert('Animal Habitats', 'Animal habitats worksheet coming soon!')}
+              onPress={() =>
+                router.push({
+                  pathname: '/features/worksheets',
+                  params: { type: 'animal_habitats' },
+                })
+              }
               style={styles.quickButton}
               icon="paw"
             >
@@ -436,7 +457,12 @@ export default function EducationScreen() {
             
             <Button
               mode="contained"
-              onPress={() => Alert.alert('Community Helpers', 'Community helpers worksheet coming soon!')}
+              onPress={() =>
+                router.push({
+                  pathname: '/features/worksheets',
+                  params: { type: 'community_helpers' },
+                })
+              }
               style={styles.quickButton}
               icon="account-group"
             >
