@@ -3,15 +3,7 @@ import { View, ScrollView, StyleSheet, Text, TouchableOpacity, Image, Alert } fr
 import { useRouter } from 'expo-router';
 import ParentSheetImage from '../../assets/parent_involvement_sheet_winter.png';
 import * as ImagePicker from 'expo-image-picker';
-
-async function loadNotificationsModule() {
-  try {
-    return await import('expo-notifications');
-  } catch (error) {
-    console.warn('Notifications unavailable in this environment:', error);
-    return null;
-  }
-}
+import { loadExpoNotificationsModule } from '../../src/native/loadExpoNotifications';
 
 export default function RemindersTabScreen() {
   const [remindersEnabled, setRemindersEnabled] = useState(false);
@@ -25,7 +17,7 @@ export default function RemindersTabScreen() {
     let mounted = true;
 
     void (async () => {
-      const Notifications = await loadNotificationsModule();
+      const Notifications = await loadExpoNotificationsModule();
       if (!mounted || !Notifications) {
         return;
       }
@@ -64,7 +56,7 @@ export default function RemindersTabScreen() {
 
   const handleEnableReminders = async () => {
     try {
-      const Notifications = await loadNotificationsModule();
+      const Notifications = await loadExpoNotificationsModule();
       if (!Notifications) {
         Alert.alert('Unavailable in Expo Go', 'Notifications require a development build on SDK 53+.');
         return;
@@ -130,7 +122,7 @@ export default function RemindersTabScreen() {
 
   const handleTestNotification = async () => {
     try {
-      const Notifications = await loadNotificationsModule();
+      const Notifications = await loadExpoNotificationsModule();
       if (!Notifications) {
         Alert.alert('Unavailable in Expo Go', 'Notifications require a development build on SDK 53+.');
         return;
@@ -164,7 +156,7 @@ export default function RemindersTabScreen() {
 
   const checkScheduledNotifications = async () => {
     try {
-      const Notifications = await loadNotificationsModule();
+      const Notifications = await loadExpoNotificationsModule();
       if (!Notifications) {
         Alert.alert('Unavailable in Expo Go', 'Notifications require a development build on SDK 53+.');
         return;
@@ -180,7 +172,7 @@ export default function RemindersTabScreen() {
 
   const resetRemindersState = () => {
     void (async () => {
-      const Notifications = await loadNotificationsModule();
+      const Notifications = await loadExpoNotificationsModule();
       if (Notifications) {
         await Notifications.cancelAllScheduledNotificationsAsync();
       }

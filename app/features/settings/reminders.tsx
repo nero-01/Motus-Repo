@@ -1,15 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
-
-async function loadNotificationsModule() {
-  try {
-    return await import('expo-notifications');
-  } catch (error) {
-    console.warn('Notifications unavailable in this environment:', error);
-    return null;
-  }
-}
+import { loadExpoNotificationsModule } from '../../../src/native/loadExpoNotifications';
 
 export default function RemindersScreen() {
   const [reminders, setReminders] = useState<Array<{ identifier: string; content: { title?: string; body?: string } }>>([]);
@@ -20,7 +12,7 @@ export default function RemindersScreen() {
   }, []);
 
   const loadReminders = async () => {
-    const Notifications = await loadNotificationsModule();
+    const Notifications = await loadExpoNotificationsModule();
     if (!Notifications) {
       setReminders([]);
       return;
@@ -30,7 +22,7 @@ export default function RemindersScreen() {
   };
 
   const handleCancelAll = async () => {
-    const Notifications = await loadNotificationsModule();
+    const Notifications = await loadExpoNotificationsModule();
     if (!Notifications) {
       Alert.alert('Unavailable in Expo Go', 'Notifications require a development build on SDK 53+.');
       return;
@@ -41,7 +33,7 @@ export default function RemindersScreen() {
   };
 
   const handleCancelOne = async (id: string) => {
-    const Notifications = await loadNotificationsModule();
+    const Notifications = await loadExpoNotificationsModule();
     if (!Notifications) {
       Alert.alert('Unavailable in Expo Go', 'Notifications require a development build on SDK 53+.');
       return;
