@@ -9,7 +9,9 @@ import {
   Text,
   TouchableOpacity,
   ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Card,
   Button,
@@ -51,6 +53,9 @@ interface EducationStats {
 }
 
 export default function EducationScreen() {
+  const { width: windowWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+
   const [worksheets, setWorksheets] = useState<Worksheet[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -270,9 +275,16 @@ export default function EducationScreen() {
     });
   };
 
+  const padL = 16 + insets.left;
+  const padR = 16 + insets.right;
+  const contentWidth = Math.max(0, windowWidth - padL - padR);
+  const statGap = 8;
+  const statsRowPadding = 16;
+  const statCardWidth = Math.max(0, (contentWidth - statsRowPadding * 2 - statGap) / 2);
+
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={[styles.loadingContainer, { paddingLeft: padL, paddingRight: padR }]}>
         <ActivityIndicator size="large" color="#006A60" />
         <Text style={styles.loadingText}>Loading worksheets...</Text>
       </View>
@@ -283,14 +295,31 @@ export default function EducationScreen() {
     <View style={styles.container}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingLeft: padL,
+            paddingRight: padR,
+            paddingBottom: 24 + insets.bottom,
+          },
+        ]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         keyboardShouldPersistTaps="handled"
       >
-        {/* Header */}
-        <View style={styles.header}>
+        {/* Header — edge-to-edge background; text aligns with scroll padding */}
+        <View
+          style={[
+            styles.header,
+            {
+              marginLeft: -padL,
+              marginRight: -padR,
+              paddingLeft: padL,
+              paddingRight: padR,
+            },
+          ]}
+        >
           <Text style={styles.title}>📚 Education Hub</Text>
           <Text style={styles.subtitle}>Fun learning activities for your child</Text>
         </View>
@@ -298,28 +327,28 @@ export default function EducationScreen() {
         {/* Stats Overview */}
         {stats && (
           <View style={styles.statsContainer}>
-            <Card style={styles.statCard}>
+            <Card style={[styles.statCard, { width: statCardWidth, maxWidth: '100%' }]}>
               <Card.Content>
                 <Text style={styles.statNumber}>{stats.totalWorksheets}</Text>
                 <Text style={styles.statLabel}>Worksheets</Text>
               </Card.Content>
             </Card>
             
-            <Card style={styles.statCard}>
+            <Card style={[styles.statCard, { width: statCardWidth, maxWidth: '100%' }]}>
               <Card.Content>
                 <Text style={styles.statNumber}>{stats.averageScore}%</Text>
                 <Text style={styles.statLabel}>Avg Score</Text>
               </Card.Content>
             </Card>
             
-            <Card style={styles.statCard}>
+            <Card style={[styles.statCard, { width: statCardWidth, maxWidth: '100%' }]}>
               <Card.Content>
                 <Text style={styles.statNumber}>{stats.thisWeekWorksheets}</Text>
                 <Text style={styles.statLabel}>This Week</Text>
               </Card.Content>
             </Card>
             
-            <Card style={styles.statCard}>
+            <Card style={[styles.statCard, { width: statCardWidth, maxWidth: '100%' }]}>
               <Card.Content>
                 <Text style={styles.statNumber}>Level {stats.currentLevel}</Text>
                 <Text style={styles.statLabel}>Current Level</Text>
@@ -334,7 +363,7 @@ export default function EducationScreen() {
             placeholder="Search worksheets..."
             onChangeText={setSearchQuery}
             value={searchQuery}
-            style={styles.searchBar}
+            style={[styles.searchBar, { width: '100%', maxWidth: '100%' }]}
             inputStyle={styles.searchBarInput}
           />
           
@@ -342,7 +371,8 @@ export default function EducationScreen() {
             <ScrollView
               horizontal
               nestedScrollEnabled
-              showsHorizontalScrollIndicator={false}
+              showsHorizontalScrollIndicator
+              style={styles.segmentedScrollView}
               contentContainerStyle={styles.segmentedScrollContent}
             >
               <SegmentedButtons
@@ -355,7 +385,8 @@ export default function EducationScreen() {
             <ScrollView
               horizontal
               nestedScrollEnabled
-              showsHorizontalScrollIndicator={false}
+              showsHorizontalScrollIndicator
+              style={styles.segmentedScrollView}
               contentContainerStyle={styles.segmentedScrollContent}
             >
               <SegmentedButtons
@@ -376,7 +407,7 @@ export default function EducationScreen() {
           
           {filteredWorksheets.map((worksheet) => (
             <Card key={worksheet.id} style={styles.worksheetCard}>
-              <Card.Content>
+              <Card.Content style={styles.cardContent}>
                 <View style={styles.worksheetHeader}>
                   <View style={[
                     styles.categoryIcon, 
@@ -498,7 +529,7 @@ export default function EducationScreen() {
           onRequestClose={closeWorksheetModal}
         >
           <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
+            <View style={[styles.modalContent, { maxWidth: Math.min(windowWidth - 24, 400) }]}>
               {selectedWorksheet && (
                 <>
                   <View style={styles.modalHeader}>
@@ -564,7 +595,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: 24,
   },
   loadingContainer: {
     flex: 1,
@@ -581,9 +611,10 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#006A60',
-    padding: 20,
-    paddingTop: 40,
+    paddingTop: 12,
+    paddingBottom: 20,
     alignSelf: 'stretch',
+    overflow: 'hidden',
   },
   title: {
     fontSize: 24,
@@ -591,47 +622,54 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     marginBottom: 8,
     flexShrink: 1,
-    alignSelf: 'stretch',
+    width: '100%',
+    maxWidth: '100%',
   },
   subtitle: {
     fontSize: 16,
     color: '#ffffff',
     opacity: 0.9,
     flexShrink: 1,
-    alignSelf: 'stretch',
+    width: '100%',
+    maxWidth: '100%',
   },
   statsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    padding: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     gap: 8,
     maxWidth: '100%',
     alignSelf: 'stretch',
+    overflow: 'hidden',
   },
   statCard: {
-    flexGrow: 1,
-    flexShrink: 1,
-    flexBasis: '47%',
     minWidth: 0,
-    maxWidth: '48%',
     marginBottom: 8,
+    overflow: 'hidden',
   },
   statNumber: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#006A60',
     flexShrink: 1,
+    width: '100%',
+    maxWidth: '100%',
   },
   statLabel: {
     fontSize: 12,
     color: '#666',
     marginTop: 4,
     flexShrink: 1,
+    width: '100%',
+    maxWidth: '100%',
   },
   filtersContainer: {
-    padding: 16,
-    paddingTop: 0,
+    paddingTop: 8,
+    paddingBottom: 0,
     flexShrink: 1,
+    maxWidth: '100%',
+    overflow: 'hidden',
   },
   searchBar: {
     marginBottom: 16,
@@ -644,29 +682,46 @@ const styles = StyleSheet.create({
   filterButtons: {
     gap: 12,
   },
+  segmentedScrollView: {
+    width: '100%',
+    maxWidth: '100%',
+    flexGrow: 0,
+    overflow: 'hidden',
+  },
   segmentedScrollContent: {
     flexGrow: 0,
     paddingRight: 4,
     paddingBottom: 4,
+    alignItems: 'center',
   },
   segmentedRow: {
     flexGrow: 0,
+    alignSelf: 'flex-start',
   },
   worksheetsContainer: {
-    padding: 16,
-    paddingTop: 0,
+    paddingTop: 8,
+    paddingBottom: 0,
     alignSelf: 'stretch',
     maxWidth: '100%',
+    overflow: 'hidden',
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 16,
     flexShrink: 1,
-    alignSelf: 'stretch',
+    width: '100%',
+    maxWidth: '100%',
   },
   worksheetCard: {
     marginBottom: 12,
+    width: '100%',
+    maxWidth: '100%',
+    overflow: 'hidden',
+  },
+  cardContent: {
+    overflow: 'hidden',
+    maxWidth: '100%',
   },
   worksheetHeader: {
     flexDirection: 'row',
@@ -696,12 +751,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 4,
     flexShrink: 1,
+    width: '100%',
+    maxWidth: '100%',
   },
   worksheetDescription: {
     fontSize: 14,
     color: '#666',
     marginBottom: 8,
     flexShrink: 1,
+    width: '100%',
+    maxWidth: '100%',
   },
   worksheetMeta: {
     flexDirection: 'row',
@@ -729,24 +788,22 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   quickAccessContainer: {
-    padding: 16,
-    paddingTop: 0,
+    paddingTop: 8,
     alignSelf: 'stretch',
     maxWidth: '100%',
+    overflow: 'hidden',
   },
   quickAccessButtons: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    flexDirection: 'column',
+    gap: 10,
     maxWidth: '100%',
+    width: '100%',
   },
   quickButton: {
-    flexGrow: 1,
-    flexShrink: 1,
-    flexBasis: '47%',
-    minWidth: 0,
+    width: '100%',
     maxWidth: '100%',
-    marginBottom: 8,
+    marginBottom: 0,
+    alignSelf: 'stretch',
   },
   quickButtonContent: {
     flexWrap: 'wrap',
@@ -768,7 +825,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     maxHeight: '85%',
     width: '100%',
-    maxWidth: 400,
     alignSelf: 'center',
     overflow: 'hidden',
   },
@@ -790,6 +846,8 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     flexShrink: 1,
+    width: '100%',
+    maxWidth: '100%',
   },
   closeHit: {
     flexShrink: 0,
@@ -812,6 +870,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     lineHeight: 24,
     flexShrink: 1,
+    width: '100%',
+    maxWidth: '100%',
   },
   modalMeta: {
     flexDirection: 'row',
@@ -829,6 +889,8 @@ const styles = StyleSheet.create({
     color: '#666',
     lineHeight: 20,
     flexShrink: 1,
+    width: '100%',
+    maxWidth: '100%',
   },
   modalActions: {
     flexDirection: 'row',
