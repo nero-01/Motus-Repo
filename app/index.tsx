@@ -10,8 +10,11 @@ import {
 import { Button } from 'react-native-paper';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
+  const insets = useSafeAreaInsets();
+
   const handleGetStarted = () => {
     router.replace('/(auth)/register');
   };
@@ -36,15 +39,15 @@ export default function HomeScreen() {
           style={styles.gradientOverlay}
         >
           {/* Main Content */}
-          <View style={styles.content}>
+          <View style={[styles.content, { paddingBottom: Math.max(insets.bottom, 12) + 8 }]}>
             {/* App Title and Tagline */}
-            <View style={styles.headerSection}>
+            <View style={[styles.headerSection, { paddingTop: insets.top + 20 }]}>
               <Text style={styles.appTitle}>MotusTots</Text>
               <Text style={styles.tagline}>Empowering families through meaningful activities</Text>
             </View>
 
             {/* Bottom Section with Buttons */}
-            <View style={styles.bottomSection}>
+            <View style={[styles.bottomSection, { paddingBottom: Math.max(insets.bottom, 12) + 12 }]}>
               <View style={styles.buttonContainer}>
                 <Button
                   mode="contained"
@@ -94,13 +97,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'space-between',
     paddingHorizontal: 24,
-    paddingBottom: 20,
   },
   headerSection: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     alignItems: 'center',
-    paddingTop: 100,
   },
   appTitle: {
     fontSize: 48,
@@ -122,7 +123,6 @@ const styles = StyleSheet.create({
     textShadowRadius: 2,
   },
   bottomSection: {
-    paddingBottom: 60,
     backgroundColor: 'rgba(0, 0, 0, 0.9)',
     borderRadius: 16,
     padding: 20,
