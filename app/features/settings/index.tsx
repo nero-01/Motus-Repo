@@ -23,6 +23,7 @@ import {
   setFamilyMemberActivePreference,
   type FamilyMember as SupabaseFamilyMember,
 } from '../../../services/supabase/family';
+import { loadExpoNotificationsModule } from '../../../src/native/loadExpoNotifications';
 
 interface FamilyMember {
   id: string;
@@ -35,15 +36,6 @@ interface FamilyMember {
 
 const PREFERENCES_STORAGE_KEY = 'motustots:settings:preferences';
 const NOTIFICATIONS_STORAGE_KEY = 'motustots:settings:notifications';
-
-async function loadNotificationsModule() {
-  try {
-    return await import('expo-notifications');
-  } catch (error) {
-    console.warn('Notifications unavailable in this environment:', error);
-    return null;
-  }
-}
 
 function formatMemberName(m: SupabaseFamilyMember): string {
   const u = m.user;
@@ -269,7 +261,7 @@ export default function SettingsScreen() {
 
     const nextEnabled = !current.isEnabled;
     if (nextEnabled) {
-      const Notifications = await loadNotificationsModule();
+      const Notifications = await loadExpoNotificationsModule();
       if (!Notifications) {
         Alert.alert('Unavailable in Expo Go', 'Notifications require a development build on SDK 53+.');
         return;
