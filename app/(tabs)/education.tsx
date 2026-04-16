@@ -14,19 +14,11 @@ import {
   Card,
   Button,
   Chip,
-  Avatar,
-  FAB,
   Searchbar,
   SegmentedButtons,
-  ProgressBar,
   Portal,
-  Dialog,
 } from 'react-native-paper';
 import { router } from 'expo-router';
-import LetterTracing from '../../components/worksheets/LetterTracing';
-import ColorMixing from '../../components/worksheets/ColorMixing';
-import AnimalHabitats from '../../components/worksheets/AnimalHabitats';
-import CommunityHelpers from '../../components/worksheets/CommunityHelpers';
 
 interface Worksheet {
   id: string;
@@ -291,9 +283,11 @@ export default function EducationScreen() {
     <View style={styles.container}>
       <ScrollView
         style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
+        keyboardShouldPersistTaps="handled"
       >
         {/* Header */}
         <View style={styles.header}>
@@ -341,22 +335,36 @@ export default function EducationScreen() {
             onChangeText={setSearchQuery}
             value={searchQuery}
             style={styles.searchBar}
+            inputStyle={styles.searchBarInput}
           />
           
           <View style={styles.filterButtons}>
-            <SegmentedButtons
-              value={selectedCategory}
-              onValueChange={setSelectedCategory}
-              buttons={categories}
-              style={styles.categoryFilter}
-            />
-            
-            <SegmentedButtons
-              value={selectedDifficulty}
-              onValueChange={setSelectedDifficulty}
-              buttons={difficulties}
-              style={styles.difficultyFilter}
-            />
+            <ScrollView
+              horizontal
+              nestedScrollEnabled
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.segmentedScrollContent}
+            >
+              <SegmentedButtons
+                value={selectedCategory}
+                onValueChange={setSelectedCategory}
+                buttons={categories}
+                style={styles.segmentedRow}
+              />
+            </ScrollView>
+            <ScrollView
+              horizontal
+              nestedScrollEnabled
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.segmentedScrollContent}
+            >
+              <SegmentedButtons
+                value={selectedDifficulty}
+                onValueChange={setSelectedDifficulty}
+                buttons={difficulties}
+                style={styles.segmentedRow}
+              />
+            </ScrollView>
           </View>
         </View>
 
@@ -382,24 +390,25 @@ export default function EducationScreen() {
                     <Text style={styles.worksheetTitle}>{worksheet.title}</Text>
                     <Text style={styles.worksheetDescription}>{worksheet.description}</Text>
                     <View style={styles.worksheetMeta}>
-                      <Chip mode="outlined" style={styles.metaChip}>
+                      <Chip mode="outlined" compact style={styles.metaChip}>
                         {worksheet.age_range} years
                       </Chip>
-                      <Chip mode="outlined" style={styles.metaChip}>
+                      <Chip mode="outlined" compact style={styles.metaChip}>
                         {getDifficultyStars(worksheet.difficulty)}
                       </Chip>
-                      <Chip mode="outlined" style={styles.metaChip}>
+                      <Chip mode="outlined" compact style={styles.metaChip}>
                         {worksheet.estimated_time} min
                       </Chip>
                     </View>
                   </View>
                 </View>
               </Card.Content>
-              <Card.Actions>
+              <Card.Actions style={styles.cardActions}>
                 <Button 
                   mode="contained" 
                   onPress={() => openWorksheetModal(worksheet)}
                   style={styles.startButton}
+                  contentStyle={styles.startButtonContent}
                 >
                   Start Worksheet
                 </Button>
@@ -422,6 +431,8 @@ export default function EducationScreen() {
                 })
               }
               style={styles.quickButton}
+              contentStyle={styles.quickButtonContent}
+              labelStyle={styles.quickButtonLabel}
               icon="pencil"
             >
               Letter Tracing
@@ -436,6 +447,8 @@ export default function EducationScreen() {
                 })
               }
               style={styles.quickButton}
+              contentStyle={styles.quickButtonContent}
+              labelStyle={styles.quickButtonLabel}
               icon="palette"
             >
               Color Mixing
@@ -450,6 +463,8 @@ export default function EducationScreen() {
                 })
               }
               style={styles.quickButton}
+              contentStyle={styles.quickButtonContent}
+              labelStyle={styles.quickButtonLabel}
               icon="paw"
             >
               Animal Habitats
@@ -464,6 +479,8 @@ export default function EducationScreen() {
                 })
               }
               style={styles.quickButton}
+              contentStyle={styles.quickButtonContent}
+              labelStyle={styles.quickButtonLabel}
               icon="account-group"
             >
               Community Helpers
@@ -485,21 +502,33 @@ export default function EducationScreen() {
               {selectedWorksheet && (
                 <>
                   <View style={styles.modalHeader}>
-                    <Text style={styles.modalTitle}>{selectedWorksheet.title}</Text>
-                    <TouchableOpacity onPress={closeWorksheetModal}>
+                    <View style={styles.modalTitleWrap}>
+                      <Text style={styles.modalTitle}>{selectedWorksheet.title}</Text>
+                    </View>
+                    <TouchableOpacity onPress={closeWorksheetModal} style={styles.closeHit} hitSlop={12}>
                       <Text style={styles.closeButton}>✕</Text>
                     </TouchableOpacity>
                   </View>
                   
-                  <ScrollView style={styles.modalBody}>
+                  <ScrollView
+                    style={styles.modalBody}
+                    contentContainerStyle={styles.modalBodyContent}
+                    nestedScrollEnabled
+                  >
                     <Text style={styles.modalDescription}>
                       {selectedWorksheet.description}
                     </Text>
                     
                     <View style={styles.modalMeta}>
-                      <Chip mode="outlined">Age: {selectedWorksheet.age_range}</Chip>
-                      <Chip mode="outlined">Time: {selectedWorksheet.estimated_time} min</Chip>
-                      <Chip mode="outlined">Level: {getDifficultyStars(selectedWorksheet.difficulty)}</Chip>
+                      <Chip mode="outlined" compact style={styles.modalMetaChip}>
+                        Age: {selectedWorksheet.age_range}
+                      </Chip>
+                      <Chip mode="outlined" compact style={styles.modalMetaChip}>
+                        Time: {selectedWorksheet.estimated_time} min
+                      </Chip>
+                      <Chip mode="outlined" compact style={styles.modalMetaChip}>
+                        Level: {getDifficultyStars(selectedWorksheet.difficulty)}
+                      </Chip>
                     </View>
                     
                     <Text style={styles.modalInstructions}>
@@ -533,6 +562,10 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 24,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -542,43 +575,58 @@ const styles = StyleSheet.create({
     marginTop: 16,
     color: '#666',
     fontSize: 16,
+    textAlign: 'center',
+    paddingHorizontal: 24,
+    flexShrink: 1,
   },
   header: {
     backgroundColor: '#006A60',
     padding: 20,
     paddingTop: 40,
+    alignSelf: 'stretch',
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#ffffff',
     marginBottom: 8,
+    flexShrink: 1,
+    alignSelf: 'stretch',
   },
   subtitle: {
     fontSize: 16,
     color: '#ffffff',
     opacity: 0.9,
+    flexShrink: 1,
+    alignSelf: 'stretch',
   },
   statsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     padding: 16,
     gap: 8,
+    maxWidth: '100%',
+    alignSelf: 'stretch',
   },
   statCard: {
-    flex: 1,
-    minWidth: '45%',
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '47%',
+    minWidth: 0,
+    maxWidth: '48%',
     marginBottom: 8,
   },
   statNumber: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#006A60',
+    flexShrink: 1,
   },
   statLabel: {
     fontSize: 12,
     color: '#666',
     marginTop: 4,
+    flexShrink: 1,
   },
   filtersContainer: {
     padding: 16,
@@ -588,26 +636,34 @@ const styles = StyleSheet.create({
   searchBar: {
     marginBottom: 16,
     flexShrink: 1,
+    alignSelf: 'stretch',
+  },
+  searchBarInput: {
+    flexWrap: 'wrap',
   },
   filterButtons: {
     gap: 12,
   },
-  categoryFilter: {
-    marginBottom: 8,
-    flexShrink: 1,
+  segmentedScrollContent: {
+    flexGrow: 0,
+    paddingRight: 4,
+    paddingBottom: 4,
   },
-  difficultyFilter: {
-    marginBottom: 8,
-    flexShrink: 1,
+  segmentedRow: {
+    flexGrow: 0,
   },
   worksheetsContainer: {
     padding: 16,
     paddingTop: 0,
+    alignSelf: 'stretch',
+    maxWidth: '100%',
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 16,
+    flexShrink: 1,
+    alignSelf: 'stretch',
   },
   worksheetCard: {
     marginBottom: 12,
@@ -615,6 +671,7 @@ const styles = StyleSheet.create({
   worksheetHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
+    maxWidth: '100%',
   },
   categoryIcon: {
     width: 50,
@@ -623,6 +680,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
+    flexShrink: 0,
   },
   categoryIconText: {
     fontSize: 24,
@@ -630,19 +688,19 @@ const styles = StyleSheet.create({
   worksheetInfo: {
     flex: 1,
     flexShrink: 1,
+    minWidth: 0,
+    maxWidth: '100%',
   },
   worksheetTitle: {
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 4,
-    flexWrap: 'wrap',
     flexShrink: 1,
   },
   worksheetDescription: {
     fontSize: 14,
     color: '#666',
     marginBottom: 8,
-    flexWrap: 'wrap',
     flexShrink: 1,
   },
   worksheetMeta: {
@@ -650,85 +708,140 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 4,
     marginTop: 4,
+    maxWidth: '100%',
   },
   metaChip: {
     marginRight: 4,
+    maxWidth: '100%',
+    alignSelf: 'flex-start',
+  },
+  cardActions: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    paddingHorizontal: 8,
+    paddingBottom: 8,
   },
   startButton: {
-    marginTop: 8,
+    marginTop: 4,
+    alignSelf: 'stretch',
+  },
+  startButtonContent: {
+    flexWrap: 'wrap',
   },
   quickAccessContainer: {
     padding: 16,
     paddingTop: 0,
+    alignSelf: 'stretch',
+    maxWidth: '100%',
   },
   quickAccessButtons: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+    maxWidth: '100%',
   },
   quickButton: {
-    flex: 1,
-    minWidth: '45%',
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '47%',
+    minWidth: 0,
+    maxWidth: '100%',
     marginBottom: 8,
+  },
+  quickButtonContent: {
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
+  quickButtonLabel: {
+    textAlign: 'center',
+    flexShrink: 1,
   },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 12,
   },
   modalContent: {
     backgroundColor: '#ffffff',
     borderRadius: 12,
-    margin: 20,
-    maxHeight: '80%',
-    width: '90%',
+    maxHeight: '85%',
+    width: '100%',
+    maxWidth: 400,
+    alignSelf: 'center',
+    overflow: 'hidden',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
+    alignItems: 'flex-start',
+    padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
+    gap: 8,
+  },
+  modalTitleWrap: {
+    flex: 1,
+    minWidth: 0,
+    paddingRight: 4,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    flex: 1,
+    flexShrink: 1,
+  },
+  closeHit: {
+    flexShrink: 0,
+    padding: 4,
   },
   closeButton: {
     fontSize: 24,
     color: '#666',
-    padding: 4,
   },
   modalBody: {
-    padding: 20,
+    maxHeight: 320,
+  },
+  modalBodyContent: {
+    padding: 16,
+    paddingBottom: 24,
+    flexGrow: 1,
   },
   modalDescription: {
     fontSize: 16,
     marginBottom: 16,
     lineHeight: 24,
+    flexShrink: 1,
   },
   modalMeta: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
     marginBottom: 16,
+    maxWidth: '100%',
+  },
+  modalMetaChip: {
+    maxWidth: '100%',
+    alignSelf: 'flex-start',
   },
   modalInstructions: {
     fontSize: 14,
     color: '#666',
     lineHeight: 20,
+    flexShrink: 1,
   },
   modalActions: {
     flexDirection: 'row',
-    padding: 20,
+    flexWrap: 'wrap',
+    padding: 16,
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
-    gap: 12,
+    gap: 8,
+    alignItems: 'stretch',
   },
   modalButton: {
-    flex: 1,
+    flexGrow: 1,
+    flexShrink: 1,
+    minWidth: 120,
   },
 }); 
