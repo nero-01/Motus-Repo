@@ -4,15 +4,12 @@ import {
   Text,
   StyleSheet,
   ImageBackground,
-  Dimensions,
   StatusBar,
   Platform,
 } from 'react-native';
 import { Button } from 'react-native-paper';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-
-const { width, height } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const handleGetStarted = () => {
@@ -31,7 +28,7 @@ export default function HomeScreen() {
       <ImageBackground
         source={require('../assets/MotusTots-splash-v2.png')}
         style={styles.backgroundImage}
-        resizeMode="cover"
+        resizeMode="contain"
       >
         {/* Gradient Overlay for better text readability */}
         <LinearGradient
@@ -85,8 +82,9 @@ const styles = StyleSheet.create({
   },
   backgroundImage: {
     flex: 1,
-    width: width,
-    height: height,
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#ffffff',
   },
   gradientOverlay: {
     flex: 1,
