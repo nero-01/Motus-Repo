@@ -1,11 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ENV } from '../../config/env';
 
-// console.log('Initializing Supabase client with:', {
-//   url: ENV.SUPABASE_URL,
-//   hasKey: !!ENV.SUPABASE_ANON_KEY,
-// });
+// On web, AsyncStorage is unreliable inside SSR/browser environments and can
+// misconfigure the auth client (leading to "Failed to fetch"). Use the native
+// AsyncStorage only on iOS/Android, and let supabase-js fall back to its
+// built-in localStorage handling on web.
+const authStorage = Platform.OS === 'web' ? undefined : (AsyncStorage as any);
 
 if (!ENV.SUPABASE_URL || !ENV.SUPABASE_ANON_KEY) {
   console.error('Missing Supabase configuration. Please check your environment variables.');
@@ -16,7 +18,7 @@ export const supabase = createClient(
   ENV.SUPABASE_ANON_KEY,
   {
     auth: {
-      storage: AsyncStorage as any,
+      storage: authStorage,
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: false,
