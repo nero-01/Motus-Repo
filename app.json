@@ -23,6 +23,11 @@
     "plugins": [
       "expo-router"
     ],
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/icon.png"
+    },
     "assetBundlePatterns": [
       "**/*"
     ]
