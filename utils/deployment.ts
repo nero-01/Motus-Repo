@@ -1,8 +1,5 @@
 /**
  * Host detection for web deployment behavior.
- * Vercel branch preview URLs (`*-git-*-*.vercel.app`) should not register
- * service workers or PWA install prompts — combined with login forms they
- * trigger Safe Browsing false positives.
  */
 
 export function isVercelPreviewHost(hostname: string): boolean {
@@ -13,13 +10,13 @@ export function isLocalDevHost(hostname: string): boolean {
   return hostname === 'localhost' || hostname === '127.0.0.1';
 }
 
-/** Safe to register SW + show install prompt (production or local dev only). */
+/**
+ * PWA features (service worker + install prompt).
+ * Set EXPO_PUBLIC_DISABLE_PWA=true to turn off entirely.
+ */
 export function shouldEnablePwaFeatures(hostname: string): boolean {
-  if (isLocalDevHost(hostname)) {
-    return true;
-  }
-  if (isVercelPreviewHost(hostname)) {
+  if (process.env.EXPO_PUBLIC_DISABLE_PWA === 'true') {
     return false;
   }
-  return true;
+  return isLocalDevHost(hostname) || !isVercelPreviewHost(hostname) || process.env.EXPO_PUBLIC_ENABLE_PWA_ON_PREVIEW === 'true';
 }

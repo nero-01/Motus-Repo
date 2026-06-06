@@ -17,20 +17,35 @@ export interface PWAState {
   isInstallable: boolean;
   isInstalled: boolean;
   isServiceWorkerReady: boolean;
+  isPwaEnabled: boolean;
+  showManualInstallHint: boolean;
   promptInstall: () => Promise<boolean>;
+}
+
+function isIosDevice(): boolean {
+  if (typeof navigator === 'undefined') {
+    return false;
+  }
+  return /iPad|iPhone|iPod/.test(navigator.userAgent);
 }
 
 export function usePWA(): PWAState {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isServiceWorkerReady, setIsServiceWorkerReady] = useState(false);
+  const [isPwaEnabled, setIsPwaEnabled] = useState(false);
+  const [showManualInstallHint, setShowManualInstallHint] = useState(false);
 
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
 
     const pwaEnabled = shouldEnablePwaFeatures(window.location.hostname);
+    setIsPwaEnabled(pwaEnabled);
+
     if (!pwaEnabled) {
-      console.log('[PWA] Disabled on Vercel preview host to avoid Safe Browsing flags.');
+      console.log(
+        '[PWA] Disabled on this host. For Vercel previews set EXPO_PUBLIC_ENABLE_PWA_ON_PREVIEW=true'
+      );
       return;
     }
 
@@ -39,6 +54,13 @@ export function usePWA(): PWAState {
       link.rel = 'manifest';
       link.href = '/manifest.json';
       document.head.appendChild(link);
+    }
+
+    if (!document.querySelector('link[rel="apple-touch-icon"]')) {
+      const appleIcon = document.createElement('link');
+      appleIcon.rel = 'apple-touch-icon';
+      appleIcon.href = '/icon-192.png';
+      document.head.appendChild(appleIcon);
     }
 
     if (!document.querySelector('meta[name="theme-color"]')) {
@@ -76,10 +98,18 @@ export function usePWA(): PWAState {
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
 
     const mq = window.matchMedia('(display-mode: standalone)');
-    if (mq.matches) setIsInstalled(true);
+    if (mq.matches) {
+      setIsInstalled(true);
+    }
+
+    if (isIosDevice() && !mq.matches) {
+      setShowManualInstallHint(true);
+    }
+
     window.addEventListener('appinstalled', () => {
       setIsInstalled(true);
       setInstallPrompt(null);
+      setShowManualInstallHint(false);
     });
 
     return () => {
@@ -94,9 +124,17 @@ export function usePWA(): PWAState {
     if (outcome === 'accepted') {
       setInstallPrompt(null);
       setIsInstalled(true);
+      setShowManualInstallHint(false);
     }
     return outcome === 'accepted';
   };
 
-  return { isInstallable: !!installPrompt, isInstalled, isServiceWorkerReady, promptInstall };
+  return {
+    isInstallable: !!installPrompt,
+    isInstalled,
+    isServiceWorkerReady,
+    isPwaEnabled,
+    showManualInstallHint: showManualInstallHint && !isInstalled && !installPrompt,
+    promptInstall,
+  };
 }

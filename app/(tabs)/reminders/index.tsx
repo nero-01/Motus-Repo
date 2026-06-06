@@ -44,7 +44,7 @@ const TYPE_ICON: Record<string, string> = {
 
 export default function RemindersTabScreen() {
   const router = useRouter();
-  const { isInstallable, promptInstall } = usePWA();
+  const { isInstallable, isInstalled, isPwaEnabled, showManualInstallHint, promptInstall } = usePWA();
 
   const [plannerImage, setPlannerImage] = useState<string | null>(null);
   const [activities, setActivities] = useState<ParsedActivity[]>([]);
@@ -147,6 +147,24 @@ export default function RemindersTabScreen() {
           <Text style={s.pwaBannerTitle}>📲 Install MotusTots on your home screen</Text>
           <Text style={s.pwaBannerSub}>Get push notifications & offline access</Text>
         </TouchableOpacity>
+      )}
+
+      {Platform.OS === 'web' && showManualInstallHint && !isInstalled && (
+        <View style={s.pwaBanner}>
+          <Text style={s.pwaBannerTitle}>📲 Install on iPhone/iPad</Text>
+          <Text style={s.pwaBannerSub}>
+            Tap Share, then &quot;Add to Home Screen&quot; in Safari
+          </Text>
+        </View>
+      )}
+
+      {Platform.OS === 'web' && !isPwaEnabled && !isInstalled && (
+        <View style={[s.pwaBanner, s.pwaBannerMuted]}>
+          <Text style={s.pwaBannerSub}>
+            PWA install is off on this preview URL. Set EXPO_PUBLIC_ENABLE_PWA_ON_PREVIEW=true on
+            Vercel, or use your production domain.
+          </Text>
+        </View>
       )}
 
       <View style={s.header}>
@@ -285,6 +303,7 @@ const s = StyleSheet.create({
   },
   pwaBannerTitle: { color: '#fff', fontWeight: '700', fontSize: 14 },
   pwaBannerSub: { color: '#c8ede9', fontSize: 12, marginTop: 2 },
+  pwaBannerMuted: { backgroundColor: '#5a6b68' },
 
   header: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 8 },
   title: { fontSize: 24, fontWeight: '800', color: TEAL },

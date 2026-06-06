@@ -40,5 +40,7 @@ EXPO_PUBLIC_APP_ENV=development
 EXPO_PUBLIC_APP_VERSION=1.0.0
 EXPO_PUBLIC_PROJECT_ID=your-expo-project-id
 EXPO_PUBLIC_OCR_SPACE_API_KEY=your-ocr-space-api-key
+# PWA on Vercel branch previews (optional)
+# EXPO_PUBLIC_ENABLE_PWA_ON_PREVIEW=true
 EXPO_PUBLIC_VAPID_PUBLIC_KEY=your-vapid-public-key
 */ 

@@ -31,6 +31,10 @@ export const ENV = {
 
   // Web Push (VAPID public key — private key is server-side only)
   VAPID_PUBLIC_KEY: process.env.EXPO_PUBLIC_VAPID_PUBLIC_KEY || '',
+
+  // PWA — set ENABLE_PWA_ON_PREVIEW=true for branch preview URLs on Vercel
+  ENABLE_PWA_ON_PREVIEW: process.env.EXPO_PUBLIC_ENABLE_PWA_ON_PREVIEW === 'true',
+  DISABLE_PWA: process.env.EXPO_PUBLIC_DISABLE_PWA === 'true',
   
   // Testing Configuration - mock auth unless explicitly disabled
   FORCE_MOCK: process.env.EXPO_PUBLIC_FORCE_MOCK !== 'false',
