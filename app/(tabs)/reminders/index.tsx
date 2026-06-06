@@ -152,7 +152,7 @@ export default function RemindersTabScreen() {
       <View style={s.header}>
         <Text style={s.title}>Weekly Reminders</Text>
         <Text style={s.subtitle}>
-          Photograph or upload your printed planner — AI will extract activities and set reminders
+          Photograph or upload your printed planner — OCR will extract activities and set reminders
           automatically.
         </Text>
       </View>

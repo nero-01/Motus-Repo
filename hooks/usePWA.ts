@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
+import { shouldEnablePwaFeatures } from '../utils/deployment';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -26,6 +27,12 @@ export function usePWA(): PWAState {
 
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+
+    const pwaEnabled = shouldEnablePwaFeatures(window.location.hostname);
+    if (!pwaEnabled) {
+      console.log('[PWA] Disabled on Vercel preview host to avoid Safe Browsing flags.');
+      return;
+    }
 
     if (!document.querySelector('link[rel="manifest"]')) {
       const link = document.createElement('link');
