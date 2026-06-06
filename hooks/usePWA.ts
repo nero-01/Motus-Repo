@@ -1,6 +1,7 @@
 /**
- * usePWA — registers the service worker and manages the PWA install prompt.
- * Safe to call on native (no-ops gracefully).
+ * usePWA — registers the service worker, injects the web manifest link,
+ * and manages the PWA install prompt.
+ * Safe to call on native (all effects no-op on non-web platforms).
  */
 
 import { useEffect, useState } from 'react';
@@ -11,7 +12,7 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
-interface PWAState {
+export interface PWAState {
   isInstallable: boolean;
   isInstalled: boolean;
   isServiceWorkerReady: boolean;
@@ -26,6 +27,20 @@ export function usePWA(): PWAState {
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
 
+    if (!document.querySelector('link[rel="manifest"]')) {
+      const link = document.createElement('link');
+      link.rel = 'manifest';
+      link.href = '/manifest.json';
+      document.head.appendChild(link);
+    }
+
+    if (!document.querySelector('meta[name="theme-color"]')) {
+      const meta = document.createElement('meta');
+      meta.name = 'theme-color';
+      meta.content = '#006A60';
+      document.head.appendChild(meta);
+    }
+
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker
         .register('/sw.js', { scope: '/' })
@@ -38,13 +53,13 @@ export function usePWA(): PWAState {
             if (newWorker) {
               newWorker.addEventListener('statechange', () => {
                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  console.log('[PWA] New content available, refresh to update.');
+                  console.log('[PWA] Update available — refresh to apply.');
                 }
               });
             }
           });
         })
-        .catch((err) => console.error('[PWA] Service worker registration failed:', err));
+        .catch((err) => console.error('[PWA] SW registration failed:', err));
     }
 
     const handleBeforeInstall = (e: Event) => {
@@ -53,10 +68,12 @@ export function usePWA(): PWAState {
     };
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
 
-    if (window.matchMedia('(display-mode: standalone)').matches) {
+    const mq = window.matchMedia('(display-mode: standalone)');
+    if (mq.matches) setIsInstalled(true);
+    window.addEventListener('appinstalled', () => {
       setIsInstalled(true);
-    }
-    window.addEventListener('appinstalled', () => setIsInstalled(true));
+      setInstallPrompt(null);
+    });
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
@@ -74,10 +91,5 @@ export function usePWA(): PWAState {
     return outcome === 'accepted';
   };
 
-  return {
-    isInstallable: !!installPrompt,
-    isInstalled,
-    isServiceWorkerReady,
-    promptInstall,
-  };
+  return { isInstallable: !!installPrompt, isInstalled, isServiceWorkerReady, promptInstall };
 }

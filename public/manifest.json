@@ -27,14 +27,14 @@
       "name": "Reminders",
       "short_name": "Reminders",
       "description": "View and manage this week's reminders",
-      "url": "/(tabs)/reminders",
+      "url": "/reminders",
       "icons": [{ "src": "/assets/icon.png", "sizes": "96x96" }]
     },
     {
       "name": "Scan Planner",
       "short_name": "Scan",
       "description": "Scan a weekly planner to auto-create reminders",
-      "url": "/(tabs)/reminders?scan=true",
+      "url": "/reminders?scan=true",
       "icons": [{ "src": "/assets/icon.png", "sizes": "96x96" }]
     }
   ]
