@@ -1,9 +1,15 @@
+import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { PaperProvider } from 'react-native-paper';
 import { theme } from '../styles/theme';
 import ErrorBoundary from '../components/ui/ErrorBoundary';
+import { setupPWA } from '../services/pwa';
 
 export default function RootLayout() {
+  useEffect(() => {
+    setupPWA();
+  }, []);
+
   return (
     <ErrorBoundary
       onError={(error, errorInfo) => {
