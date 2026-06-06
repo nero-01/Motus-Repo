@@ -32,8 +32,8 @@ export const ENV = {
   // Web Push (VAPID public key — private key is server-side only)
   VAPID_PUBLIC_KEY: process.env.EXPO_PUBLIC_VAPID_PUBLIC_KEY || '',
   
-  // Testing Configuration - Enable mock mode by default for reliable testing
-  FORCE_MOCK: process.env.EXPO_PUBLIC_FORCE_MOCK === 'true' || true, // Enable forced mock mode
+  // Testing Configuration - mock auth unless explicitly disabled
+  FORCE_MOCK: process.env.EXPO_PUBLIC_FORCE_MOCK !== 'false',
 };
 
 // console.log('ENV configuration:', {

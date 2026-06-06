@@ -50,14 +50,21 @@ export default function LoginForm() {
 
   const handleLogin = async () => {
     if (!validateForm()) return;
-    
+
     try {
       clearError();
       await login({ email, password });
+
+      const { isAuthenticated, error: storeError } = useAuthStore.getState();
+      if (!isAuthenticated || storeError) {
+        return;
+      }
+
       router.replace('/(tabs)');
     } catch (err) {
-      console.error('Login error:', err);
-      Alert.alert('Error', 'Failed to sign in. Please try again.');
+      console.error('[Login] error:', err);
+      const message = err instanceof Error ? err.message : 'Failed to sign in. Please try again.';
+      Alert.alert('Sign in failed', message);
     }
   };
 

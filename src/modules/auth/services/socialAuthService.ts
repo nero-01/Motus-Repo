@@ -1,6 +1,8 @@
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
+import { Platform } from 'react-native';
 import { supabase } from '../../../../services/supabase/client';
+import { formatAuthError } from '../../../../services/supabase/authErrors';
 import { SocialLoginProvider } from '../types';
 
 // Complete the auth session
@@ -33,21 +35,37 @@ export class SocialAuthService {
     }
   }
 
+  private static getOAuthRedirectUrl(): string {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      return `${window.location.origin}/login`;
+    }
+    return Linking.createURL('login');
+  }
+
   private static async signInWithSupabaseOAuth(
     provider: 'google' | 'facebook'
   ): Promise<void> {
-    const redirectTo = Linking.createURL('auth/callback');
+    const redirectTo = this.getOAuthRedirectUrl();
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
         redirectTo,
-        skipBrowserRedirect: true,
+        skipBrowserRedirect: Platform.OS !== 'web',
       },
     });
 
     if (error) {
       throw error;
     }
+
+    if (Platform.OS === 'web') {
+      if (!data?.url) {
+        throw new Error(`Could not start ${provider} sign-in flow.`);
+      }
+      window.location.assign(data.url);
+      return;
+    }
+
     if (!data?.url) {
       throw new Error(`Could not start ${provider} sign-in flow.`);
     }
@@ -69,7 +87,7 @@ export class SocialAuthService {
     try {
       await this.signInWithSupabaseOAuth('google');
     } catch (error) {
-      throw new Error(error instanceof Error ? error.message : 'Google sign-in failed');
+      throw new Error(formatAuthError(error));
     }
   }
 
@@ -77,7 +95,7 @@ export class SocialAuthService {
     try {
       await this.signInWithSupabaseOAuth('facebook');
     } catch (error) {
-      throw new Error(error instanceof Error ? error.message : 'Facebook sign-in failed');
+      throw new Error(formatAuthError(error));
     }
   }
   static async signInWithProvider(providerId: SocialLoginProvider['id']): Promise<void> {

@@ -13,13 +13,17 @@ function getStorage() {
   }
 }
 
-// console.log('Initializing Supabase client with:', {
-//   url: ENV.SUPABASE_URL,
-//   hasKey: !!ENV.SUPABASE_ANON_KEY,
-// });
-
 if (!ENV.SUPABASE_URL || !ENV.SUPABASE_ANON_KEY) {
-  console.error('Missing Supabase configuration. Please check your environment variables.');
+  console.error(
+    '[Supabase] Missing configuration. Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY.'
+  );
+} else {
+  try {
+    const host = new URL(ENV.SUPABASE_URL).host;
+    console.log('[Supabase] Client configured for', host);
+  } catch {
+    console.error('[Supabase] EXPO_PUBLIC_SUPABASE_URL is not a valid URL:', ENV.SUPABASE_URL);
+  }
 }
 
 export const supabase = createClient(
@@ -31,6 +35,7 @@ export const supabase = createClient(
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: Platform.OS === 'web',
+      flowType: 'pkce',
     },
   }
 );

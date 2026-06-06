@@ -1,6 +1,7 @@
 import { supabase } from './client';
 import { AuthError, User } from '@supabase/supabase-js';
 import { ENV } from '../../config/env';
+import { formatAuthError } from './authErrors';
 
 export interface AuthResponse {
   user: User | null;
@@ -117,7 +118,14 @@ export const authService = {
       return { user: data.user, error };
     } catch (error) {
       console.error('Signin exception:', error);
-      return { user: null, error: error as AuthError };
+      return {
+        user: null,
+        error: {
+          message: formatAuthError(error),
+          name: 'AuthError',
+          status: 0,
+        } as AuthError,
+      };
     }
   },
 
