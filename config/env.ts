@@ -22,6 +22,15 @@ export const ENV = {
   // App Configuration
   APP_ENV: process.env.EXPO_PUBLIC_APP_ENV || 'development',
   APP_VERSION: process.env.EXPO_PUBLIC_APP_VERSION || '1.0.0',
+
+  // Expo / EAS push
+  PROJECT_ID: process.env.EXPO_PUBLIC_PROJECT_ID || '',
+
+  // Anthropic (planner OCR)
+  ANTHROPIC_API_KEY: process.env.EXPO_PUBLIC_ANTHROPIC_KEY || '',
+
+  // Web Push (VAPID public key — private key is server-side only)
+  VAPID_PUBLIC_KEY: process.env.EXPO_PUBLIC_VAPID_PUBLIC_KEY || '',
   
   // Testing Configuration - Enable mock mode by default for reliable testing
   FORCE_MOCK: process.env.EXPO_PUBLIC_FORCE_MOCK === 'true' || true, // Enable forced mock mode

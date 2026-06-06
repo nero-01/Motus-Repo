@@ -38,7 +38,10 @@
     "expo-auth-session": "~6.0.3",
     "expo-constants": "^17.0.8",
     "expo-crypto": "~14.0.2",
+    "expo-device": "~8.0.10",
+    "expo-file-system": "~19.0.23",
     "expo-image-picker": "~16.0.6",
+    "expo-linear-gradient": "~14.0.2",
     "expo-linking": "^7.0.5",
     "expo-notifications": "^0.29.14",
     "expo-router": "~4.0.21",
@@ -70,8 +73,7 @@
     "recharts": "^2.8.0",
     "tailwind-merge": "^2.0.0",
     "zod": "^3.22.0",
-    "zustand": "^5.0.5",
-    "expo-linear-gradient": "~14.0.2"
+    "zustand": "^5.0.5"
   },
   "devDependencies": {
     "@storybook/addon-essentials": "^7.5.0",

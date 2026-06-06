@@ -15,17 +15,62 @@
       "imageResizeMode": "contain"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.nero01.MotusTots",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allow MotusTots to scan weekly planner sheets to automatically create reminders.",
+        "NSPhotoLibraryUsageDescription": "Allow MotusTots to access photos to scan planner sheets."
+      }
     },
     "android": {
       "package": "com.nero01.MotusTots",
-      "softwareKeyboardLayoutMode": "resize"
+      "softwareKeyboardLayoutMode": "resize",
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "POST_NOTIFICATIONS"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/icon.png",
+      "name": "MotusTots",
+      "shortName": "MotusTots",
+      "description": "Smart family planning and reminders for parents",
+      "themeColor": "#006A60",
+      "backgroundColor": "#ffffff",
+      "display": "standalone",
+      "orientation": "portrait",
+      "bundler": "metro"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#006A60",
+          "sounds": [],
+          "mode": "production"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow MotusTots to access your photos to scan planner sheets.",
+          "cameraPermission": "Allow MotusTots to use your camera to scan planner sheets."
+        }
+      ]
     ],
     "assetBundlePatterns": [
       "**/*"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "your-eas-project-id"
+      }
+    }
   }
 }

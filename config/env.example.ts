@@ -17,6 +17,15 @@ export const ENV = {
   // App Configuration
   APP_ENV: process.env.EXPO_PUBLIC_APP_ENV || 'development',
   APP_VERSION: process.env.EXPO_PUBLIC_APP_VERSION || '1.0.0',
+
+  // Expo / EAS push
+  PROJECT_ID: process.env.EXPO_PUBLIC_PROJECT_ID || '',
+
+  // Anthropic (planner OCR)
+  ANTHROPIC_API_KEY: process.env.EXPO_PUBLIC_ANTHROPIC_KEY || '',
+
+  // Web Push (VAPID public key)
+  VAPID_PUBLIC_KEY: process.env.EXPO_PUBLIC_VAPID_PUBLIC_KEY || '',
 };
 
 // Environment variables to set in your .env file:
@@ -29,4 +38,7 @@ EXPO_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id
 EXPO_PUBLIC_GOOGLE_CLIENT_SECRET=your_google_client_secret
 EXPO_PUBLIC_APP_ENV=development
 EXPO_PUBLIC_APP_VERSION=1.0.0
+EXPO_PUBLIC_PROJECT_ID=your-expo-project-id
+EXPO_PUBLIC_ANTHROPIC_KEY=sk-ant-...
+EXPO_PUBLIC_VAPID_PUBLIC_KEY=your-vapid-public-key
 */ 
