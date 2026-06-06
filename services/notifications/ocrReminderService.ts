@@ -1,28 +1,21 @@
 /**
  * MotusTots OCR Reminder Service
  *
- * Uses the Claude Vision API (via Anthropic) to extract structured activity
- * data from a photo of a weekly school planner, then auto-creates reminders.
- *
- * Flow:
- *   1. Parent takes/uploads a photo of the printed weekly planner sheet.
- *   2. Image is sent to Claude with a structured extraction prompt.
- *   3. Claude returns JSON with day/activity pairs.
- *   4. Caller passes the result to scheduleWeeklyReminders().
+ * Uses OCR.space to read printed weekly planner sheets, then parses
+ * day/activity pairs for reminder scheduling.
  */
 
 import { Platform } from 'react-native';
 import { ENV } from '../../config/env';
+import { extractTextFromImage } from '../ocr';
 import type { ParsedActivity } from './pushNotificationService';
-
-const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const CLAUDE_MODEL = 'claude-sonnet-4-20250514';
 
 export interface OcrResult {
   success: boolean;
   activities: ParsedActivity[];
   rawText?: string;
   error?: string;
+  confidence?: number;
 }
 
 const DAY_MAP: Record<string, number> = {
@@ -36,21 +29,22 @@ const DAY_MAP: Record<string, number> = {
 };
 
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const DAY_NAMES = Object.keys(DAY_MAP);
+const DAY_REGEX = new RegExp(`\\b(${DAY_NAMES.join('|')})\\b`, 'i');
 
 /**
- * Extract activities from a planner image using Claude Vision OCR.
+ * Extract activities from a planner image using OCR.space.
  */
 export async function extractActivitiesFromImage(
   imageUri: string,
   imageBase64?: string,
   mimeType: 'image/jpeg' | 'image/png' | 'image/webp' = 'image/jpeg'
 ): Promise<OcrResult> {
-  const apiKey = ENV.ANTHROPIC_API_KEY || process.env.EXPO_PUBLIC_ANTHROPIC_KEY;
-  if (!apiKey) {
+  if (!ENV.OCR_SPACE_API_KEY && !process.env.EXPO_PUBLIC_OCR_SPACE_API_KEY) {
     return {
       success: false,
       activities: [],
-      error: 'Missing EXPO_PUBLIC_ANTHROPIC_KEY. Add it to .env for planner OCR.',
+      error: 'Missing EXPO_PUBLIC_OCR_SPACE_API_KEY. Get a free key at https://ocr.space/ocrapi',
     };
   }
 
@@ -61,76 +55,28 @@ export async function extractActivitiesFromImage(
     }
 
     const resolvedMime = inferMimeType(imageUri, mimeType);
-
-    const response = await fetch(ANTHROPIC_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: CLAUDE_MODEL,
-        max_tokens: 1024,
-        system: `You are an OCR assistant specialized in reading printed school / nursery weekly planner sheets.
-Your job is to extract activities for each day of the week and return ONLY valid JSON.
-
-Output format — an array of objects, one per weekday that has content:
-[
-  { "day": "Monday", "activity": "...", "time": "HH:MM or null" },
-  ...
-]
-
-Rules:
-- Include ONLY days that have a non-empty activity.
-- If no specific time is mentioned, set "time" to null.
-- Preserve the exact wording of the activity.
-- Do NOT include any text outside the JSON array.`,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'image',
-                source: {
-                  type: 'base64',
-                  media_type: resolvedMime,
-                  data: base64Data,
-                },
-              },
-              {
-                type: 'text',
-                text: 'Please extract all the activities from this weekly planner sheet. Return only the JSON array.',
-              },
-            ],
-          },
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error('Anthropic API error:', errText);
-      return { success: false, activities: [], error: `API error: ${response.status}` };
-    }
-
-    const data = (await response.json()) as { content?: Array<{ text?: string }> };
-    const rawText = data.content?.[0]?.text ?? '';
-    const activities = parseActivitiesJson(rawText);
+    const ocr = await extractTextFromImage(base64Data, resolvedMime);
+    const activities = parseActivitiesFromOcrText(ocr.text);
 
     if (activities.length === 0) {
       return {
         success: false,
         activities: [],
-        rawText,
-        error: 'No activities found in the planner image.',
+        rawText: ocr.text,
+        confidence: ocr.confidence,
+        error: 'No activities found in the planner image. Try a clearer photo or check the sheet layout.',
       };
     }
 
-    return { success: true, activities, rawText };
+    return {
+      success: true,
+      activities,
+      rawText: ocr.text,
+      confidence: ocr.confidence,
+    };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('OCR extraction failed:', error);
+    const message = error instanceof Error ? error.message : 'Unknown OCR error';
+    console.error('[OCR] extraction failed:', error);
     return { success: false, activities: [], error: message };
   }
 }
@@ -160,28 +106,148 @@ export function parsedActivitiesToWeekDisplay(
   });
 }
 
-function parseActivitiesJson(rawText: string): ParsedActivity[] {
-  try {
-    const clean = rawText.replace(/```json|```/g, '').trim();
-    const parsed: Array<{ day: string; activity: string; time?: string | null }> = JSON.parse(clean);
+export function parseActivitiesFromOcrText(rawText: string): ParsedActivity[] {
+  const activities: ParsedActivity[] = [];
+  const seenDays = new Set<string>();
 
-    return parsed
-      .filter((item) => item.day && item.activity)
-      .map((item) => {
-        const dayKey = item.day.toLowerCase().trim();
-        const dayIndex = DAY_MAP[dayKey] ?? 1;
-        const time = item.time && item.time !== 'null' ? String(item.time).trim() : undefined;
-        return {
-          day: capitalise(item.day.trim()),
-          dayIndex,
-          activity: item.activity.trim(),
-          ...(time ? { time } : {}),
-        };
-      });
-  } catch (error) {
-    console.error('Failed to parse OCR JSON:', error, '\nRaw:', rawText);
-    return [];
+  const addActivity = (day: string, activity: string) => {
+    const key = day.toLowerCase();
+    if (!activity || seenDays.has(key)) {
+      return;
+    }
+    seenDays.add(key);
+    activities.push({
+      day: capitalise(day),
+      dayIndex: DAY_MAP[key] ?? 1,
+      activity,
+      ...(extractTime(activity) ? { time: extractTime(activity)! } : {}),
+    });
+  };
+
+  // Strategy 1: "Monday: Karate" / "Monday - Library" on one line
+  const inlinePattern = new RegExp(
+    `\\b(${DAY_NAMES.join('|')})\\b\\s*[:\\-–—|]?\\s*([^\\n]+)`,
+    'gi'
+  );
+  let match: RegExpExecArray | null;
+  while ((match = inlinePattern.exec(rawText)) !== null) {
+    addActivity(match[1], cleanActivityText(match[2]));
   }
+  if (activities.length > 0) {
+    return sortByDayIndex(activities);
+  }
+
+  // Strategy 2: day on its own line, activity on the next line(s)
+  const lines = rawText
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const dayMatch = lines[index].match(DAY_REGEX);
+    if (!dayMatch) {
+      continue;
+    }
+
+    const day = dayMatch[1];
+    const sameLineActivity = lines[index].slice(dayMatch.index! + dayMatch[0].length).trim();
+    const cleanedSameLine = cleanActivityText(sameLineActivity.replace(/^[\s:.\-|–—]+/, ''));
+
+    if (cleanedSameLine) {
+      addActivity(day, cleanedSameLine);
+      continue;
+    }
+
+    const nextLine = lines[index + 1];
+    if (nextLine && !DAY_REGEX.test(nextLine)) {
+      addActivity(day, cleanActivityText(nextLine));
+      index += 1;
+    }
+  }
+
+  if (activities.length > 0) {
+    return sortByDayIndex(activities);
+  }
+
+  // Strategy 3: table row with multiple day columns (Mon | Tue | ...)
+  return parseTableLayout(lines);
+}
+
+function parseTableLayout(lines: string[]): ParsedActivity[] {
+  const activities: ParsedActivity[] = [];
+  const headerIndex = lines.findIndex((line) => {
+    const hits = DAY_NAMES.filter((day) => new RegExp(`\\b${day}\\b`, 'i').test(line));
+    return hits.length >= 3;
+  });
+
+  if (headerIndex === -1) {
+    return activities;
+  }
+
+  const headerLine = lines[headerIndex];
+  const dayColumns: Array<{ day: string; start: number; end: number }> = [];
+
+  for (const day of DAY_NAMES) {
+    const regex = new RegExp(`\\b${day}\\b`, 'i');
+    const dayMatch = regex.exec(headerLine);
+    if (dayMatch) {
+      dayColumns.push({
+        day: capitalise(dayMatch[0]),
+        start: dayMatch.index,
+        end: headerLine.length,
+      });
+    }
+  }
+
+  dayColumns.sort((a, b) => a.start - b.start);
+  for (let index = 0; index < dayColumns.length; index += 1) {
+    dayColumns[index].end = dayColumns[index + 1]?.start ?? headerLine.length;
+  }
+
+  for (let rowIndex = headerIndex + 1; rowIndex < lines.length; rowIndex += 1) {
+    const row = lines[rowIndex];
+    if (DAY_REGEX.test(row) && row.split(/\s{2,}|\t|\|/).length >= 3) {
+      continue;
+    }
+
+    for (const column of dayColumns) {
+      const cell = cleanActivityText(row.slice(column.start, column.end));
+      if (cell && cell.length > 1) {
+        const existing = activities.find((item) => item.day === column.day);
+        if (existing) {
+          existing.activity = `${existing.activity}; ${cell}`;
+        } else {
+          activities.push({
+            day: column.day,
+            dayIndex: DAY_MAP[column.day.toLowerCase()] ?? 1,
+            activity: cell,
+            ...(extractTime(cell) ? { time: extractTime(cell)! } : {}),
+          });
+        }
+      }
+    }
+  }
+
+  return sortByDayIndex(activities);
+}
+
+function cleanActivityText(value: string): string {
+  return value
+    .replace(/\s+/g, ' ')
+    .replace(/^[\s:.\-|–—]+|[\s:.\-|–—]+$/g, '')
+    .trim();
+}
+
+function extractTime(value: string): string | undefined {
+  const match = value.match(/\b(\d{1,2}[:.]\d{2}\s*(?:am|pm)?)\b/i);
+  if (!match) {
+    return undefined;
+  }
+  return match[1].replace('.', ':');
+}
+
+function sortByDayIndex(activities: ParsedActivity[]): ParsedActivity[] {
+  return [...activities].sort((a, b) => a.dayIndex - b.dayIndex);
 }
 
 async function uriToBase64(uri: string): Promise<string | null> {

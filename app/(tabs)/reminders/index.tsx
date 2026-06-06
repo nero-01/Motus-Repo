@@ -184,7 +184,7 @@ export default function RemindersTabScreen() {
               <Text style={[s.primaryBtnText, { marginLeft: 8 }]}>Scanning with AI…</Text>
             </View>
           ) : (
-            <Text style={s.primaryBtnText}>🔍 Scan Planner with AI OCR</Text>
+            <Text style={s.primaryBtnText}>🔍 Scan Planner (OCR)</Text>
           )}
         </TouchableOpacity>
       )}

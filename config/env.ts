@@ -26,8 +26,8 @@ export const ENV = {
   // Expo / EAS push
   PROJECT_ID: process.env.EXPO_PUBLIC_PROJECT_ID || '',
 
-  // Anthropic (planner OCR)
-  ANTHROPIC_API_KEY: process.env.EXPO_PUBLIC_ANTHROPIC_KEY || '',
+  // OCR.space (planner OCR — free tier: 25k requests/month)
+  OCR_SPACE_API_KEY: process.env.EXPO_PUBLIC_OCR_SPACE_API_KEY || '',
 
   // Web Push (VAPID public key — private key is server-side only)
   VAPID_PUBLIC_KEY: process.env.EXPO_PUBLIC_VAPID_PUBLIC_KEY || '',
