@@ -9,7 +9,7 @@
     "dev:next": "next dev",
     "build": "expo export --platform web",
     "build:next": "next build",
-    "start": "npx serve dist",
+    "start": "npx serve dist -s",
     "start:expo": "expo start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
@@ -78,7 +78,11 @@
     "recharts": "^2.8.0",
     "tailwind-merge": "^2.0.0",
     "zod": "^3.22.0",
-    "zustand": "^5.0.5"
+    "zustand": "^5.0.5",
+    "react-native-web": "~0.19.13"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   },
   "devDependencies": {
     "@storybook/addon-essentials": "^7.5.0",

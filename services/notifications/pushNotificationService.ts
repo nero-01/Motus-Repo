@@ -8,7 +8,6 @@
  *  - Storing push token in Supabase for server-side sends
  */
 
-import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { ENV } from '../../config/env';
@@ -92,6 +91,10 @@ export async function registerForPushNotifications(): Promise<string | null> {
 export const registerPushToken = registerForPushNotifications;
 
 async function registerNativePush(): Promise<string | null> {
+  if (Platform.OS === 'web') {
+    return null;
+  }
+
   const Notifications = await getNotifications();
   if (!Notifications) {
     return null;
@@ -99,6 +102,7 @@ async function registerNativePush(): Promise<string | null> {
 
   await configureNotificationHandler();
 
+  const Device = (await import('expo-device')).default;
   if (!Device.isDevice) {
     console.warn('Push notifications require a physical device.');
     return null;

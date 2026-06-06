@@ -1,6 +1,17 @@
+import { Platform } from 'react-native';
 import { createClient } from '@supabase/supabase-js';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ENV } from '../../config/env';
+
+function getStorage() {
+  if (Platform.OS === 'web') {
+    return undefined;
+  }
+  try {
+    return require('@react-native-async-storage/async-storage').default;
+  } catch {
+    return undefined;
+  }
+}
 
 // console.log('Initializing Supabase client with:', {
 //   url: ENV.SUPABASE_URL,
@@ -16,10 +27,10 @@ export const supabase = createClient(
   ENV.SUPABASE_ANON_KEY,
   {
     auth: {
-      storage: AsyncStorage as any,
+      storage: getStorage(),
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: false,
+      detectSessionInUrl: Platform.OS === 'web',
     },
   }
 );
